@@ -1,50 +1,78 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import { invoke } from "@tauri-apps/api/core";
-import "./App.css";
+import { useState } from 'react';
+import { invoke } from '@tauri-apps/api/core';
+import { open } from '@tauri-apps/plugin-dialog';
+
+interface DirInfo {
+  name: string;
+  path: string;
+  size: number;
+}
 
 function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+  const [files, setFiles] = useState<DirInfo[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
-  }
+  // 格式化文件大小
+  const formatSize = (bytes: number) => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const handleScan = async () => {
+    setLoading(true);
+    try {
+      // 1. 让用户选择文件夹 (获取沙箱权限的关键)
+      const selected = await open({ directory: true });
+      if (selected) {
+        // 2. 调用 Rust 后端扫描
+        const data = await invoke<DirInfo[]>('scan_folder', { path: selected });
+        setFiles(data);
+      }
+    } catch (error) {
+      console.error('Scan failed:', error);
+      alert('扫描失败: ' + error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClean = async (path: string) => {
+    if (confirm(`确定要将 "${path}" 移到废纸篓吗？`)) {
+      try {
+        await invoke('clean_files', { paths: [path] });
+        // 清理成功后从列表中移除
+        setFiles(files.filter(f => f.path !== path));
+        alert('已移到废纸篓');
+      } catch (error) {
+        alert('清理失败: ' + error);
+      }
+    }
+  };
 
   return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
+    <div style={{ padding: '20px' }}>
+      <h1>Mole Demo - MVP</h1>
+      <button onClick={handleScan} disabled={loading}>
+        {loading ? '扫描中...' : '选择文件夹并扫描'}
+      </button>
 
-      <div className="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
-
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
-        />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
-    </main>
+      <ul style={{ marginTop: '20px' }}>
+        {files.map((file) => (
+          <li key={file.path} style={{ marginBottom: '10px', borderBottom: '1px solid #eee', paddingBottom: '5px' }}>
+            <strong>{file.name}</strong> - {formatSize(file.size)}
+            <button
+              onClick={() => handleClean(file.path)}
+              style={{ marginLeft: '10px', color: 'red' }}
+            >
+              清理
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
