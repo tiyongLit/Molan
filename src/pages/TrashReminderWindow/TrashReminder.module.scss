@@ -1,0 +1,103 @@
+.shell {
+  width: 344px;
+  height: 144px;
+  padding: 12px;
+  box-sizing: border-box;
+  user-select: none;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  background: transparent;
+}
+
+.card {
+  position: relative;
+  width: 320px;
+  height: 120px;
+  border-radius: 10px;
+  background: var(--lemon-main-bg-dark);
+  color: var(--lemon-title-color-dark);
+  box-shadow: 0 4px 10px rgb(0 0 0 / 24%);
+  opacity: 0;
+  transition: opacity 160ms ease;
+  pointer-events: none;
+}
+
+.visible {
+  opacity: 1;
+  transition-duration: 180ms;
+  pointer-events: auto;
+}
+
+.icon {
+  position: absolute;
+  top: 16px;
+  left: 12px;
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.copy {
+  position: absolute;
+  left: 70px;
+  top: 24px;
+  right: 13px;
+  pointer-events: none;
+}
+
+.title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 18px;
+}
+
+.description {
+  margin: 3px 0 0;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 400;
+}
+
+.threshold { color: var(--lemon-hex-64dfa7); white-space: nowrap; }
+
+.actions {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  gap: 10px;
+
+  button {
+    box-sizing: border-box;
+    height: 24px;
+    border-radius: 2px;
+    padding: 0;
+    font: 400 12px/22px -apple-system, BlinkMacSystemFont, sans-serif;
+    cursor: pointer;
+    &:focus-visible { outline: 2px solid var(--lemon-hex-64dfa7); outline-offset: 3px; }
+    &:disabled { cursor: wait; }
+  }
+}
+
+.primary {
+  width: 60px;
+  border: 0;
+  color: var(--lemon-title-color-dark);
+  background: linear-gradient(var(--lemon-hex-64dfa7), var(--lemon-hex-00d899));
+  &:hover:not(:disabled) { background: linear-gradient(var(--lemon-hex-69e8ae), var(--lemon-hex-00e9a5)); }
+  &:active:not(:disabled) { background: linear-gradient(var(--lemon-hex-61ce9c), var(--lemon-hex-00d093)); }
+}
+
+.secondary {
+  width: 80px;
+  border: 1px solid var(--lemon-small-btn-border-dark);
+  background: transparent;
+  color: var(--lemon-hex-94979b);
+  &:hover:not(:disabled) { color: var(--lemon-hex-afafaf); }
+  &:active:not(:disabled) { color: var(--lemon-hex-7e7e7e); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card { transition: none; }
+}

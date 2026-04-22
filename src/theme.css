@@ -1,0 +1,362 @@
+:root {
+  --orange-50: rgba(249, 115, 22, 0.13);
+  --orange-100: rgba(249, 115, 22, 0.2);
+  --orange-300: #fdba74;
+  --orange-400: #fb923c;
+  --orange-500: #f97316;
+  --orange-600: #fb923c;
+
+  --bg-page: #1a1d21;
+  --bg-card: #22252b;
+  --bg-card-warm: rgba(249, 115, 22, 0.06);
+  --border: #2d3036;
+  --border-hover: #3a3e45;
+  --border-light: rgba(255, 255, 255, 0.12);
+  --text-primary: #ffffff;
+  --text-secondary: #d6d6d9;
+  --text-tertiary: #888892;
+  --text-placeholder: #4e4e58;
+
+  --success: #22c55e;
+  --warning: #eab308;
+  --danger: #ef4444;
+  --info: #60a5fa;
+
+  --green-50: rgba(34, 197, 94, 0.1);
+  --green-100: rgba(34, 197, 94, 0.18);
+
+  --text-xs: 11px;
+  --text-sm: 13px;
+  --text-base: 14px;
+  --text-lg: 16px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --text-3xl: 32px;
+
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.2);
+  --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-dropdown: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-modal: 0 20px 48px rgba(0, 0, 0, 0.5);
+  --shadow-button: 0 4px 16px rgba(245, 158, 11, 0.25);
+
+  --radius: 12px;
+
+  /* Progress bar (DiskProgressBar) */
+  --progress-track: rgba(0, 0, 0, 0.3);
+  --progress-fill-start: #4ade80;
+  --progress-fill-end: #facc15;
+}
+
+@keyframes moleFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* =========================================================
+   LEMON CLEANER THEME MIGRATION
+   Source: /Users/liuy/mole_desktop/mvp/lemon-cleaner
+   Description: Full macOS dark-mode color system extracted
+   from NSColor hardcoded values + .colorset asset catalogs.
+   Both light and dark variants are preserved for reference.
+   ========================================================= */
+
+:root {
+  /* ------------------------------------------------------
+     1. CORE DARK BACKGROUND PALETTE
+     The famous Lemon deep blue-gray family.
+     ------------------------------------------------------ */
+  --lemon-bg-primary: #242633;
+  --lemon-bg-default: #272835;
+  --lemon-bg-pref-titlebar: #353743;
+  --lemon-bg-pref-panel: #3b3d49;
+  --lemon-bg-secondary: #3f404c;
+  --lemon-bg-tertiary: #464646;
+  --lemon-bg-drag-shadow: rgba(44, 46, 63, 0.8);
+  --lemon-bg-splash: rgba(36, 38, 51, 0.2);
+
+  /* Additional dark surface colors found across modules */
+  --lemon-surface-21202a: #21202a;
+  --lemon-surface-21222d: #21222d;
+  --lemon-surface-292a36: #292a36;
+  --lemon-surface-2d2d40: #2d2d40;
+  --lemon-surface-383c49: #383c49;
+
+  /* ------------------------------------------------------
+     2. LMColor_* ENUM PALETTE (ColorDefines asset catalog)
+     Defined in LMAppThemeHelper.h / .m
+     Format: --lemon-{name}-light / --lemon-{name}-dark
+     ------------------------------------------------------ */
+  --lemon-theme-light: #ffaa00;
+  --lemon-theme-dark: #ffaa00;
+
+  --lemon-yellow-light: #ffd500;
+  --lemon-yellow-dark: #ffd500;
+
+  --lemon-gray-hover-light: #f5f5f5;
+  --lemon-gray-hover-dark: #464646;
+
+  --lemon-green-normal-light: #00d991;
+  --lemon-green-normal-dark: #00d991;
+
+  --lemon-green-hover-light: #57d9a3;
+  --lemon-green-hover-dark: #57d9a3;
+
+  --lemon-green-disable-light: #9eead4;
+  --lemon-green-disable-dark: #9eead4;
+
+  --lemon-green-text-light: #20c57d;
+  --lemon-green-text-dark: #1db472;
+
+  --lemon-blue-normal-light: #057cff;
+  --lemon-blue-normal-dark: #057cff;
+
+  --lemon-red-normal-light: #f25b3d;
+  --lemon-red-normal-dark: #f25b3d;
+
+  --lemon-title-black-light: #28283c;
+  --lemon-title-black-dark: #ffffff;
+
+  --lemon-main-text-black-light: #515151;
+  --lemon-main-text-black-dark: #e6e6e6;
+
+  --lemon-sub-text-dark-light: #696969;
+  --lemon-sub-text-dark-dark: #e6e6e6;
+
+  --lemon-sub-text-light-light: #989a9e;
+  --lemon-sub-text-light-dark: #989a9e;
+
+  --lemon-text-gray-light: #dbd0c4;
+  --lemon-text-gray-dark: #dbd0c4;
+
+  --lemon-border1-light: rgba(144, 144, 144, 0.3);
+  --lemon-border1-dark: rgba(144, 144, 144, 0.3);
+
+  --lemon-border2-light: rgba(154, 154, 154, 0.2);
+  --lemon-border2-dark: rgba(154, 154, 154, 0.2);
+
+  --lemon-default-background-light: #faf9f7;
+  --lemon-default-background-dark: #272835;
+
+  --lemon-white-light: #ffffff;
+  --lemon-white-dark: #ffffff;
+
+  --lemon-button-background-hover-light: rgba(0, 0, 0, 0.04);
+  --lemon-button-background-hover-dark: rgba(255, 255, 255, 0.1);
+
+  --lemon-button-background-press-light: rgba(0, 0, 0, 0.1);
+  --lemon-button-background-press-dark: rgba(255, 255, 255, 0.3);
+
+  --lemon-navigation-background-light: #fff1d7;
+  --lemon-navigation-background-dark: rgba(154, 154, 154, 0.2);
+
+  /* ------------------------------------------------------
+     3. ASSET CATALOG DYNAMIC COLORS
+     Light / Dark values from .colorset JSON files.
+     ------------------------------------------------------ */
+  /* main_bg_color */
+  --lemon-main-bg-light: #ffffff;
+  --lemon-main-bg-dark: #242633;
+
+  /* title_color */
+  --lemon-title-color-light: #515151;
+  --lemon-title-color-dark: #ffffff;
+
+  /* desc_title */
+  --lemon-desc-title-light: #94979b;
+  --lemon-desc-title-dark: #ffffff;
+
+  /* second_text_color */
+  --lemon-second-text-light: #7e7e7e;
+  --lemon-second-text-dark: #ffffff;
+
+  /* third_text_color */
+  --lemon-third-text-light: rgba(0, 0, 0, 0.85);
+  --lemon-third-text-dark: rgba(255, 255, 255, 0.85);
+
+  /* tips_text_color */
+  --lemon-tips-text-light: #94979b;
+  --lemon-tips-text-dark: #ffffff;
+
+  /* tips_bg_color (Monitor module) */
+  --lemon-tips-bg-light: #ffffff;
+  --lemon-tips-bg-dark: #3f404c;
+
+  /* divide_line_color */
+  --lemon-divide-line-light: #ededed;
+  --lemon-divide-line-dark: rgba(255, 255, 255, 0.05);
+
+  /* light_bg_color / monitor_memory_fill_color / monitor_tab_bottom_bg_color */
+  --lemon-light-bg-light: #f1f1f1;
+  --lemon-light-bg-dark: #3f404c;
+
+  /* tableview_selector_bg_color */
+  --lemon-table-selector-light: rgba(232, 232, 232, 0.6);
+  --lemon-table-selector-dark: #21202a;
+
+  /* scrollbar_color */
+  --lemon-scrollbar-light: rgba(0, 0, 0, 0.2);
+  --lemon-scrollbar-dark: #ededed;
+
+  /* rectangle_button_disabled_bg_color */
+  --lemon-rect-btn-disabled-bg-light: #d1faef;
+  --lemon-rect-btn-disabled-bg-dark: #305c54;
+
+  /* rectangle_button_disabled_text_color */
+  --lemon-rect-btn-disabled-text-light: #ffffff;
+  --lemon-rect-btn-disabled-text-dark: #686971;
+
+  /* small_btn_border_color */
+  --lemon-small-btn-border-light: #e5e5e5;
+  --lemon-small-btn-border-dark: #5c6a5d;
+
+  /* add_folder_drag_view_bg_color */
+  --lemon-drag-view-bg-light: rgba(210, 227, 253, 0.85);
+  --lemon-drag-view-bg-dark: rgba(44, 46, 63, 0.93);
+
+  /* outlineview_subitem_text_color */
+  --lemon-outline-subitem-text-light: #94979b;
+  --lemon-outline-subitem-text-dark: #ffffff;
+
+  /* subcatory_item_title_color */
+  --lemon-subcatory-title-light: #515151;
+  --lemon-subcatory-title-dark: #94979b;
+
+  /* loginitem_status_label_bg_color (single value) */
+  --lemon-loginitem-status-bg: #94979b;
+
+  /* linechartview_indicator_bar_color */
+  --lemon-linechart-bar-light: rgba(255, 228, 174, 0.3);
+  --lemon-linechart-bar-dark: rgba(3, 5, 3, 0.3);
+
+  /* LemonClener selfBackColor */
+  --lemon-self-back-light: #ffffff;
+  --lemon-self-back-dark: #000000;
+
+  /* LemonFileMove */
+  --lemon-filemove-view-bg-light: rgba(210, 227, 253, 0.85);
+  --lemon-filemove-view-bg-dark: rgba(44, 45, 63, 0.93);
+  --lemon-filemove-disk-text-light: #515151;
+  --lemon-filemove-disk-text-dark: #ffffff;
+
+  /* ------------------------------------------------------
+     4. HARDCODED NSColor colorWithHex: VALUES
+     Found throughout Lemon / localPod source code.
+     Grouped by hue/usage for easier reference.
+     ------------------------------------------------------ */
+
+  /* Blues */
+  --lemon-hex-0091ff: #0091ff;
+  --lemon-hex-00a0ff: #00a0ff;
+  --lemon-hex-027bff: #027bff;
+  --lemon-hex-0381de: #0381de;
+  --lemon-hex-057cff: #057cff;
+  --lemon-hex-0787ff: #0787ff;
+  --lemon-hex-1a83f7: #1a83f7;
+  --lemon-hex-1e85f7: #1e85f7;
+  --lemon-hex-2998ff: #2998ff;
+  --lemon-hex-338ef4: #338ef4;
+
+  /* Greens */
+  --lemon-hex-00d093: #00d093;
+  --lemon-hex-00d899: #00d899;
+  --lemon-hex-00d991: #00d991;
+  --lemon-hex-00e800: #00e800;
+  --lemon-hex-00e9a5: #00e9a5;
+  --lemon-hex-04d999: #04d999;
+  --lemon-hex-06d99a: #06d99a;
+  --lemon-hex-1db472: #1db472;
+  --lemon-hex-33d39d: #33d39d;
+  --lemon-hex-4cd19b: #4cd19b;
+  --lemon-hex-50b465: #50b465;
+  --lemon-hex-51b465: #51b465;
+  --lemon-hex-57d9a3: #57d9a3;
+  --lemon-hex-61ce9c: #61ce9c;
+  --lemon-hex-63b574: #63b574;
+  --lemon-hex-64dfa7: #64dfa7;
+  --lemon-hex-69e8ae: #69e8ae;
+  --lemon-hex-7bcf8c: #7bcf8c;
+  --lemon-hex-a7d9b2: #a7d9b2;
+
+  /* Oranges / Reds */
+  --lemon-hex-d89000: #d89000;
+  --lemon-hex-e6704c: #e6704c;
+  --lemon-hex-f19a3b: #f19a3b;
+  --lemon-hex-f20000: #f20000;
+  --lemon-hex-f25b3d: #f25b3d;
+  --lemon-hex-ffaa00: #ffaa00;
+  --lemon-hex-ffaa09: #ffaa09;
+  --lemon-hex-ffd500: #ffd500;
+
+  /* Grays / Blacks / Whites */
+  --lemon-hex-000000: #000000;
+  --lemon-hex-333333: #333333;
+  --lemon-hex-4e4e58: #4e4e58;
+  --lemon-hex-515151: #515151;
+  --lemon-hex-676766: #676766;
+  --lemon-hex-686a6d: #686a6d;
+  --lemon-hex-696969: #696969;
+  --lemon-hex-717171: #717171;
+  --lemon-hex-7e7e7e: #7e7e7e;
+  --lemon-hex-7f7f7f: #7f7f7f;
+  --lemon-hex-858585: #858585;
+  --lemon-hex-888892: #888892;
+  --lemon-hex-909090: #909090;
+  --lemon-hex-94979b: #94979b;
+  --lemon-hex-989a9e: #989a9e;
+  --lemon-hex-999999: #999999;
+  --lemon-hex-9a9a9a: #9a9a9a;
+  --lemon-hex-9ba0a9: #9ba0a9;
+  --lemon-hex-a5b0b5: #a5b0b5;
+  --lemon-hex-afafaf: #afafaf;
+  --lemon-hex-bdc5cb: #bdc5cb;
+  --lemon-hex-bfbfbf: #bfbfbf;
+  --lemon-hex-c0c0c0: #c0c0c0;
+  --lemon-hex-c2c2c2: #c2c2c2;
+  --lemon-hex-c9c9c9: #c9c9c9;
+  --lemon-hex-d4d4d4: #d4d4d4;
+  --lemon-hex-d6d6d9: #d6d6d9;
+  --lemon-hex-d8d8d8: #d8d8d8;
+  --lemon-hex-dbd0c4: #dbd0c4;
+  --lemon-hex-dcdcdc: #dcdcdc;
+  --lemon-hex-e5e5e5: #e5e5e5;
+  --lemon-hex-e6e6e6: #e6e6e6;
+  --lemon-hex-e6ecf1: #e6ecf1;
+  --lemon-hex-e8e8e8: #e8e8e8;
+  --lemon-hex-ebebeb: #ebebeb;
+  --lemon-hex-ededed: #ededed;
+  --lemon-hex-f1f1f1: #f1f1f1;
+  --lemon-hex-f2f4f8: #f2f4f8;
+  --lemon-hex-f5f5f5: #f5f5f5;
+  --lemon-hex-f9f9f9: #f9f9f9;
+  --lemon-hex-faf9f7: #faf9f7;
+  --lemon-hex-ffffff: #ffffff;
+
+  /* Specialized text colors */
+  --lemon-hex-616c72: #616c72;
+  --lemon-hex-85949c: #85949c;
+  --lemon-hex-7a8994: #7a8994;
+  --lemon-hex-cfd8dd: #cfd8dd;
+
+  /* ------------------------------------------------------
+     5. SUGGESTED OVERRIDE MAPPING
+     If you want Lemon colors to take over existing theme.css
+     variables in dark mode, uncomment/use these.
+     ------------------------------------------------------ */
+  /* --bg-page: var(--lemon-bg-primary); */
+  /* --bg-card: var(--lemon-bg-secondary); */
+  /* --border: var(--lemon-border2-dark); */
+  /* --border-hover: var(--lemon-border1-dark); */
+  /* --text-primary: var(--lemon-text-title); */
+  /* --text-secondary: var(--lemon-text-primary); */
+  /* --text-tertiary: var(--lemon-text-secondary); */
+  /* --success: var(--lemon-green-normal-dark); */
+  /* --warning: var(--lemon-theme-dark); */
+  /* --danger: var(--lemon-red-normal-dark); */
+  /* --info: var(--lemon-blue-normal-dark); */
+}

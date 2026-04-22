@@ -1,29 +1,107 @@
 [package]
-name = "moledesktop"
+name = "mole"
 version = "0.1.0"
 description = "A Tauri App"
 authors = ["you"]
 edition = "2021"
+# src/bin/ 下的探针/工具二进制（如 probe_icon）会让 cargo run 无法确定默认目标；
+# 显式指定 mole 为默认运行二进制。
+default-run = "mole"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+# 默认官网完整版；`mas` 为 App Store 精简版（与 `full` 互斥）。
+default = ["full"]
+full = []
+mas = []
+
 [lib]
-# The `_lib` suffix may seem redundant but it is necessary
-# to make the lib name unique and wouldn't conflict with the bin name.
-# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
-name = "moledesktop_lib"
-crate-type = ["staticlib", "cdylib", "rlib"]
+# ── 改动 ── 纯 macOS 桌面端只需 rlib；staticlib/cdylib 是给 iOS/Android 用的，去掉可省两次链接和磁盘占用。
+# 如果将来要做移动端，再改回 ["staticlib", "cdylib", "rlib"]。
+name = "mole_lib"
+crate-type = ["rlib"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["macos-private-api", "tray-icon"] }
 tauri-plugin-opener = "2"
 tauri-plugin-store = "2"
+tauri-plugin-log = "2"
+log = "0.4"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+chrono = { version = "0.4", default-features = false, features = ["clock", "std", "serde"] }
 
-walkdir = "2"       # 用于递归扫描文件夹
+walkdir = "2"       # 用于递归扫描文件夹（lib/clean、lib/optimize）
+crossbeam-deque = "0.8"  # cmd/analyze bulkwalk：work-stealing 任务队列（替代 jwalk）
+bincode = "1.3"      # cmd/analyze 快照缓存二进制序列化
 trash = "3"         # 用于安全删除到废纸篓 (MAS 合规关键)
-tauri-plugin-dialog = "2" # 用于调用系统选择文件夹对话框
+dirs = "6"          # 解析用户主目录（scan_home）
+plist = "1"         # 读取 .app/Contents/Info.plist 的 CFBundleIdentifier
+quick-xml = "0.41"  # 解析 Sparkle appcast（原为 plist 的传递依赖，提为直接依赖零新编译）
+tauri-plugin-dialog = "2" # 预留：书签/未来授权流
+tauri-plugin-updater = "2" # 自更新：tauri 官方 updater，Ed25519 签名 + Gitee/GitHub 双源
+glob = "0.3"
+wait-timeout = "0.2"
+libc = "0.2"
+signal-hook = { version = "0.3", default-features = false, features = ["iterator"] }
+auto-launch = "0.5"       # macOS 12 降级路径：Launch Agent plist 模式（不走 AppleScript）
+smappservice-rs = "0.1"    # macOS 13+：SMAppService.mainApp 原生登录项 API
+sysinfo = "0.33"    # 对标 Go gopsutil：CPU/内存/网络/磁盘实时采集
+crossbeam-channel = "0.5"  # cmd/analyze 用于模拟 Go `chan struct{}` 信号量
+tokio = { version = "1", features = ["time", "sync"] }  # time=超时包装；sync=system_confirm 的 oneshot/Mutex
+percent-encoding = "2"  # system_confirm URL query 的 UTF-8 百分号编码
+rayon = "1"               # cmd/analyze 并发递归扫描（对齐 Go scanner.go 的 goroutine 池）
+regex = "1"               # 用于路径模式匹配（如 Darwin runtime dir 安全检查）
+
+[dev-dependencies]
+tempfile = "3"
+# ── 改动 ── 删除重复的 dirs = "6"（[dependencies] 里已有，测试代码本来就能用普通依赖）
+
+# ── 编译优化：减少 target/ 磁盘占用 ──────────────────────
+# dev profile：行表级调试信息（足够定位 panic 行号），依赖不再重复生成完整 DWARF。
+[profile.dev]
+debug = 1            # 默认 2（完整 DWARF），降为 1（仅行表），大幅减少 .rlib / .dSYM 体积
+incremental = true   # 确保增量编译开启，重启后沿用上次结果
+# ── 改动 ── 已删除 split-debuginfo = "unpacked"，避免 macOS 上 .dSYM 目录无限堆积
+
+# ── 改动 ── 依赖包不生成调试信息 + 轻度优化，减少增量编译时间和磁盘占用
+[profile.dev.package."*"]
+opt-level = 1
+debug = false
+
+# release profile：官网 & MAS 构建使用，保留足够调试信息用于崩溃分析。
+[profile.release]
+debug = 0
+lto = "thin"         # 轻量 LTO，平衡产物体积与编译速度
+codegen-units = 1    # 全量代码生成单元：扫描热路径跨模块内联（对齐 disky 发布配置）
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = { version = "0.6.4", features = ["std"] }
+objc2-foundation = { version = "0.3.2", features = ["NSString", "NSData", "NSDictionary", "NSArray", "NSURL"] }
+objc2-core-foundation = { version = "0.3.2", default-features = false, features = ["objc2"] }
+objc2-app-kit = { version = "0.3.2", features = [
+  "NSWorkspace",
+  "NSImage",
+  "NSImageRep",
+  "NSBitmapImageRep",
+  "NSColor",
+  "NSGraphics",    # NSDeviceRGBColorSpace + initWithBitmapDataPlanes（图标编码需要精确像素尺寸）
+  "objc2-core-foundation",
+  # ── macos_dialog：stock NSAlert（唯一确认/提示通道；图标/文案/按钮垂直布局）──
+  "NSAlert",
+  "NSApplication", # NSModalResponse 宿主（NSAlert 不隐含，须并列声明）
+  "NSButton",      # addButtonWithTitle + setKeyEquivalent
+  "NSControl",     # NSAlert/NSButton 方法 cfg 依赖
+  "NSResponder",   # 同上
+  "NSView",        # 同上（NSAlert 与按钮方法均依赖）
+  "NSWindow",      # beginSheetModalForWindow / isVisible / isMiniaturized
+  "block2",        # beginSheetModalForWindow 完成回调
+] }
+dispatch2 = { version = "0.3.1", default-features = false, features = ["std", "alloc"] }
+block2 = "0.6.2"    # macos_dialog：sheet 完成回调（原为 objc2-app-kit 传递依赖，提为直接依赖零新编译）
+core-foundation = "0.10"
+base64 = "0.22"

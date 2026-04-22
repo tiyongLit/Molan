@@ -2,10 +2,20 @@ import { invoke } from '@tauri-apps/api/core'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 
 import { EVT_CONFIG_UPDATED } from '@/constants/tauri-events'
-import { TAURI_COMMANDS } from '@/constants/tauri-commands'
+import { TAURI_COMMANDS, CMD_MOLE_TRASH_EMPTY, CMD_MOLE_TRASH_REMINDER_GET_STATE, CMD_MOLE_TRASH_REMINDER_ACTION, CMD_MOLE_TRASH_REMINDER_UPDATE_SETTINGS, CMD_MOLE_DASHBOARD_HIDE } from '@/constants/tauri-commands'
+import { Batcher } from '@/utils/batcher'
 
 // Re-export 事件常量，业务从 useTauri 或本文件统一拿
-export { EVT_CONFIG_UPDATED, EVT_TABLE_REFRESH } from '@/constants/tauri-events'
+export {
+  EVT_ANALYZE_SCAN_PROGRESS,
+  EVT_ANALYZE_TRASH_PROGRESS,
+  EVT_CONFIG_UPDATED,
+  EVT_OPTIMIZE_PROGRESS,
+  EVT_APP_VERSION_PROGRESS,
+  EVT_STATUS_SNAPSHOT,
+  EVT_TABLE_REFRESH,
+  EVT_UPDATES_BREW_PROGRESS
+} from '@/constants/tauri-events'
 
 // 与后端 Rust AppConfig 对应的前端类型（字段名与 tauri_store.rs 中保持一致）
 export interface AppConfig {
@@ -28,13 +38,37 @@ export interface AppConfig {
 
 // 按命令名自动生成 api：与 useElectron 一致，新增命令只需在 constants/tauri-commands 加一项
 type CmdName = (typeof TAURI_COMMANDS)[number]
+
+/** 模块级 Batcher 单例：同一 key 的并发 invoke 合并为一次 IPC 调用 */
+const batcher = new Batcher<any>()
+
 const api = TAURI_COMMANDS.reduce(
   (res, cmd) => {
+    // start_watch / stop_watch 必须每次发送 IPC，不能用 Batcher 去重，
+    // 否则组件卸载后重新装载时，Batcher 返回旧的 pending promise 导致 Rust 侧收不到新的 start IPC，
+    // watch 线程无法重启，前端永远收不到 status::snapshot 事件 → disk 显示为 0。
+    // Clean Job 生命周期命令同理：受理/取消/对账/取结果必须各自发出 IPC，
+    // 同 payload 的并发调用被合并会丢失「第二次点击」的意图（扫描状态分叉的根因之一）。
+    const bypassBatcher =
+      cmd === 'mole_status_start_watch' ||
+      cmd === 'mole_status_stop_watch' ||
+      cmd === 'clean_job_start' ||
+      cmd === 'clean_job_state' ||
+      cmd === 'clean_job_result' ||
+      cmd === 'clean_job_cancel' ||
+      cmd === CMD_MOLE_TRASH_EMPTY ||
+      cmd === CMD_MOLE_TRASH_REMINDER_GET_STATE ||
+      cmd === CMD_MOLE_TRASH_REMINDER_ACTION ||
+      cmd === CMD_MOLE_TRASH_REMINDER_UPDATE_SETTINGS ||
+      cmd === CMD_MOLE_DASHBOARD_HIDE
     res[cmd] = async (payload?: any) => {
       console.info(`[useTauri] ${cmd} called with`, payload)
       try {
-        //统一所有 Tauri 命令的第二个参数名为 args，这样前端就可以通过 { args: payload } 的方式传递参数，保持一致性。
-        const data = await invoke(cmd, payload ? { args: payload } : {})
+        const data = bypassBatcher
+          ? await invoke(cmd, payload ?? {})
+          : await batcher.batch(payload ? `${cmd}:${JSON.stringify(payload)}` : cmd, () =>
+              invoke(cmd, payload ?? {})
+            )
         console.info(`[useTauri] ${cmd} return`, data)
         return data
       } catch (err: any) {
@@ -97,6 +131,9 @@ const ipc: IpcListener = {
 /** 返回类型：所有命令名作为方法 + 事件监听 */
 export type TauriMethods = Record<CmdName, (payload?: any) => Promise<any>>
 
+/** 模块级单例，避免每次 render 新对象导致 useEffect 重复订阅 */
+const tauriApiSingleton = { ...api, ...ipc } as TauriMethods & IpcListener
+
 /**
  * 统一 Tauri 能力入口：与 useElectron 一致，由命令列表生成 api，新增命令只改 constants。
  * 用法：
@@ -104,5 +141,5 @@ export type TauriMethods = Record<CmdName, (payload?: any) => Promise<any>>
  *       useTauri().update_app_config({ newCfg })
  */
 export default function useTauri(): TauriMethods & IpcListener {
-  return { ...api, ...ipc } as TauriMethods & IpcListener
+  return tauriApiSingleton
 }

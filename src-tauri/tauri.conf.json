@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "moledesktop",
+  "productName": "mole",
   "version": "0.1.0",
-  "identifier": "com.liuliutiyong.moledesktop",
+  "identifier": "com.a16.mole",
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",
@@ -10,16 +10,65 @@
     "frontendDist": "../dist"
   },
   "app": {
+    "withGlobalTauri": true,
     "windows": [
       {
-        "title": "moledesktop",
-        "width": 800,
-        "height": 600
+        "label": "MoleStudio",
+        "title": "MoleStudio",
+        "width": 1056,
+        "height": 640,
+        "resizable": true,
+        "decorations": true,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "transparent": true
+      },
+      {
+        "label": "dashboard",
+        "title": "Dashboard",
+        "width": 360,
+        "height": 580,
+        "resizable": false,
+        "decorations": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "transparent": true,
+        "url": "/dashboard",
+        "visible": false
+      },
+      {
+        "label": "settings",
+        "title": "设置",
+        "width": 680,
+        "height": 600,
+        "resizable": false,
+        "decorations": true,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "transparent": true,
+        "url": "/settings",
+        "visible": false
+      },
+      {
+        "label": "trash-reminder",
+        "title": "废纸篓提醒",
+        "width": 344,
+        "height": 144,
+        "focus": false,
+        "shadow": false,
+        "resizable": false,
+        "decorations": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "transparent": true,
+        "url": "/trash-reminder",
+        "visible": false
       }
     ],
     "security": {
       "csp": null
-    }
+    },
+    "macOSPrivateApi": true
   },
   "bundle": {
     "active": true,
@@ -30,6 +79,23 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "macOS": {
+      "frameworks": [],
+      "minimumSystemVersion": "10.15",
+      "exceptionDomain": "",
+      "signingIdentity": null,
+      "entitlements": null,
+      "providerShortName": null
+    }
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://gitee.com/tiyong/molestudio/raw/master/update/latest.json",
+        "https://github.com/tiyong/molestudio/raw/main/update/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IHBsYWNlaG9sZGVyIGtleSAtIHJlcGxhY2Ugd2l0aCByZWFsIGVkMjU1MTkgcHVibGljIGtleQp3aGVuIHlvdSBydW46IHRhdXJpIHNpZ25lciBnZW5lcmF0ZSAtdyAqLnRleHQK"
+    }
   }
 }

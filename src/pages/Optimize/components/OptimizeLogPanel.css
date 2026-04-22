@@ -1,0 +1,19 @@
+.optimize-log-box {
+  height: 128px;
+  overflow-y: auto;
+  padding: 8px 52px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  line-height: 1.8;
+}
+
+.optimize-log-line {
+  display: flex;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.optimize-log-ts {
+  color: rgba(255, 255, 255, 0.3);
+  flex-shrink: 0;
+}

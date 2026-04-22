@@ -1,0 +1,40 @@
+/* ============================================================
+   mole-scroll — 全站统一滚动条契约（SimpleBar 定制层，全局引入）
+
+   布局规则（方案 A：结构反转，消灭负 margin hack）：
+   - 布局壳根容器不带水平 margin → SimpleBar 右缘天然贴窗口右缘；
+   - 需要留白的固定区块（头部/进度条/footer）自带 margin；
+   - 内容缩进由滚动区内的 wrapper padding 补偿。
+   （旧方案"根容器 margin + SimpleBar 负 margin 抵消"会被根容器
+    overflow-hidden 裁剪掉溢出的轨道，导致滚动条完全不可见。）
+
+   滚动条规格（对齐 macOS 原生 overlay 手感）：
+   - 6px 宽、rgba(255,255,255,0.35)、圆角 3px；
+   - 默认隐藏（opacity 0），滚动中或鼠标悬停滚动区时显示
+     （SimpleBar autoHide 默认行为加 .simplebar-visible，零 JS）；
+   - overlay 悬浮不占内容宽度，不挤压 truncate。
+
+   以下规则覆盖 simplebar.min.css 默认值（黑色滑块 / opacity .5 /
+   0.5s 延迟 / left·right 2px 内缩）。
+   ============================================================ */
+
+.mole-scroll .simplebar-track.simplebar-vertical {
+  width: 6px;
+  right: 0;
+  background: transparent;
+}
+
+.mole-scroll .simplebar-scrollbar::before {
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: 3px;
+  left: 0;
+  right: 0;
+  top: 2px;
+  bottom: 2px;
+  opacity: 0;
+  transition: opacity 0.2s linear;
+}
+
+.mole-scroll .simplebar-scrollbar.simplebar-visible::before {
+  opacity: 1;
+}

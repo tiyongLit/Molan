@@ -1,0 +1,13 @@
+pub mod analyze;
+pub mod app_version;
+pub mod clean;
+pub mod dialog;
+pub mod optimize;
+pub mod platform;
+pub mod privilege;
+pub mod settings;
+pub mod startup;
+pub mod status;
+pub mod ui_log;
+pub mod uninstall;
+pub mod updates;
