@@ -70,6 +70,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init()) // 注册对话框插件
+        .plugin(tauri_plugin_store::Builder::default().build())
         .invoke_handler(tauri::generate_handler![scan_folder, clean_files]) // 注册我们的命令
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
