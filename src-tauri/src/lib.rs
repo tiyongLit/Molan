@@ -1,77 +1,87 @@
-use serde::Serialize;
+//! MoleDesktop Tauri 后端。
+//!
+//! **构建矩阵**
+//! - 完整版（默认）: `pnpm tauri dev` / `pnpm tauri build`
+//! - MAS 精简: `pnpm tauri:dev:mas` / `pnpm tauri:build:mas`（无 `du` 折叠，整树 WalkDir）
+
+#[cfg(all(feature = "mas", feature = "full"))]
+compile_error!(
+    "Cargo features `mas` 与 `full` 不能同时启用；MAS 构建请使用: --no-default-features --features mas"
+);
+
+mod scanner;
+
+use serde::Deserialize;
 use std::path::PathBuf;
-use walkdir::WalkDir;
+use tauri::Emitter;
 
-// 定义返回给前端的数据结构
-#[derive(Serialize, Clone)]
-struct DirInfo {
-    name: String,
-    path: String,
-    size: u64,
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScanDirectoryArgs {
+    pub path: String,
+    #[serde(default = "default_top_n")]
+    pub top_n: usize,
+    #[serde(default = "default_progress_every")]
+    pub progress_every: u64,
 }
 
-// 计算文件夹大小的辅助函数
-fn get_dir_size(path: &PathBuf) -> u64 {
-    WalkDir::new(path)
-        .into_iter()
-        .filter_map(|e| e.ok())
-        .filter_map(|e| e.metadata().ok())
-        .filter(|m| m.is_file())
-        .map(|m| m.len())
-        .sum()
+fn default_top_n() -> usize {
+    50
 }
 
-// Tauri 命令：扫描文件夹
+fn default_progress_every() -> u64 {
+    500
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TrashPathsArgs {
+    /// 用户通过对话框授权的根目录，所有 paths 必须在其下
+    pub root: String,
+    pub paths: Vec<String>,
+}
+
+/// 深度递归扫描：Top-N 最大文件 + 进度事件 `analyze::scan-progress`
 #[tauri::command]
-fn scan_folder(path: String) -> Result<Vec<DirInfo>, String> {
-    let mut results = Vec::new();
-    let root = PathBuf::from(&path);
+async fn scan_directory(
+    app: tauri::AppHandle,
+    args: ScanDirectoryArgs,
+) -> Result<scanner::ScanResult, String> {
+    let app = app.clone();
+    let path = args.path.clone();
+    let top_n = args.top_n.max(1);
+    let progress_every = args.progress_every;
 
-    // 检查路径是否存在且为目录
-    if !root.exists() || !root.is_dir() {
-        return Err("Invalid directory path".to_string());
-    }
-
-    // 遍历第一层子目录
-    for entry in std::fs::read_dir(&root).map_err(|e| e.to_string())? {
-        let entry = entry.map_err(|e| e.to_string())?;
-        let entry_path = entry.path();
-
-        if entry_path.is_dir() {
-            let size = get_dir_size(&entry_path);
-            results.push(DirInfo {
-                name: entry_path.file_name()
-                    .unwrap_or_default()
-                    .to_string_lossy()
-                    .into_owned(),
-                path: entry_path.to_string_lossy().into_owned(),
-                size,
-            });
-        }
-    }
-
-    // 按大小降序排列，让大文件排在前面
-    results.sort_by(|a, b| b.size.cmp(&a.size));
-    Ok(results)
+    tauri::async_runtime::spawn_blocking(move || {
+        let root = PathBuf::from(path);
+        scanner::scan_directory(&root, top_n, progress_every, |prog| {
+            let _ = app.emit("analyze::scan-progress", &prog);
+        })
+    })
+    .await
+    .map_err(|e| format!("扫描任务异常: {}", e))?
 }
 
-// Tauri 命令：清理文件（移到废纸篓）
+/// 将文件移到废纸篓；仅允许 `root` 目录树内的路径（MAS 友好）
 #[tauri::command]
-fn clean_files(paths: Vec<String>) -> Result<(), String> {
-    for path in paths {
-        // 使用 trash crate，这符合 macOS 沙箱规范
-        trash::delete(&path).map_err(|e| format!("Failed to delete {}: {}", path, e))?;
-    }
-    Ok(())
+fn trash_paths(args: TrashPathsArgs) -> Result<(), String> {
+    let root = PathBuf::from(&args.root);
+    scanner::trash_paths_under_root(&root, &args.paths)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(
+            tauri_plugin_log::Builder::new()
+                .level(log::LevelFilter::Debug)
+                .timezone_strategy(tauri_plugin_log::TimezoneStrategy::UseLocal)
+                .build(),
+        )
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_dialog::init()) // 注册对话框插件
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::default().build())
-        .invoke_handler(tauri::generate_handler![scan_folder, clean_files]) // 注册我们的命令
+        .invoke_handler(tauri::generate_handler![scan_directory, trash_paths])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

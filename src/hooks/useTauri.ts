@@ -5,7 +5,11 @@ import { EVT_CONFIG_UPDATED } from '@/constants/tauri-events'
 import { TAURI_COMMANDS } from '@/constants/tauri-commands'
 
 // Re-export 事件常量，业务从 useTauri 或本文件统一拿
-export { EVT_CONFIG_UPDATED, EVT_TABLE_REFRESH } from '@/constants/tauri-events'
+export {
+  EVT_ANALYZE_SCAN_PROGRESS,
+  EVT_CONFIG_UPDATED,
+  EVT_TABLE_REFRESH
+} from '@/constants/tauri-events'
 
 // 与后端 Rust AppConfig 对应的前端类型（字段名与 tauri_store.rs 中保持一致）
 export interface AppConfig {
@@ -97,6 +101,9 @@ const ipc: IpcListener = {
 /** 返回类型：所有命令名作为方法 + 事件监听 */
 export type TauriMethods = Record<CmdName, (payload?: any) => Promise<any>>
 
+/** 模块级单例，避免每次 render 新对象导致 useEffect 重复订阅 */
+const tauriApiSingleton = { ...api, ...ipc } as TauriMethods & IpcListener
+
 /**
  * 统一 Tauri 能力入口：与 useElectron 一致，由命令列表生成 api，新增命令只改 constants。
  * 用法：
@@ -104,5 +111,5 @@ export type TauriMethods = Record<CmdName, (payload?: any) => Promise<any>>
  *       useTauri().update_app_config({ newCfg })
  */
 export default function useTauri(): TauriMethods & IpcListener {
-  return { ...api, ...ipc } as TauriMethods & IpcListener
+  return tauriApiSingleton
 }

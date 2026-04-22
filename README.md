@@ -1,33 +1,3 @@
-基于对Handy和Clash Verge Rev两个项目的架构分析，我来帮您判断哪个更适合Mole架构。
-
-让我先查看Mole项目的结构，以便更好地进行比较：
-
-
-
-```toolCall::list_dir::call_0933f94ba87142aca454d937::INIT
-```
-
-现在让我查看Mole的README.md文件，了解项目的基本信息：
-
-
-
-```toolCall::read_file::call_cccb0a7cae0c43c1a1e16830::INIT
-```
-
-现在让我查看Mole的JG.MD文件，了解项目的架构设计：
-
-
-
-```toolCall::read_file::call_dd12822cb35d42018abf7c88::INIT
-```
-
-现在让我查看Mole的go.mod文件，了解Go依赖：
-
-
-
-```toolCall::read_file::call_a89c95b8b58549d2ac987626::INIT
-```
-
 基于对三个项目的深入分析，我现在可以为您提供一个全面的比较和建议。
 
 # Handy vs Clash Verge Rev vs Mole 架构比较分析
@@ -228,3 +198,17 @@ Mole 的功能	传统做法 (会被拒)	我们的 MAS 做法 (能过审且效果
 Mole 的效果 = 找到垃圾 + 删掉垃圾。
 MAS 版的效果 = 找到垃圾 + 让用户确认 + 移到废纸篓。
 结果：垃圾都进了废纸篓，用户清空废纸篓后，清理效果是一模一样的！
+
+
+
+1.  **启动完整版（Full Mode）**：
+    ```bash
+    RUST_LOG=debug pnpm tauri dev
+    ```
+
+2.  **启动 MAS 模式（MAS Mode）**：
+    ```bash
+    pnpm tauri:dev:mas
+    ```
+
+  "rust-analyzer.cargo.features": ["full"],

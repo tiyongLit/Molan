@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "tauri:dev:mas": "tauri dev -- --no-default-features --features mas",
+    "tauri:build:mas": "tauri build -- --no-default-features --features mas"
   },
   "dependencies": {
     "@ant-design/icons": "^6.1.1",
@@ -30,6 +32,8 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.1",
+    "@tailwindcss/vite": "^4.2.1",
     "@tauri-apps/cli": "^2",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
