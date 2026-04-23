@@ -3,8 +3,10 @@
  * Day1 验证：递归扫描 + 废纸篓；后续恢复业务命令时在此追加即可。
  */
 
+/** 默认：扫描当前用户主目录（官网版≈整盘透视；MAS 版受沙箱可见范围限制） */
+export const CMD_SCAN_HOME = 'scan_home' as const
 export const CMD_SCAN_DIRECTORY = 'scan_directory' as const
 export const CMD_TRASH_PATHS = 'trash_paths' as const
 
 /** 命令名数组，供 useTauri 按名生成 invoke api */
-export const TAURI_COMMANDS = [CMD_SCAN_DIRECTORY, CMD_TRASH_PATHS] as const
+export const TAURI_COMMANDS = [CMD_SCAN_HOME, CMD_SCAN_DIRECTORY, CMD_TRASH_PATHS] as const

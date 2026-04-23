@@ -8,7 +8,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-# 默认完整版：Unix 下可用 `du` 折叠大目录；与 `mas` 互斥。
+# 默认官网完整版；`mas` 为 App Store 精简版（与 `full` 互斥）。
 default = ["full"]
 full = []
 mas = []
@@ -34,4 +34,6 @@ serde_json = "1"
 
 walkdir = "2"       # 用于递归扫描文件夹
 trash = "3"         # 用于安全删除到废纸篓 (MAS 合规关键)
-tauri-plugin-dialog = "2" # 用于调用系统选择文件夹对话框
+dirs = "6"          # 解析用户主目录（scan_home）
+plist = "1"         # 读取 .app/Contents/Info.plist 的 CFBundleIdentifier
+tauri-plugin-dialog = "2" # 预留：书签/未来授权流

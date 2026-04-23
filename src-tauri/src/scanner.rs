@@ -1,10 +1,8 @@
 //! 递归扫描（WalkDir，不跟随符号链接）+ Top-N 大文件 + 进度回调。
-//! - 文件大小：对齐 Mole `getActualFileSize`（Unix `blocks * 512` 与 `len()` 组合）
-//! - `full` + Unix：折叠目录用 `du -skP` 估算体积并剪枝（对齐 Mole `foldDirs`）
-//! - `mas`：不调用外部 `du`，不剪枝，整树 WalkDir（沙箱友好）
+//! - **默认统计口径（Lemon / Finder）：** `metadata.len()` 逻辑大小
+//! - **可选统计口径（Mole）：** Unix 下 `blocks * 512` 与 `len()` 组合（物理占用）
+//! - Unix：命中折叠目录时纯 Rust 递归统计并剪枝，子树内 Top-N + 嵌套折叠节点
 
-#[cfg(all(feature = "full", unix))]
-use log::debug;
 use log::{info, warn};
 use serde::Serialize;
 use std::cell::RefCell;
@@ -12,61 +10,47 @@ use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
-#[cfg(all(feature = "full", unix))]
-use walkdir::DirEntry;
 use walkdir::WalkDir;
 
-/// 与 Mole `cmd/analyze/constants.go` 中 `foldDirs` 对齐的核心集合（可按需扩充）
-#[cfg(all(feature = "full", unix))]
-const FOLD_DIR_NAMES: &[&str] = &[
-    ".git", ".svn", ".hg", "node_modules", ".npm", "_npx", "_cacache", "_logs", "_locks", "_quick",
-    "_libvips", "_prebuilds", "_update-notifier-last-checked", ".yarn", ".pnpm-store", ".next",
-    ".nuxt", "bower_components", ".vite", ".turbo", ".parcel-cache", ".nx", ".rush", "tnpm",
-    ".tnpm", ".bun", ".deno", "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache", "venv",
-    ".venv", "virtualenv", ".tox", "site-packages", ".eggs", ".pyenv", ".poetry", ".pip", ".pipx",
-    "vendor", ".bundle", "gems", ".rbenv", "target", ".gradle", ".m2", ".ivy2", "out", "pkg",
-    ".composer", ".cargo", "build", "dist", ".output", "coverage", ".coverage", ".idea", ".vscode",
-    ".vs", ".fleet", ".cache", "__MACOSX", "Caches", ".Spotlight-V100", ".fseventsd",
-    ".DocumentRevisions-V100", "$RECYCLE.BIN", ".temp", ".tmp", "_temp", "_tmp", ".Homebrew",
-    ".rustup", ".sdkman", ".nvm", "Pods", "DerivedData", ".build", "xcuserdata", "Carthage",
-    ".dart_tool", ".angular", ".svelte-kit", ".astro", ".docker", ".containerd",
-];
-
-/// 对齐 Mole `shouldFoldDirWithPath` 中的 `.npm` / `.tnpm` 路径规则
-#[cfg(all(feature = "full", unix))]
-fn should_fold_by_npm_path(path: &Path) -> bool {
-    let s = path.to_string_lossy();
-    if !s.contains("/.npm/") && !s.contains("/.tnpm/") {
-        return false;
-    }
-    let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
-        return false;
-    };
-    let Some(parent) = path.parent().and_then(|p| p.file_name()).and_then(|n| n.to_str()) else {
-        return false;
-    };
-    parent == ".npm"
-        || parent == ".tnpm"
-        || parent.starts_with('_')
-        || name.len() == 1
+/// 单文件体积统计方式：默认对齐 Lemon/Finder；`Physical` 对齐 Mole。
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum SizeMetric {
+    /// 逻辑大小：`metadata.len()`，与 Finder / Lemon 列表更接近
+    #[default]
+    Logical,
+    /// Mole `getActualFileSize`：Unix 下 blocks×512 与 len 的组合
+    Physical,
 }
 
-#[cfg(all(feature = "full", unix))]
-fn should_fold_directory(path: &Path) -> bool {
-    if should_fold_by_npm_path(path) {
-        return true;
+impl SizeMetric {
+    pub fn from_str(s: &str) -> Result<Self, String> {
+        match s.trim().to_ascii_lowercase().as_str() {
+            "" | "logical" | "len" => Ok(Self::Logical),
+            "physical" | "mole" | "allocated" => Ok(Self::Physical),
+            _ => Err(format!(
+                "未知 sizeMetric: {}（支持 logical | physical）",
+                s
+            )),
+        }
     }
-    let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
-        return false;
-    };
-    if FOLD_DIR_NAMES.iter().any(|&n| n == name) {
-        return true;
+
+    pub fn as_api_str(self) -> &'static str {
+        match self {
+            Self::Logical => "logical",
+            Self::Physical => "physical",
+        }
     }
-    name.ends_with(".egg-info")
 }
 
-/// 对齐 Mole `getActualFileSize`
-fn actual_file_size(meta: &std::fs::Metadata) -> u64 {
+fn file_size(meta: &std::fs::Metadata, metric: SizeMetric) -> u64 {
+    match metric {
+        SizeMetric::Logical => meta.len(),
+        SizeMetric::Physical => mole_physical_size(meta),
+    }
+}
+
+/// 对齐 Mole `getActualFileSize`（仅用于 `SizeMetric::Physical`）
+fn mole_physical_size(meta: &std::fs::Metadata) -> u64 {
     #[cfg(unix)]
     {
         use std::os::unix::fs::MetadataExt;
@@ -88,38 +72,68 @@ fn actual_file_size(meta: &std::fs::Metadata) -> u64 {
     }
 }
 
-/// `du -skP` 返回的字节数；与 Mole `getDirectorySizeFromDu` 一致（KB * 1024）
-#[cfg(all(feature = "full", unix))]
-fn directory_size_from_du(path: &Path) -> Result<u64, String> {
-    use std::process::Command;
-    let out = Command::new("/usr/bin/du")
-        .args(["-skP", &path.to_string_lossy()])
-        .output()
-        .map_err(|e| e.to_string())?;
-    if !out.status.success() {
-        return Err(format!(
-            "du 失败 status={:?} stderr={}",
-            out.status.code(),
-            String::from_utf8_lossy(&out.stderr)
-        ));
+/// 与 Mole `cmd/analyze/constants.go` 中 `foldDirs` 对齐的核心集合（可按需扩充）
+#[cfg(unix)]
+const FOLD_DIR_NAMES: &[&str] = &[
+    ".git", ".svn", ".hg", "node_modules", ".npm", "_npx", "_cacache", "_logs", "_locks", "_quick",
+    "_libvips", "_prebuilds", "_update-notifier-last-checked", ".yarn", ".pnpm-store", ".next",
+    ".nuxt", "bower_components", ".vite", ".turbo", ".parcel-cache", ".nx", ".rush", "tnpm",
+    ".tnpm", ".bun", ".deno", "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache", "venv",
+    ".venv", "virtualenv", ".tox", "site-packages", ".eggs", ".pyenv", ".poetry", ".pip", ".pipx",
+    "vendor", ".bundle", "gems", ".rbenv", "target", ".gradle", ".m2", ".ivy2", "out", "pkg",
+    ".composer", ".cargo", "build", "dist", ".output", "coverage", ".coverage", ".idea", ".vscode",
+    ".vs", ".fleet", ".cache", "__MACOSX", "Caches", ".Spotlight-V100", ".fseventsd",
+    ".DocumentRevisions-V100", "$RECYCLE.BIN", ".temp", ".tmp", "_temp", "_tmp", ".Homebrew",
+    ".rustup", ".sdkman", ".nvm", "Pods", "DerivedData", ".build", "xcuserdata", "Carthage",
+    ".dart_tool", ".angular", ".svelte-kit", ".astro", ".docker", ".containerd",
+];
+
+/// 对齐 Mole `shouldFoldDirWithPath` 中的 `.npm` / `.tnpm` 路径规则
+#[cfg(unix)]
+fn should_fold_by_npm_path(path: &Path) -> bool {
+    let s = path.to_string_lossy();
+    if !s.contains("/.npm/") && !s.contains("/.tnpm/") {
+        return false;
     }
-    let stdout = String::from_utf8_lossy(&out.stdout);
-    let kb: u64 = stdout
-        .split_whitespace()
-        .next()
-        .ok_or_else(|| "du 输出为空".to_string())?
-        .parse()
-        .map_err(|e: std::num::ParseIntError| e.to_string())?;
-    Ok(kb.saturating_mul(1024))
+    let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
+        return false;
+    };
+    let Some(parent) = path.parent().and_then(|p| p.file_name()).and_then(|n| n.to_str()) else {
+        return false;
+    };
+    parent == ".npm"
+        || parent == ".tnpm"
+        || parent.starts_with('_')
+        || name.len() == 1
 }
 
-#[cfg(all(feature = "full", unix))]
-fn try_fold_du(path: &Path) -> Option<u64> {
-    match directory_size_from_du(path) {
-        Ok(b) => Some(b),
-        Err(e) => {
-            warn!("du 失败，将展开目录: {} — {}", path.display(), e);
-            None
+#[cfg(unix)]
+fn should_fold_directory(path: &Path) -> bool {
+    if should_fold_by_npm_path(path) {
+        return true;
+    }
+    let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
+        return false;
+    };
+    if FOLD_DIR_NAMES.iter().any(|&n| n == name) {
+        return true;
+    }
+    name.ends_with(".egg-info")
+}
+
+#[cfg(not(unix))]
+fn should_fold_directory(_path: &Path) -> bool {
+    false
+}
+
+fn push_top_n_heap(heap: &mut BinaryHeap<Reverse<(u64, String)>>, top_n: usize, size: u64, key: String) {
+    let k = top_n.max(1);
+    if heap.len() < k {
+        heap.push(Reverse((size, key)));
+    } else if let Some(Reverse((min_sz, _))) = heap.peek().cloned() {
+        if size > min_sz {
+            heap.pop();
+            heap.push(Reverse((size, key)));
         }
     }
 }
@@ -141,6 +155,18 @@ pub struct LargeFile {
     pub size: u64,
 }
 
+/// 嵌套扫描节点：折叠目录带预计算的子 Top-N（含嵌套折叠子节点）；文件为叶子。
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScanNode {
+    pub path: String,
+    pub name: String,
+    pub size: u64,
+    pub is_dir: bool,
+    pub is_folded: bool,
+    pub children: Vec<ScanNode>,
+}
+
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ScanResult {
@@ -149,12 +175,18 @@ pub struct ScanResult {
     pub dirs_seen: u64,
     pub bytes_total: u64,
     pub largest_files: Vec<LargeFile>,
+    /// 根层展示项（折叠目录 + 非折叠区 Top 文件），按体积降序，供 Tree 使用
+    pub items: Vec<ScanNode>,
     /// 因权限等原因跳过的 walk 错误数
     pub walk_errors: u64,
-    /// `full` 下通过 `du` 折叠的目录数（`mas` 恒为 0）
+    /// 作为折叠根处理的目录数
     pub folded_dirs: u64,
-    /// 折叠目录计入的总字节（`du` 估算）
+    /// 折叠子树计入的总字节（与 `bytes_total` 中对应部分一致）
     pub folded_bytes: u64,
+    /// 本次扫描使用的体积口径：`logical` | `physical`
+    pub size_metric: String,
+    /// Lemon 式分类骨架（编译期内嵌于 `embedded_rules`，不含外部 YAML）
+    pub rule_categories: Vec<crate::embedded_rules::RuleCategoryBlueprint>,
 }
 
 struct ScanInner {
@@ -167,6 +199,7 @@ struct ScanInner {
     last_path: Option<String>,
     heap: BinaryHeap<Reverse<(u64, String)>>,
     top_n: usize,
+    folded_nodes: Vec<ScanNode>,
 }
 
 impl ScanInner {
@@ -182,26 +215,140 @@ impl ScanInner {
             last_path: None,
             heap: BinaryHeap::with_capacity(k + 1),
             top_n: k,
+            folded_nodes: Vec::new(),
         }
     }
 
     fn push_large(&mut self, size: u64, path_str: String) {
-        let k = self.top_n;
-        if self.heap.len() < k {
-            self.heap.push(Reverse((size, path_str)));
-        } else if let Some(Reverse((min_sz, _))) = self.heap.peek().cloned() {
-            if size > min_sz {
-                self.heap.pop();
-                self.heap.push(Reverse((size, path_str)));
-            }
-        }
+        push_top_n_heap(&mut self.heap, self.top_n, size, path_str);
     }
+}
+
+fn node_name(path: &Path) -> String {
+    path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| path.to_string_lossy().into_owned())
+}
+
+/// 扫描单个折叠目录子树：总体积 + 子展示项 Top-N（文件与嵌套折叠节点按体积混排）
+#[cfg(unix)]
+fn scan_folded_subtree(
+    path: &Path,
+    top_n: usize,
+    size_metric: SizeMetric,
+    walk_errors: &mut u64,
+    dirs_seen: &mut u64,
+    files_scanned: &mut u64,
+) -> ScanNode {
+    let root_buf = path.to_path_buf();
+    let mut total_bytes: u64 = 0;
+    let mut files_heap: BinaryHeap<Reverse<(u64, String)>> = BinaryHeap::new();
+    let mut nested_folds: Vec<ScanNode> = Vec::new();
+
+    let mut it = WalkDir::new(&root_buf).follow_links(false).into_iter();
+    while let Some(entry) = it.next() {
+        let entry = match entry {
+            Ok(e) => e,
+            Err(err) => {
+                *walk_errors += 1;
+                warn!("walk 错误: {}", err);
+                continue;
+            }
+        };
+
+        let p = entry.path();
+        if p == root_buf.as_path() {
+            continue;
+        }
+
+        if entry.file_type().is_dir() {
+            if should_fold_directory(p) {
+                let nested = scan_folded_subtree(p, top_n, size_metric, walk_errors, dirs_seen, files_scanned);
+                total_bytes = total_bytes.saturating_add(nested.size);
+                nested_folds.push(nested);
+                it.skip_current_dir();
+                continue;
+            }
+            *dirs_seen += 1;
+            continue;
+        }
+
+        if !entry.file_type().is_file() {
+            continue;
+        }
+
+        let meta = match entry.metadata() {
+            Ok(m) => m,
+            Err(e) => {
+                *walk_errors += 1;
+                warn!("metadata 失败 {}: {}", p.display(), e);
+                continue;
+            }
+        };
+
+        let len = file_size(&meta, size_metric);
+        *files_scanned += 1;
+        total_bytes = total_bytes.saturating_add(len);
+        let path_str = p.to_string_lossy().into_owned();
+        push_top_n_heap(&mut files_heap, top_n, len, path_str);
+    }
+
+    let mut merged: Vec<ScanNode> = Vec::new();
+    for n in nested_folds {
+        merged.push(n);
+    }
+    for Reverse((size, path_str)) in files_heap.into_iter() {
+        let pb = PathBuf::from(&path_str);
+        merged.push(ScanNode {
+            name: node_name(&pb),
+            path: path_str,
+            size,
+            is_dir: false,
+            is_folded: false,
+            children: Vec::new(),
+        });
+    }
+    merged.sort_by(|a, b| b.size.cmp(&a.size));
+    merged.truncate(top_n.max(1));
+
+    let path_str = root_buf.to_string_lossy().into_owned();
+    ScanNode {
+        name: node_name(&root_buf),
+        path: path_str,
+        size: total_bytes,
+        is_dir: true,
+        is_folded: true,
+        children: merged,
+    }
+}
+
+fn merge_root_items(mut folded: Vec<ScanNode>, largest: Vec<LargeFile>) -> Vec<ScanNode> {
+    let mut items: Vec<ScanNode> = Vec::new();
+    for n in folded.drain(..) {
+        items.push(n);
+    }
+    for f in largest {
+        let pb = PathBuf::from(&f.path);
+        items.push(ScanNode {
+            name: node_name(&pb),
+            path: f.path,
+            size: f.size,
+            is_dir: false,
+            is_folded: false,
+            children: Vec::new(),
+        });
+    }
+    items.sort_by(|a, b| b.size.cmp(&a.size));
+    items
 }
 
 pub fn scan_directory<F>(
     root: &Path,
     top_n: usize,
     progress_every: u64,
+    size_metric: SizeMetric,
     mut on_progress: F,
 ) -> Result<ScanResult, String>
 where
@@ -216,34 +363,18 @@ where
 
     let root_buf = root.to_path_buf();
     let inner = Rc::new(RefCell::new(ScanInner::new(top_n)));
+    let metric_label = size_metric.as_api_str().to_string();
 
-    info!("扫描开始 root={}", root_buf.display());
+    info!(
+        "扫描开始 root={} size_metric={}",
+        root_buf.display(),
+        metric_label
+    );
 
-    #[cfg(all(feature = "full", unix))]
+    #[cfg(unix)]
     {
-        for entry in WalkDir::new(&root_buf).follow_links(false).into_iter().filter_entry({
-            let inner = inner.clone();
-            move |e: &DirEntry| {
-                if !e.file_type().is_dir() {
-                    return true;
-                }
-                let path = e.path();
-                if !should_fold_directory(path) {
-                    return true;
-                }
-                if let Some(sz) = try_fold_du(path) {
-                    let mut s = inner.borrow_mut();
-                    s.bytes_total = s.bytes_total.saturating_add(sz);
-                    s.folded_bytes = s.folded_bytes.saturating_add(sz);
-                    s.folded_dirs += 1;
-                    s.dirs_seen += 1;
-                    debug!("折叠目录 du: {} -> {} bytes", path.display(), sz);
-                    false
-                } else {
-                    true
-                }
-            }
-        }) {
+        let mut it = WalkDir::new(&root_buf).follow_links(false).into_iter();
+        while let Some(entry) = it.next() {
             let entry = match entry {
                 Ok(e) => e,
                 Err(err) => {
@@ -254,6 +385,38 @@ where
             };
 
             let path = entry.path();
+            if path == root_buf.as_path() {
+                continue;
+            }
+
+            if entry.file_type().is_dir() {
+                if should_fold_directory(path) {
+                    let mut w = 0u64;
+                    let mut d = 0u64;
+                    let mut f = 0u64;
+                    let node = scan_folded_subtree(path, top_n, size_metric, &mut w, &mut d, &mut f);
+                    {
+                        let mut s = inner.borrow_mut();
+                        s.walk_errors += w;
+                        s.dirs_seen += d.saturating_add(1);
+                        s.files_scanned += f;
+                        s.bytes_total = s.bytes_total.saturating_add(node.size);
+                        s.folded_bytes = s.folded_bytes.saturating_add(node.size);
+                        s.folded_dirs += 1;
+                        s.last_path = Some(node.path.clone());
+                        s.folded_nodes.push(node);
+                    }
+                    it.skip_current_dir();
+                    continue;
+                }
+                inner.borrow_mut().dirs_seen += 1;
+                continue;
+            }
+
+            if !entry.file_type().is_file() {
+                continue;
+            }
+
             let meta = match entry.metadata() {
                 Ok(m) => m,
                 Err(e) => {
@@ -263,16 +426,7 @@ where
                 }
             };
 
-            if meta.is_dir() {
-                inner.borrow_mut().dirs_seen += 1;
-                continue;
-            }
-
-            if !meta.is_file() {
-                continue;
-            }
-
-            let len = actual_file_size(&meta);
+            let len = file_size(&meta, size_metric);
             {
                 let mut s = inner.borrow_mut();
                 s.files_scanned += 1;
@@ -294,7 +448,7 @@ where
         }
     }
 
-    #[cfg(not(all(feature = "full", unix)))]
+    #[cfg(not(unix))]
     {
         for entry in WalkDir::new(&root_buf).follow_links(false) {
             let entry = match entry {
@@ -325,7 +479,7 @@ where
                 continue;
             }
 
-            let len = actual_file_size(&meta);
+            let len = file_size(&meta, size_metric);
             {
                 let mut s = inner.borrow_mut();
                 s.files_scanned += 1;
@@ -356,7 +510,8 @@ where
         folded_bytes,
         last_path,
         heap,
-        ..
+        top_n: _,
+        folded_nodes,
     } = Rc::try_unwrap(inner)
         .map_err(|_| "扫描状态仍被引用（内部错误）".to_string())?
         .into_inner();
@@ -374,15 +529,18 @@ where
         .collect();
     largest.sort_by(|a, b| b.size.cmp(&a.size));
 
+    let items = merge_root_items(folded_nodes, largest.clone());
+
     info!(
-        "扫描结束 root={} files={} dirs_seen={} bytes_total={} folded_dirs={} folded_bytes={} walk_errors={}",
+        "扫描结束 root={} files={} dirs_seen={} bytes_total={} folded_dirs={} folded_bytes={} walk_errors={} size_metric={}",
         root_buf.display(),
         files_scanned,
         dirs_seen,
         bytes_total,
         folded_dirs,
         folded_bytes,
-        walk_errors
+        walk_errors,
+        metric_label
     );
 
     Ok(ScanResult {
@@ -391,9 +549,12 @@ where
         dirs_seen,
         bytes_total,
         largest_files: largest,
+        items,
         walk_errors,
         folded_dirs,
         folded_bytes,
+        size_metric: metric_label,
+        rule_categories: crate::embedded_rules::build_rule_categories(&root_buf),
     })
 }
 
