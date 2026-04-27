@@ -1,0 +1,154 @@
+// Analyze 组件样式（V2 渐变背景适配版，控件语言对齐 Clean / Uninstall）
+
+// 面包屑导航按钮 hover 态
+.analyze-nav-btn:not(:disabled):hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+}
+
+// ── 定制 Checkbox 样式（对齐 Clean：选中蓝 #3B82F6，全 app 统一勾选语言） ──
+.entry-checkbox-xs {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 13px;
+  height: 13px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
+  border-radius: 3px;
+  cursor: default;
+  margin: 0;
+  flex-shrink: 0;
+  position: relative;
+  transition: all 0.15s;
+
+  &:checked {
+    background: #3b82f6;
+    border-color: #3b82f6;
+
+    &::after {
+      content: '';
+      position: absolute;
+      left: 3px;
+      top: 1px;
+      width: 4px;
+      height: 7px;
+      border: solid #fff;
+      border-width: 0 1.5px 1.5px 0;
+      transform: rotate(45deg);
+    }
+  }
+}
+
+// ── 主按钮（移到废纸篓 / 开始分析）：青绿渐变 + 深色字（对齐 Uninstall apps-primary-btn） ──
+.analyze-trash-btn {
+  border-color: transparent !important;
+  color: #0b1f1a !important;
+  background: linear-gradient(135deg, #64dfa7 0%, #00d899 100%) !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35) !important;
+  transition: filter 0.15s ease;
+
+  &:not(:disabled):hover {
+    border-color: transparent !important;
+    color: #0b1f1a !important;
+    background: linear-gradient(135deg, #69e8ae 0%, #00e9a5 100%) !important;
+    filter: brightness(1.03);
+  }
+
+  &:not(:disabled):active {
+    background: linear-gradient(135deg, #61ce9c 0%, #00d093 100%) !important;
+  }
+
+  &:disabled {
+    background: #305c54 !important;
+    color: #686971 !important;
+  }
+}
+
+// 滚动条样式已迁移至全局契约 src/styles/scrollbar.css（.mole-scroll），
+// 由 main.tsx 统一引入；EntryList 的 SimpleBar 直接挂 .mole-scroll 类。
+
+// ── 模式切换按钮组 hover 态 ──
+.analyze-toggle-btn:not(:disabled):hover {
+  color: var(--text-secondary) !important;
+}
+
+// ── 面包屑根段 Select（融入面包屑，不显形） ──
+.breadcrumb-root-select {
+  > .ant-select-content {
+    margin-inline-end: 0;
+  }
+
+  &.ant-select-borderless {
+    .ant-select-selector {
+      padding: 0 2px !important;
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+
+      .ant-select-selection-item {
+        color: var(--text-tertiary) !important;
+        font-size: 14px;
+        line-height: 20px;
+      }
+    }
+
+    &:hover .ant-select-selector {
+      background: rgba(0, 0, 0, 0.3) !important;
+      border-radius: 4px;
+
+      .ant-select-selection-item {
+        color: var(--text-secondary) !important;
+      }
+    }
+  }
+
+  .ant-select-arrow {
+    display: none;
+  }
+}
+
+// ── antd Breadcrumb 面包屑适配（Analyze 工具栏：单行不换行 + 垂直居中 + 收紧分隔符间距 + 12px 统一字号） ──
+.analyze-breadcrumb {
+  .ant-breadcrumb {
+    font-size: 12px;
+    line-height: 16px;
+
+    ol {
+      display: flex;
+      align-items: center;
+      flex-wrap: nowrap;
+    }
+
+    li {
+      display: flex;
+      align-items: center;
+    }
+
+    .ant-breadcrumb-separator {
+      margin-inline: 4px;
+    }
+
+    // title 为自渲染 button，antd 默认 link 样式不适用，去除下划线倾向
+    .ant-breadcrumb-link {
+      white-space: nowrap;
+    }
+  }
+}
+
+// ── 面包屑根段 Select 弹出层（挂 body 下，用固定值保证暗色） ──
+.breadcrumb-root-select-popup {
+  .ant-select-item {
+    padding: 6px 8px !important;
+    border-radius: 6px;
+    min-height: unset;
+    white-space: nowrap;
+  }
+
+  .ant-select-item-option-active {
+    background: rgba(255, 255, 255, 0.1) !important;
+  }
+
+  .ant-select-item-option-selected {
+    background: rgba(59, 130, 246, 0.15) !important;
+    font-weight: 500;
+  }
+}

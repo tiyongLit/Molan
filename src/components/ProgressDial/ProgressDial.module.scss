@@ -1,0 +1,99 @@
+// ── Liquid Glass ProgressDial ──
+// 内圆：半透明磨砂玻璃，透出背景渐变
+// 阴影：多层叠加模拟景深
+// 进度环：accent 色 + 平滑过渡动画
+// 辉光：bloom 色环境光层
+
+.progressWrapper {
+  --glass-opacity: 0.08;
+  --glass-brightness: 1;
+
+  position: relative;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); // spring-like release
+
+  // ── 多层投影：外层浮动 + 近处投影 + 顶部高光线 ──
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    z-index: -1;
+    transition: box-shadow 0.18s ease;
+    box-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.25),
+      0 2px 8px rgba(0, 0, 0, 0.15);
+  }
+
+  // ── hover: 增强玻璃通透度 ──
+  &:hover {
+    --glass-opacity: 0.14;
+    --glass-brightness: 1.2;
+
+    .innerGlass {
+      filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.08));
+    }
+
+    .glowRing {
+      opacity: 0.22;
+    }
+  }
+
+  // ── active: 按下沉入效果（阴影消失 + 微向下位移） ──
+  &:active {
+    transform: translateY(2px);
+    transition: transform 0.12s ease;
+
+    &::before {
+      box-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.10),
+        0 1px 3px rgba(0, 0, 0, 0.06);
+    }
+  }
+}
+
+// ── 进度弧线平滑动效 ──
+.progressArc {
+  transition: stroke-dashoffset 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+// ── 环境辉光环 ──
+.glowRing {
+  transition: opacity 0.35s ease;
+}
+
+// ── 内圆：液态玻璃 ──
+.innerGlass {
+  fill: rgba(255, 255, 255, var(--glass-opacity));
+  stroke: rgba(255, 255, 255, 0.04);
+  stroke-width: 1;
+  transition: fill 0.3s ease, filter 0.3s ease;
+  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.04));
+}
+
+.svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible !important;
+}
+
+.pointer {
+  shape-rendering: geometricPrecision;
+}
+
+.contentWrapper {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 24px;
+}

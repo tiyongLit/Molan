@@ -265,7 +265,11 @@ fn build_static_system_items(home: &Path) -> Vec<RuleItemBlueprint> {
 fn bundle_rule_matches(installed: &str, rule: &BundleCleanRule) -> bool {
     match &rule.bundle {
         BundleMatch::Exact(s) => installed == *s,
-        BundleMatch::Prefix(p) => installed.starts_with(p),
+        // PureMac 安全加固：用锚定匹配替代裸 starts_with，
+        // 防止 "com.todesktopX.malware" 命中 Prefix("com.todesktop") 规则。
+        BundleMatch::Prefix(p) => {
+            crate::core::bundle_id_anchor::bundle_id_matches_anchor(installed, p)
+        }
     }
 }
 
@@ -276,7 +280,11 @@ fn first_matching_bundle(installed: &[String], rule: &BundleCleanRule) -> Option
         .cloned()
 }
 
-fn build_bundle_category_items(home: &Path, rules: &[BundleCleanRule], installed: &[String]) -> Vec<RuleItemBlueprint> {
+fn build_bundle_category_items(
+    home: &Path,
+    rules: &[BundleCleanRule],
+    installed: &[String],
+) -> Vec<RuleItemBlueprint> {
     let mut out = Vec::new();
     for rule in rules {
         let Some(bid) = first_matching_bundle(installed, rule) else {

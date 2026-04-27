@@ -1,5 +1,5 @@
 [package]
-name = "moledesktop"
+name = "mole"
 version = "0.1.0"
 description = "A Tauri App"
 authors = ["you"]
@@ -14,26 +14,75 @@ full = []
 mas = []
 
 [lib]
-# The `_lib` suffix may seem redundant but it is necessary
-# to make the lib name unique and wouldn't conflict with the bin name.
-# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
-name = "moledesktop_lib"
+name = "mole_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["macos-private-api", "tray-icon"] }
 tauri-plugin-opener = "2"
 tauri-plugin-store = "2"
 tauri-plugin-log = "2"
 log = "0.4"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+chrono = { version = "0.4", default-features = false, features = ["clock", "std", "serde"] }
 
-walkdir = "2"       # 用于递归扫描文件夹
+walkdir = "2"       # 用于递归扫描文件夹（lib/clean、lib/optimize）
+crossbeam-deque = "0.8"  # cmd/analyze bulkwalk：work-stealing 任务队列（替代 jwalk）
+bincode = "1.3"      # cmd/analyze 快照缓存二进制序列化
 trash = "3"         # 用于安全删除到废纸篓 (MAS 合规关键)
 dirs = "6"          # 解析用户主目录（scan_home）
 plist = "1"         # 读取 .app/Contents/Info.plist 的 CFBundleIdentifier
+quick-xml = "0.41"  # 解析 Sparkle appcast（原为 plist 的传递依赖，提为直接依赖零新编译）
 tauri-plugin-dialog = "2" # 预留：书签/未来授权流
+glob = "0.3"
+wait-timeout = "0.2"
+libc = "0.2"
+signal-hook = { version = "0.3", default-features = false, features = ["iterator"] }
+auto-launch = "0.5"
+sysinfo = "0.33"    # 对标 Go gopsutil：CPU/内存/网络/磁盘实时采集
+crossbeam-channel = "0.5"  # cmd/analyze 用于模拟 Go `chan struct{}` 信号量
+tokio = { version = "1", features = ["time", "sync"] }  # time=超时包装；sync=system_confirm 的 oneshot/Mutex
+rayon = "1"               # cmd/analyze 并发递归扫描（对齐 Go scanner.go 的 goroutine 池）
+regex = "1"               # 用于路径模式匹配（如 Darwin runtime dir 安全检查）
+# vendor/tauri_logger
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "registry"] }
+tracing-appender = "0.2"
+
+[dev-dependencies]
+tempfile = "3"
+dirs = "6"
+
+# ── 编译优化：减少 target/ 磁盘占用 ──────────────────────
+# dev profile：行表级调试信息（足够定位 panic 行号），依赖不再重复生成完整 DWARF。
+[profile.dev]
+debug = 1            # 默认 2（完整 DWARF），降为 1（仅行表），大幅减少 .rlib / .dSYM 体积
+split-debuginfo = "unpacked"  # macOS：调试信息拆分为独立 .dSYM，加速链接 & 增量编译
+incremental = true   # 确保增量编译开启，重启后沿用上次结果
+
+# release profile：官网 & MAS 构建使用，保留足够调试信息用于崩溃分析。
+[profile.release]
+debug = 1
+split-debuginfo = "unpacked"
+lto = "thin"         # 轻量 LTO，平衡产物体积与编译速度
+codegen-units = 1    # 全量代码生成单元：扫描热路径跨模块内联（对齐 disky 发布配置）
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = { version = "0.6.4", features = ["std"] }
+objc2-foundation = { version = "0.3.2", features = ["NSString", "NSData", "NSDictionary", "NSArray", "NSURL"] }
+objc2-core-foundation = { version = "0.3.2", default-features = false, features = ["objc2"] }
+objc2-app-kit = { version = "0.3.2", features = [
+  "NSWorkspace",
+  "NSImage",
+  "NSImageRep",
+  "NSBitmapImageRep",
+  "NSColor",
+  "objc2-core-foundation",
+] }
+dispatch2 = { version = "0.3.1", default-features = false, features = ["std", "alloc"] }
+core-foundation = "0.10"
+base64 = "0.22"

@@ -1,0 +1,59 @@
+.hover-row {
+  transition: background-color 0.15s ease;
+  background-color: transparent;
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.06);
+  }
+}
+
+// 立即扫描 / 立即清理 主按钮
+// 对齐 lemon-cleaner LMRectangleButton 青色渐变 + 白字
+// normal: #64DFA7 → #00D899 | hover: #69E8AE → #00E9A5 | active: #61CE9C → #00D093
+// disabled: #305C54 底 + #686971 字
+.clean-primary-btn {
+  border-color: transparent !important;
+  color: #ffffff !important;
+  background: linear-gradient(135deg, #64dfa7 0%, #00d899 100%) !important;
+  box-shadow: none !important;
+
+  &:not(:disabled):hover {
+    border-color: transparent !important;
+    background: linear-gradient(135deg, #69e8ae 0%, #00e9a5 100%) !important;
+  }
+
+  &:not(:disabled):active {
+    border-color: transparent !important;
+    background: linear-gradient(135deg, #61ce9c 0%, #00d093 100%) !important;
+  }
+
+  &:disabled {
+    border-color: transparent !important;
+    background: #305c54 !important;
+    color: #686971 !important;
+  }
+}
+
+// "返回" 次按钮（ready / selected 状态，位于"立即清理"左侧）
+// 浅蓝玻璃风，与 CleanLoading 改色后白蓝调性一致
+.clean-back-btn.ant-btn {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  color: #ffffff !important;
+  font-weight: 400;
+
+  &:not(:disabled):hover {
+    background: rgba(255, 255, 255, 0.15) !important;
+    border-color: rgba(255, 255, 255, 0.4) !important;
+    color: #ffffff !important;
+  }
+
+  &:not(:disabled):active {
+    background: rgba(255, 255, 255, 0.2) !important;
+    border-color: rgba(255, 255, 255, 0.5) !important;
+    color: #ffffff !important;
+  }
+}
+
+// 滚动条样式已迁移至全局契约 src/styles/scrollbar.css（.mole-scroll），
+// 由 main.tsx 统一引入；CleanLayout 直接挂 .mole-scroll 类。

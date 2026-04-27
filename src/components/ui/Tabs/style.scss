@@ -1,0 +1,27 @@
+// 复刻 HeadNav HeaderItem 的指示器：2px 主色下划线 + 中间朝上三角
+.indicator-tabs {
+  // 去掉整条 tab 栏底部的横贯分割线
+  .ant-tabs-nav::before {
+    border-bottom: none;
+  }
+
+  // ink-bar 本身就是主色下划线（antd 高度 = --ant-line-width-bold，本项目 2px），保留其滑动动画
+  .ant-tabs-ink-bar {
+    overflow: visible;
+
+    // 中间朝上的三角：mask 贴现有 SVG。
+    // 不能用 background-image 直接引该 SVG —— 它内部是 fill="currentColor"，背景图场景不会解析成主题色。
+    &::before {
+      content: '';
+      position: absolute;
+      bottom: calc(var(--ant-line-width-bold) - 2px); // 三角往下偏移 2px 贴合下划线
+      left: 50%;
+      transform: translateX(-50%);
+      width: 10px;
+      height: 7px;
+      background-color: var(--zl-color-primary);
+      mask: url('./head_indicator_part.svg') no-repeat center / contain;
+      -webkit-mask: url('./head_indicator_part.svg') no-repeat center / contain;
+    }
+  }
+}

@@ -1,0 +1,157 @@
+/* ============================================================
+   SystemConfirm — 自定义原生确认弹窗（独立透明窗口）
+   视觉：暗色毛玻璃卡片 + 圆角 + 品牌色主按钮
+   ============================================================ */
+
+.sysconfirm-root {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* 透明窗口的点击外部 = 取消（对齐 macOS NSAlert 行为） */
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
+  /* 窗口透明，点击穿透到下层主窗口（让模态感更自然，且不阻挡观察） */
+  pointer-events: auto;
+
+  /* 透明背景：由窗口 transparent:true 提供；此处仅留作层级容器 */
+  background: transparent;
+}
+
+.sysconfirm-card {
+  width: 360px;
+  /* 高度自适应内容，最小 168px（对齐 NSAlert 200 高度的紧凑变体） */
+  min-height: 168px;
+  max-height: 220px;
+  display: flex;
+  flex-direction: column;
+  padding: 22px 22px 18px 22px;
+  /* 暗色毛玻璃：对齐项目 PAGE_THEME_VARS 暗色风格 */
+  background: rgba(30, 30, 32, 0.78);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.45),
+    0 2px 8px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  color: #fff;
+  /* 窗口阴影由卡片承担，窗口本身关闭阴影（对齐 Shell 窗口） */
+  animation: sysconfirm-in 160ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+
+@keyframes sysconfirm-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* ── 顶部：图标 + 文本 ── */
+.sysconfirm-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-bottom: 14px;
+
+  span {
+    color: #fff;
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1;
+    /* warning / critical 的 "!" 加粗对比 */
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+  }
+}
+
+.sysconfirm-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sysconfirm-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: 0.1px;
+  /* 单行省略（title 太长不优雅，message 才负责展开） */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sysconfirm-message {
+  font-size: 13px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.78);
+  line-height: 1.45;
+  word-break: break-word;
+  /* 最多 3 行，超出省略，避免窗口被撑高 */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ── 底部：按钮 ── */
+.sysconfirm-actions {
+  margin-top: 18px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.sysconfirm-btn {
+  height: 32px;
+  min-width: 76px;
+  padding: 0 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: background 120ms ease, transform 80ms ease, box-shadow 120ms ease;
+
+  &:active {
+    transform: scale(0.97);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.18);
+  }
+}
+
+.sysconfirm-btn-cancel {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.85);
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.16);
+    color: #fff;
+  }
+}
+
+.sysconfirm-btn-ok {
+  color: #fff;
+  /* 背景由 React 内联 style 覆盖为 accent */
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+
+  &:hover {
+    filter: brightness(1.08);
+  }
+}

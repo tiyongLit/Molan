@@ -1,0 +1,62 @@
+// ============================================
+// mole-scan-btn — ScanButton 扫描光晕动画
+// 效果：hover 上浮 + active 下压 + ::after 白色光晕扩散
+// 按钮本体由 MoleButton(antd) 提供，此处叠加动画与项目 CTA 渐变配色
+// ============================================
+
+.ant-btn.mole-scan-btn {
+  position: relative;
+  height: 42px;
+  padding: 0 32px;
+  border: none;
+  border-radius: 100px;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 0.5px;
+  // 项目 CTA 渐变（对齐 Clean/Uninstall 废纸篓按钮规范）
+  background: linear-gradient(135deg, #64dfa7 0%, #00d899 100%);
+  color: #0b1f1a;
+  box-shadow: 0 4px 14px rgba(0, 216, 153, 0.28);
+  transition: all 0.2s;
+  overflow: visible;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+    background: linear-gradient(135deg, #69e8ae 0%, #00e9a5 100%);
+    color: #0b1f1a;
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
+  }
+
+  &:disabled {
+    background: #305c54;
+    color: #686971;
+    box-shadow: none;
+  }
+
+  // 白色光晕层：初始与按钮同尺寸贴合，hover 时放大扩散并淡出
+  // &::after {
+  //   content: '';
+  //   display: inline-block;
+  //   height: 100%;
+  //   width: 100%;
+  //   border-radius: 100px;
+  //   position: absolute;
+  //   top: 0;
+  //   left: 0;
+  //   z-index: -1;
+  //   // background-color: #fff;
+  //   transition: all 0.4s;
+  //   pointer-events: none;
+  // }
+
+  &:hover:not(:disabled)::after {
+    transform: scaleX(1.2) scaleY(1.3);
+    opacity: 0;
+  }
+}

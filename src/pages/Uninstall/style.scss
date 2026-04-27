@@ -1,0 +1,89 @@
+// ── Apps 页样式 ──
+// 背景保持 uninstall 域青绿渐变（#47b09c → #3a5082，见 themeColors.ts）
+// 承载面用「半透明黑卡片」压住亮背景，白/灰字浮在深色卡片上形成反差（对齐 Burrow）
+// 主按钮：青绿渐变（#64dfa7 → #00d899）；checkbox 选中：蓝 #3B82F6
+
+// 顶部胶囊分段（antd Segmented）：深色容器 + 青绿渐变选中项
+// 高度对齐右侧工具栏（h-7 = 28px）：1px 边框×2 + 3px 内边距×2 + 20px label = 28px
+.apps-segmented {
+  padding: 3px;
+  background: rgba(0, 0, 0, 0.32);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 9999px;
+
+  .ant-segmented-item {
+    border-radius: 9999px;
+
+    .ant-segmented-item-label {
+      font-size: 11px;
+      line-height: 20px;
+      color: rgba(255, 255, 255, 0.85);
+      padding: 0 14px;
+      min-height: 20px;
+      transition: color 0.15s;
+    }
+
+    &:hover {
+      .ant-segmented-item-label {
+        color: #ffffff;
+      }
+    }
+  }
+
+  // 选中项：青绿渐变底 + 白字
+  .ant-segmented-item-selected {
+    background: linear-gradient(135deg, #64dfa7 0%, #00d899 100%);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+
+    .ant-segmented-item-label {
+      color: #0b1f1a;
+      font-weight: 700;
+    }
+  }
+
+  // 去掉 antd Segmented 自带的 thumb 动画背景
+  .ant-segmented-thumb {
+    background: transparent;
+  }
+}
+
+// 主按钮（卸载 / 更新 / 确认等）：青绿渐变 + 深色字（亮渐变上白字不清，改深色字）
+.apps-primary-btn {
+  border-color: transparent !important;
+  color: #0b1f1a !important;
+  background: linear-gradient(135deg, #64dfa7 0%, #00d899 100%) !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35) !important;
+  transition: filter 0.15s ease;
+
+  &:not(:disabled):hover {
+    border-color: transparent !important;
+    background: linear-gradient(135deg, #69e8ae 0%, #00e9a5 100%) !important;
+  }
+
+  &:not(:disabled):active {
+    border-color: transparent !important;
+    background: linear-gradient(135deg, #61ce9c 0%, #00d093 100%) !important;
+  }
+
+  &:disabled {
+    border-color: transparent !important;
+    background: #305c54 !important;
+    color: #686971 !important;
+  }
+}
+
+// 次按钮（取消选择 / 再次检查）：深色玻璃风 + 白字
+.apps-ghost-btn {
+  color: rgba(255, 255, 255, 0.9) !important;
+  background: rgba(0, 0, 0, 0.28) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+
+  &:not(:disabled):hover {
+    color: #ffffff !important;
+    background: rgba(0, 0, 0, 0.4) !important;
+    border-color: rgba(255, 255, 255, 0.32) !important;
+  }
+}
+
+// 滚动条样式已迁移至全局契约 src/styles/scrollbar.css（.mole-scroll），
+// 由 main.tsx 统一引入；各 Tab 的 SimpleBar 直接挂 .mole-scroll 类。

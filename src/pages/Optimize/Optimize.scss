@@ -1,0 +1,76 @@
+/* ============================================================
+   Optimize 页面样式（对齐 Clean.scss 模式，橙色系品牌色）
+   ============================================================ */
+
+/* 主按钮：橙色渐变（闪电/性能语义） */
+.optimize-primary-btn {
+  border-color: transparent !important;
+  color: #ffffff !important;
+  background: linear-gradient(135deg, #fb923c 0%, #f97316 100%) !important;
+  box-shadow: none !important;
+
+  &:not(:disabled):hover {
+    border-color: transparent !important;
+    background: linear-gradient(135deg, #fca05a 0%, #fa7d2a 100%) !important;
+  }
+
+  &:not(:disabled):active {
+    border-color: transparent !important;
+    background: linear-gradient(135deg, #e8812b 0%, #e5640a 100%) !important;
+  }
+
+  &:disabled {
+    background: rgba(255, 255, 255, 0.12) !important;
+    color: rgba(255, 255, 255, 0.4) !important;
+    border-color: transparent !important;
+    cursor: not-allowed;
+  }
+}
+
+/* 返回按钮（对齐 clean-back-btn） */
+.optimize-back-btn.ant-btn {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  color: #ffffff !important;
+  font-weight: 400;
+
+  &:not(:disabled):hover {
+    background: rgba(255, 255, 255, 0.15) !important;
+    border-color: rgba(255, 255, 255, 0.4) !important;
+    color: #ffffff !important;
+  }
+
+  &:not(:disabled):active {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-color: rgba(255, 255, 255, 0.3) !important;
+    color: #ffffff !important;
+  }
+}
+
+/* 分析骨架：分组「正在分析」脉冲点 */
+@keyframes optimize-group-pulse-kf {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 190, 70, 0.7);
+    transform: scale(1);
+  }
+
+  70% {
+    box-shadow: 0 0 0 8px rgba(255, 190, 70, 0);
+    transform: scale(1.1);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 190, 70, 0);
+    transform: scale(1);
+  }
+}
+
+.optimize-group-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: rgb(255, 190, 70);
+  animation: optimize-group-pulse-kf 1.5s ease-in-out infinite;
+  display: inline-block;
+  flex-shrink: 0;
+}

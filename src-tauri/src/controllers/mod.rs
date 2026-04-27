@@ -1,0 +1,11 @@
+pub mod analyze;
+pub mod clean;
+pub mod optimize;
+pub mod platform;
+pub mod privilege;
+pub mod settings;
+pub mod startup;
+pub mod status;
+pub mod system_confirm;
+pub mod uninstall;
+pub mod updates;

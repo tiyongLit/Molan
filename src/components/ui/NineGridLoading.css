@@ -1,0 +1,75 @@
+.nine-grid-loading {
+  width: 80px;
+  height: 80px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+.nine-grid-loading__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 38px);
+  grid-template-rows: repeat(3, 38px);
+  gap: 5px;
+  transform: rotate(45deg) scale(0.46);
+}
+
+.nine-grid-loading__grid span {
+  background-color: var(--nine-grid-color, #ffffff);
+  border-radius: 8px;
+}
+
+/* 三档透明度（由主色派生）：1~3 满 / 4~6 半（55%）/ 7~9 轻（25%）
+   使用 hex alpha 通道（#rrggbbaa）代替 color-mix()，
+   兼容 Tauri WKWebView（macOS 12+ 的 WebKit 可能不支持 color-mix） */
+.nine-grid-loading__grid span:nth-child(n + 4):nth-child(-n + 6) {
+  background-color: var(--nine-grid-color-55, var(--nine-grid-color, #ffffff));
+}
+
+.nine-grid-loading__grid span:nth-child(n + 7):nth-child(-n + 9) {
+  background-color: var(--nine-grid-color-25, var(--nine-grid-color, #ffffff));
+}
+
+.nine-grid-loading__grid.animation span {
+  animation: nine-grid-loading-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes nine-grid-loading-pulse {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0);
+  }
+
+  35%,
+  65% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* 对角线脉冲延迟 */
+.nine-grid-loading__grid span:nth-child(7) {
+  animation-delay: 0.6s;
+}
+
+.nine-grid-loading__grid span:nth-child(4),
+.nine-grid-loading__grid span:nth-child(8) {
+  animation-delay: 0.7s;
+}
+
+.nine-grid-loading__grid span:nth-child(1),
+.nine-grid-loading__grid span:nth-child(5),
+.nine-grid-loading__grid span:nth-child(9) {
+  animation-delay: 0.8s;
+}
+
+.nine-grid-loading__grid span:nth-child(2),
+.nine-grid-loading__grid span:nth-child(6) {
+  animation-delay: 0.9s;
+}
+
+.nine-grid-loading__grid span:nth-child(3) {
+  animation-delay: 1s;
+}

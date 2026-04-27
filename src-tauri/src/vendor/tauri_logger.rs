@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use chrono::Local;
 use tauri::App;
-use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt};
 
 /// Tauri 应用子目录名，写死为 flowshield（与 packages/flowshield 对齐）
 const TAURI_APP_DIR: &str = "flowshield";
@@ -146,4 +146,3 @@ pub fn init_logger(app: &App) {
         tracing::info!("logger initialized, log file: {:?}", log_path);
     });
 }
-
