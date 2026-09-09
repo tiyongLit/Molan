@@ -4,6 +4,7 @@
 
 pub mod actions;
 pub mod app_assoc;
+pub mod classic_login_items;
 pub mod discovery;
 pub mod filter;
 pub mod login_items;

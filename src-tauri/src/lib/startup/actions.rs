@@ -6,6 +6,7 @@ use std::collections::HashSet;
 
 use crate::core::timeout::{run_with_timeout, run_with_timeout_capture_lossy};
 
+use super::classic_login_items;
 use super::model::*;
 
 // ── 操作类型 ──
@@ -89,6 +90,11 @@ pub fn plan(service: &Service, kind: ActionKind) -> ActionPlan {
         return blocked(service, kind, "此服务受保护，无法通过 launchctl 操作");
     }
 
+    // 经典登录项（LSSharedFileList）→ 只支持删除操作
+    if service.plist_path.as_deref().is_some_and(|p| p.starts_with("classic:")) {
+        return plan_classic_login_item(service, kind);
+    }
+
     // Homebrew 服务 → 路由到 brew services
     if matches!(service.source, ServiceSource::Homebrew | ServiceSource::Both) {
         return plan_brew(service, kind);
@@ -132,6 +138,32 @@ fn plan_brew(service: &Service, kind: ActionKind) -> ActionPlan {
         warning: format!("Homebrew 将更新 {formula} 的服务注册"),
         blocked_reason: None,
         needs_sudo: false,
+    }
+}
+
+/// 经典登录项（LSSharedFileList）只支持删除操作，其他操作引导到系统设置。
+fn plan_classic_login_item(service: &Service, kind: ActionKind) -> ActionPlan {
+    match kind {
+        ActionKind::Delete => {
+            // 从 id 中提取索引和名称：classic:{idx}:{display_name}
+            let parts: Vec<&str> = service.id.splitn(3, ':').collect();
+            if parts.len() < 3 {
+                return blocked(service, kind, "经典登录项 ID 格式错误");
+            }
+            let display_name = parts[2];
+            ActionPlan {
+                kind,
+                service_id: service.id.clone(),
+                command: vec!["classic_delete".into(), display_name.to_string()],
+                warning: format!("将从登录项中删除「{display_name}」"),
+                blocked_reason: None,
+                needs_sudo: false,
+            }
+        }
+        _ => blocked(
+            service, kind,
+            "经典登录项仅支持删除操作，其他管理请在「系统设置 → 通用 → 登录项」中操作",
+        ),
     }
 }
 
@@ -211,6 +243,11 @@ pub fn execute(plan: &ActionPlan) -> ActionResult {
         };
     }
 
+    // 经典登录项删除：直接调用 LSSharedFileListItemRemove
+    if plan.command.first().is_some_and(|c| c == "classic_delete") {
+        return execute_classic_delete(plan);
+    }
+
     // Delete 操作特殊处理：bootout + trash（不走 shell 拼接）
     if plan.kind == ActionKind::Delete {
         return execute_delete(plan);
@@ -270,6 +307,27 @@ fn execute_delete(plan: &ActionPlan) -> ActionResult {
     match trash_result {
         Ok(_) => ActionResult { success: true, message: "已卸载并移入废纸篓".to_string() },
         Err(e) => ActionResult { success: false, message: format!("已卸载但移入废纸篓失败: {e}") },
+    }
+}
+
+/// 经典登录项删除：调用 LSSharedFileListItemRemove。
+/// command 格式: ["classic_delete", "<display_name>"]
+fn execute_classic_delete(plan: &ActionPlan) -> ActionResult {
+    if plan.command.len() < 2 {
+        return ActionResult { success: false, message: "经典登录项删除命令格式错误".to_string() };
+    }
+    let display_name = &plan.command[1];
+    let removed = classic_login_items::remove_classic_login_item(display_name);
+    if removed > 0 {
+        ActionResult {
+            success: true,
+            message: format!("已删除 {removed} 个「{display_name}」登录项"),
+        }
+    } else {
+        ActionResult {
+            success: false,
+            message: format!("未找到名为「{display_name}」的登录项"),
+        }
     }
 }
 

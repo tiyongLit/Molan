@@ -9,6 +9,7 @@ use crate::core::base::home_dir;
 use crate::core::timeout::run_with_timeout_capture_lossy;
 
 use super::app_assoc::{self, AppIndex};
+use super::classic_login_items;
 use super::filter;
 use super::login_items;
 use super::model::*;
@@ -53,15 +54,18 @@ pub fn load_inventory(
         }
     }
 
-    // 步骤 6-8：App 关联 + Origin 分类 + Health 检查
+    // 步骤 6：经典登录项扫描（LSSharedFileList）
+    let classic_items = scan_classic_login_items(uid);
+
+    // 步骤 7-9：App 关联 + Origin 分类 + Health 检查
     for service in services.values_mut() {
         service.app_info = app_assoc::associate(service, app_index);
         service.origin = classify_origin(service);
         finish_health(service);
     }
 
-    // 步骤 9：过滤 + 分组输出
-    build_inventory(services, show_system, &mut warnings)
+    // 步骤 10：过滤 + 分组输出
+    build_inventory(services, classic_items, show_system, &mut warnings)
 }
 
 // ── 步骤 1：plist 目录扫描 ──
@@ -674,10 +678,61 @@ fn is_on_unplugged_volume(path: &str) -> bool {
     !Path::new(&vol_root).exists()
 }
 
-// ── 步骤 9：过滤 + 分组 ──
+// ── 步骤 6：经典登录项扫描 ──
+
+/// 扫描经典登录项（LSSharedFileList）并转换为 Service。
+/// 返回 Vec 以保留重复条目（对齐柠檬的数组行为）。
+fn scan_classic_login_items(uid: u32) -> Vec<Service> {
+    let items = classic_login_items::scan_classic_login_items();
+    let domain = format!("gui/{uid}");
+
+    items
+        .into_iter()
+        .enumerate()
+        .map(|(idx, item)| {
+            // 用索引区分同名重复条目
+            let id = format!("classic:{idx}:{}", item.display_name);
+            Service {
+                id,
+                label: item.display_name.clone(),
+                display_name: item.display_name.clone(),
+                source: ServiceSource::Launchd,
+                scope: ServiceScope::UserAgent,
+                domain: domain.clone(),
+                plist_path: Some(format!("classic:{}", item.bundle_path)),
+                config: LaunchConfig {
+                    program: Some(item.bundle_path.clone()),
+                    arguments: Vec::new(),
+                    working_directory: None,
+                    stdout_path: None,
+                    stderr_path: None,
+                    run_at_load: None,
+                    keep_alive: None,
+                    start_interval: None,
+                    start_calendar_intervals: Vec::new(),
+                },
+                pid: None,
+                exit_code: None,
+                status: ServiceStatus::Unknown,
+                enabled: Some(true),
+                loaded: None,
+                brew_formula: None,
+                brew_status: None,
+                safety_level: SafetyLevel::UserWritable,
+                elevation: ElevationNeeds::none(),
+                origin: Origin::unknown(),
+                app_info: None,
+                health: Vec::new(),
+            }
+        })
+        .collect()
+}
+
+// ── 步骤 10：过滤 + 分组 ──
 
 fn build_inventory(
     services: BTreeMap<String, Service>,
+    classic_items: Vec<Service>,
     show_system: bool,
     warnings: &mut Vec<String>,
 ) -> StartupInventory {
@@ -725,6 +780,7 @@ fn build_inventory(
     StartupInventory {
         app_groups,
         standalone_services: standalone,
+        classic_login_items: classic_items,
         warnings: warnings.clone(),
     }
 }

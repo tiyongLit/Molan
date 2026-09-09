@@ -364,6 +364,8 @@ pub struct StartupInventory {
     pub app_groups: Vec<AppGroup>,
     /// 关联不到的散装服务。
     pub standalone_services: Vec<Service>,
+    /// 经典登录项（系统偏好设置 → 登录项），保留重复条目。
+    pub classic_login_items: Vec<Service>,
     /// 扫描过程中的警告。
     pub warnings: Vec<String>,
 }
