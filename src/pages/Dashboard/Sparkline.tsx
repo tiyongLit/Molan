@@ -17,7 +17,7 @@ interface SparklineProps {
   mirror?: boolean
 }
 
-/** Burrow MiniChart.samples 同款防御性上限：样本数封顶，避免无限序列驱动几何 */
+/** 防御性上限：样本数封顶，避免无限序列驱动几何 */
 const MAX_SAMPLES = 120
 
 /** 把序列归一化成 SVG 路径。
@@ -42,7 +42,7 @@ function buildPath(data: number[], min: number, max: number, mirror?: boolean): 
   return { line, area }
 }
 
-/** 空态占位底线（Burrow MiniChart 同款）：25% 透明度，空卡片不显坏 */
+/** 空态占位底线：25% 透明度，空卡片不显坏 */
 function Baseline({ height, color }: { height: number; color: string }) {
   return (
     <svg viewBox="0 0 100 1" preserveAspectRatio="none" className="block w-full" style={{ height }} aria-hidden>
@@ -52,12 +52,12 @@ function Baseline({ height, color }: { height: number; color: string }) {
 }
 
 export function Sparkline({ data, color, height = 14, fillOpacity = 0.35, domainMax, mirror }: SparklineProps) {
-  // 空态占位底线（Burrow 同款）：不再 return null，图表区高度保持稳定
+  // 空态占位底线：不再 return null，图表区高度保持稳定
   if (data.length < 2) return <Baseline height={height} color={color} />
 
   const vals = data.slice(-MAX_SAMPLES)
   // domainMax 生效：纵轴锚定 [0, domainMax]，尖峰不会压扁后续小值（area 模式核心修复）。
-  // 不传则保持自适应行为（Burrow 默认），向后兼容。
+  // 不传则保持自适应行为（默认），向后兼容。
   const min = domainMax != null ? 0 : Math.min(...vals)
   const max = domainMax != null ? domainMax : Math.max(...vals)
   const path = buildPath(vals, min, max, mirror)

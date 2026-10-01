@@ -173,10 +173,11 @@ fn expand_home_tilde(raw: &str) -> Result<PathBuf, String> {
     };
 
     if normalized == "~" {
-        return dirs::home_dir().ok_or_else(|| "无法解析用户主目录".to_string());
+        return crate::core::base::home_dir_opt().ok_or_else(|| "无法解析用户主目录".to_string());
     }
     if let Some(rest) = normalized.strip_prefix("~/") {
-        let home = dirs::home_dir().ok_or_else(|| "无法解析用户主目录".to_string())?;
+        let home =
+            crate::core::base::home_dir_opt().ok_or_else(|| "无法解析用户主目录".to_string())?;
         return Ok(home.join(rest));
     }
     if normalized.starts_with('~') && normalized.len() > 1 {

@@ -2603,7 +2603,7 @@ pub struct CleanApplyArgs {
     /// 后端据此从 SCAN_REGISTRY 取快照验证，防重放、防篡改。
     pub scan_id: String,
     /// 删除模式：true=直接永久删除（默认），false=移到废纸篓。
-    /// 对齐 Burrow `cacheRemovalMode` / Trashly `to_trash` 双模式设计。
+    /// 双模式设计（对齐 Trashly `to_trash` 语义）。
     #[serde(default = "default_permanent_delete")]
     pub permanent_delete: bool,
 }
@@ -3232,7 +3232,7 @@ pub fn mole_whitelist_write(args: MoleWhitelistArgs) -> Result<(), String> {
 #[tauri::command(rename_all = "snake_case")]
 pub fn mole_whitelist_predefined(args: MoleWhitelistArgs) -> Result<Value, String> {
     use std::path::Path;
-    let home = dirs::home_dir().unwrap_or_else(|| Path::new("/").to_path_buf());
+    let home = crate::core::base::home_dir_opt().unwrap_or_else(|| Path::new("/").to_path_buf());
     let items = if args.mode == "optimize" {
         crate::whitelist_optimize::load_optimize_whitelist_patterns(&home)
             .into_iter()

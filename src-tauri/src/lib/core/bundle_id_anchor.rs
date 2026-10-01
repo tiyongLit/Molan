@@ -1,4 +1,4 @@
-//! Bundle ID 锚定匹配（对齐 PureMac `AppPathFinder.swift#bundleIDMatchesCondition`）。
+//! Bundle ID 读取与锚定匹配（锚定匹配对齐 PureMac `AppPathFinder.swift#bundleIDMatchesCondition`）。
 //!
 //! 防止恶意 app 通过 substring 匹配劫持规则：
 //! - `com.evil.jetbrainsapp` 不能命中 `jetbrains` 规则
@@ -10,6 +10,35 @@
 //!   3. 父级后缀：`app.ends_with("." + condition)`
 //!
 //! 拒绝裸 substring 匹配（`app.contains(condition)` 不合法）。
+
+use std::path::Path;
+
+// ---- Info.plist 读取（bundle id 与同族字符串键的唯一实现） ----
+
+/// 读取 plist 顶层字符串键（纯 Rust，原 `plutil -extract <key> raw` / `defaults read` 的原生替代）。
+///
+/// 文件缺失、解析失败、键缺失或值非字符串时返回 None；值原样返回（不 trim），
+/// 由调用方按自己的失败语义归一（None / 空串 / "unknown" 等）。
+pub fn plist_string_key(plist_path: &Path, key: &str) -> Option<String> {
+    match plist::Value::from_file(plist_path)
+        .ok()
+        .and_then(|v| v.into_dictionary())
+        .and_then(|mut d| d.remove(key))
+    {
+        Some(plist::Value::String(s)) => Some(s),
+        _ => None,
+    }
+}
+
+/// 读取指定 `Info.plist`（完整路径）的 `CFBundleIdentifier`。
+pub fn read_bundle_id_from_plist(plist_path: &Path) -> Option<String> {
+    plist_string_key(plist_path, "CFBundleIdentifier")
+}
+
+/// 读取 `.app` 包（目录路径）的 `CFBundleIdentifier`。
+pub fn read_bundle_id_of_app(app_path: &Path) -> Option<String> {
+    read_bundle_id_from_plist(&app_path.join("Contents").join("Info.plist"))
+}
 
 /// 锚定式 bundle ID 匹配（对齐 PureMac `bundleIDMatchesCondition`）。
 ///
@@ -301,5 +330,58 @@ mod tests {
     #[test]
     fn no_strip_returns_none() {
         assert_eq!(strip_service_suffix("com.apple.Safari"), None);
+    }
+
+    // ---- Info.plist 读取 ----
+
+    #[test]
+    fn read_bundle_id_of_app_reads_info_plist() {
+        let dir = tempfile::tempdir().unwrap();
+        let app = dir.path().join("Foo.app");
+        let contents = app.join("Contents");
+        std::fs::create_dir_all(&contents).unwrap();
+        let plist = r#"<?xml version="1.0" encoding="UTF-8"?>
+<plist version="1.0"><dict>
+<key>CFBundleIdentifier</key><string>com.example.foo</string>
+</dict></plist>"#;
+        std::fs::write(contents.join("Info.plist"), plist).unwrap();
+        assert_eq!(
+            read_bundle_id_of_app(&app).as_deref(),
+            Some("com.example.foo")
+        );
+    }
+
+    #[test]
+    fn read_bundle_id_of_app_missing_returns_none() {
+        let dir = tempfile::tempdir().unwrap();
+        assert_eq!(read_bundle_id_of_app(&dir.path().join("Missing.app")), None);
+    }
+
+    #[test]
+    fn plist_string_key_non_string_value_returns_none() {
+        let dir = tempfile::tempdir().unwrap();
+        let plist_path = dir.path().join("Sample.plist");
+        let plist = r#"<?xml version="1.0" encoding="UTF-8"?>
+<plist version="1.0"><dict>
+<key>CFBundleIdentifier</key><integer>42</integer>
+</dict></plist>"#;
+        std::fs::write(&plist_path, plist).unwrap();
+        assert_eq!(plist_string_key(&plist_path, "CFBundleIdentifier"), None);
+    }
+
+    #[test]
+    fn plist_string_key_returns_raw_value() {
+        // 值原样返回（不 trim），trim 由各调用方按原语义处理。
+        let dir = tempfile::tempdir().unwrap();
+        let plist_path = dir.path().join("Sample.plist");
+        let plist = r#"<?xml version="1.0" encoding="UTF-8"?>
+<plist version="1.0"><dict>
+<key>Key</key><string>  spaced  </string>
+</dict></plist>"#;
+        std::fs::write(&plist_path, plist).unwrap();
+        assert_eq!(
+            plist_string_key(&plist_path, "Key"),
+            Some("  spaced  ".to_string())
+        );
     }
 }

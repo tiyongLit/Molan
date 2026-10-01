@@ -1,6 +1,6 @@
 //! 更新（Updates）功能核心层。
 //!
-//! 行为权威：Burrow `macos/Sources/{UpdateSources,UpdateCheck,OSUpdateGate,BrewProgress,UpdatesView}.swift`。
+//! 行为基线：见 `controllers/updates.md` 的「行为基线（权威语义）」章节。
 //! 与 Mole 无对齐关系（Mole CLI 没有应用更新检查）；唯一复用 Mole 的是应用清单（`mole_list_apps`）。
 //!
 //! 分层约定（与 lib/uninstall 一致）：本目录只放纯逻辑 + 外部命令执行，

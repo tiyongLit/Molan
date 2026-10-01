@@ -31,8 +31,8 @@ interface TreemapProps {
  * RectBlock 只接收纯数据 props（item / isSelected / isChecked），不传任何回调闭包，
  * 确保 memo 真正生效 —— 只有数据变化的方格才重渲染。
  *
- * **右键菜单 / 悬停气泡**：由全局单例 AnalyzeContextMenu / AnalyzeHoverCard 接管，
- * RectBlock 不再包裹 antd Dropdown / Popover，组件树深度大幅降低。
+ * **右键菜单**：由全局单例 AnalyzeContextMenu 接管，RectBlock 不再包裹 antd Dropdown。
+ * **悬停气泡**：由每格 antd Popover 承载（箭头指向方格中心，靠边溢出自动翻转）。
  *
  * **hover 视觉**：纯 CSS `:hover` 实现（RectBlock 内的 transition），不依赖 JS state。
  */
@@ -83,7 +83,6 @@ export function Treemap({
   return (
     <div
       ref={containerRef}
-      data-treemap-container
       className="relative w-full h-full bg-transparent"
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}

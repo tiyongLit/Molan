@@ -28,3 +28,9 @@ export { CleaningProgressBar } from './CleaningProgressBar'
 
 export { MolePopSelect } from './MolePopSelect'
 export type { MolePopSelectProps, MolePopSelectOption } from './MolePopSelect'
+
+export { ScanEllipsis } from './ScanEllipsis'
+
+export { ScanErrorPlaceholder } from './ScanErrorPlaceholder'
+
+export { ExpandChevron } from './ExpandChevron'

@@ -39,7 +39,7 @@ const GROUP_LABEL_MAP: Record<string, string> = {
   other: 'Other',
 }
 
-// 对齐 Burrow UninstallPreview.classify：安全项自动选中，缓存/日志/未知项需审阅
+// 安全项自动选中，缓存/日志/未知项需审阅
 const AUTO_SELECTED_KINDS = new Set([
   'bundle',
   'application_support',
@@ -389,7 +389,7 @@ export function UninstallTab({ apps, loading, searchText, selection, sortField, 
       if (next && (!cached || cached.failed)) {
         const entry = apps.find((a) => a.path === next)
         if (entry) {
-          // 先展示 App Bundle，再异步填充残留（对齐 Burrow previewLoading）
+          // 先展示 App Bundle，再异步填充残留
           setDetailCache((c) => ({ ...c, [next]: { preview: null, leftovers: buildLeftovers(entry, null) } }))
           setPreviewLoading((s) => new Set(s).add(next))
           tauri

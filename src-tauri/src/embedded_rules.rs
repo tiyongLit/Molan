@@ -311,15 +311,6 @@ fn build_bundle_category_items(
 }
 
 #[cfg(target_os = "macos")]
-fn read_bundle_id(plist_path: &Path) -> Option<String> {
-    let v = plist::Value::from_file(plist_path).ok()?;
-    v.as_dictionary()?
-        .get("CFBundleIdentifier")?
-        .as_string()
-        .map(|s| s.to_string())
-}
-
-#[cfg(target_os = "macos")]
 fn collect_bundle_ids_in_dir(applications_dir: &Path, out: &mut HashSet<String>) {
     let Ok(rd) = std::fs::read_dir(applications_dir) else {
         return;
@@ -332,7 +323,8 @@ fn collect_bundle_ids_in_dir(applications_dir: &Path, out: &mut HashSet<String>)
                 .is_some_and(|n| n.ends_with(".app"));
         if is_app_bundle {
             let plist_path = p.join("Contents/Info.plist");
-            if let Some(bid) = read_bundle_id(&plist_path) {
+            if let Some(bid) = crate::core::bundle_id_anchor::read_bundle_id_from_plist(&plist_path)
+            {
                 out.insert(bid);
             }
         }

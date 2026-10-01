@@ -92,7 +92,7 @@ pub fn collect_check_report_with_options(opt: CheckReportOptions) -> Result<Chec
 
 pub fn check_mole_update() -> Option<MoleUpdateStatus> {
     let home = std::env::var("HOME").unwrap_or_else(|_| {
-        dirs::home_dir()
+        crate::core::base::home_dir_opt()
             .map(|p| p.to_string_lossy().to_string())
             .unwrap_or_default()
     });

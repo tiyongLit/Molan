@@ -36,8 +36,11 @@ export const CMD_MOLE_REVEAL_IN_TRASH = 'mole_reveal_in_trash' as const
 /** Orphan — 孤儿残留扫描（对齐 PureMac ReversePathsFetch） */
 export const CMD_MOLE_ORPHAN_SCAN = 'mole_orphan_scan' as const
 export const CMD_MOLE_ORPHAN_DELETE = 'mole_orphan_delete' as const
+/** 卸载残留定向链路：点击系统通知 → 消费 pending 快照 → 跳卸载页定向扫描 */
+export const CMD_MOLE_RESIDUAL_TAKE_PENDING = 'mole_residual_take_pending' as const
+export const CMD_MOLE_ORPHAN_SCAN_FOR = 'mole_orphan_scan_for' as const
 
-/** Updates — 应用更新（对齐 Burrow Updates 标签页） */
+/** Updates — 应用更新（Updates 标签页后端） */
 export const CMD_MOLE_UPDATES_BREW_OUTDATED = 'mole_updates_brew_outdated' as const
 export const CMD_MOLE_UPDATES_CHECK = 'mole_updates_check' as const
 export const CMD_MOLE_UPDATES_APPLY = 'mole_updates_apply' as const
@@ -48,7 +51,7 @@ export const CMD_MOLE_APP_VERSION_CHECK = 'mole_app_version_check' as const
 export const CMD_MOLE_APP_VERSION_INSTALL = 'mole_app_version_install' as const
 export const CMD_MOLE_APP_VERSION_OPEN_APPSTORE = 'mole_app_version_open_appstore' as const
 
-/** Startup — 启动项（对齐 Burrow StartupView） */
+/** Startup — 启动项 */
 export const CMD_MOLE_STARTUP_SCAN = 'mole_startup_scan' as const
 export const CMD_MOLE_STARTUP_ACTION = 'mole_startup_action' as const
 
@@ -166,6 +169,8 @@ export const TAURI_COMMANDS = [
   CMD_MOLE_REVEAL_IN_TRASH,
   CMD_MOLE_ORPHAN_SCAN,
   CMD_MOLE_ORPHAN_DELETE,
+  CMD_MOLE_RESIDUAL_TAKE_PENDING,
+  CMD_MOLE_ORPHAN_SCAN_FOR,
   CMD_MOLE_UPDATES_BREW_OUTDATED,
   CMD_MOLE_UPDATES_CHECK,
   CMD_MOLE_UPDATES_APPLY,

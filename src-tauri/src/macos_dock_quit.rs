@@ -109,10 +109,14 @@ unsafe extern "C" fn should_terminate_handler(
 pub fn hide_dock_icon() {
     unsafe {
         let ns_app_cls = objc_getClass(b"NSApplication\0".as_ptr() as *const _);
-        if ns_app_cls.is_null() { return; }
+        if ns_app_cls.is_null() {
+            return;
+        }
         let shared_sel = sel_registerName(b"sharedApplication\0".as_ptr() as *const _);
         let ns_app: *mut c_void = objc_msgSend(ns_app_cls, shared_sel);
-        if ns_app.is_null() { return; }
+        if ns_app.is_null() {
+            return;
+        }
         // NSApplicationActivationPolicyAccessory = 1
         let set_policy_sel = sel_registerName(b"setActivationPolicy:\0".as_ptr() as *const _);
         let _: *mut c_void = objc_msgSend(ns_app, set_policy_sel, 1i64);
@@ -125,10 +129,14 @@ pub fn hide_dock_icon() {
 pub fn show_dock_icon() {
     unsafe {
         let ns_app_cls = objc_getClass(b"NSApplication\0".as_ptr() as *const _);
-        if ns_app_cls.is_null() { return; }
+        if ns_app_cls.is_null() {
+            return;
+        }
         let shared_sel = sel_registerName(b"sharedApplication\0".as_ptr() as *const _);
         let ns_app: *mut c_void = objc_msgSend(ns_app_cls, shared_sel);
-        if ns_app.is_null() { return; }
+        if ns_app.is_null() {
+            return;
+        }
         // NSApplicationActivationPolicyRegular = 0
         let set_policy_sel = sel_registerName(b"setActivationPolicy:\0".as_ptr() as *const _);
         let _: *mut c_void = objc_msgSend(ns_app, set_policy_sel, 0i64);
@@ -139,6 +147,25 @@ pub fn show_dock_icon() {
 pub fn hide_dock_icon() {}
 #[cfg(not(target_os = "macos"))]
 pub fn show_dock_icon() {}
+
+/// 恢复主窗口到前台：还原 Dock 图标 + 显示并聚焦主窗口。
+///
+/// 「唤起主窗口」语义的单一事实来源，两类入口共用：
+/// - `RunEvent::Reopen`：Dock 图标点击 / 已运行时再次双击 .app（经 LaunchServices）
+/// - single-instance 回调：重复启动被拦截（open -n、直接 exec 裸二进制、
+///   macOS 12 Launch Agent 等不经 LaunchServices 的旁路）
+///
+/// 不按 `has_visible_windows` 跳过：气泡/提醒浮窗可见但主窗隐藏时，
+/// 用户再次打开应用同样应带出主窗口（气泡会因失焦自行隐藏）。
+pub fn restore_main_window(app: &AppHandle) {
+    use tauri::Manager;
+    // Dock 右键退出后的 accessory 驻留态需切回 regular，否则应用无 Dock 图标
+    show_dock_icon();
+    if let Some(window) = app.get_webview_window("MoleStudio") {
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+}
 
 /// 安装 Dock 退出拦截 handler。在 Tauri `.setup()` 中调用。
 ///

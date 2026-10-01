@@ -1,6 +1,8 @@
 import { memo, useMemo } from 'react'
+import { Popover } from 'antd'
 import { CheckOutlined } from '@ant-design/icons'
 import { formatSize } from '@/utils/format'
+import { MarqueeText } from '@/components/ui/MarqueeText'
 import type { TreemapItem } from '../../typings'
 
 // ── 显示阈值 ──
@@ -50,12 +52,12 @@ interface RectBlockProps {
 }
 
 /**
- * Treemap 单个方格 — 纯展示组件。
+ * Treemap 单个方格 — 展示组件。
  *
  * **架构原则**：
  * - 只接收纯数据 props（item / isSelected / isChecked），不接收任何回调
  * - 交互（click / dblclick / contextmenu）由 Treemap 容器层事件委托统一处理
- * - 悬停气泡由全局单例 AnalyzeHoverCard 接管，不再包裹 antd Popover
+ * - 悬停气泡由每格 antd Popover 承载（placement=right + 箭头指向方格中心，溢出自动翻转）
  * - 右键菜单由全局单例 AnalyzeContextMenu 接管，不再包裹 antd Dropdown
  *
  * **hover 视觉**：纯 CSS `:hover` 伪类 + transition 实现，不依赖 JS state。
@@ -108,77 +110,105 @@ export const RectBlock = memo(function RectBlock({
     [x, y, width, height, isSelected]
   )
 
-  return (
-    <div
-      data-path={item.path}
-      data-name={item.name}
-      data-protected={item.protected ? 'true' : 'false'}
-      className="analyze-rect-block select-none"
-      style={blockStyle}
-    >
-      {isChecked && (
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            background: C.checkedOverlay,
-            pointerEvents: 'none',
-            zIndex: 1
-          }}
-        />
-      )}
-      {isChecked && (
-        <div
-          style={{
-            position: 'absolute',
-            top: 3,
-            right: 3,
-            width: badgeSize,
-            height: badgeSize,
-            borderRadius: badgeSize <= 8 ? '50%' : 3,
-            background: C.checkedBadgeBg,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 2,
-            boxShadow: '0 1px 3px rgba(0,0,0,0.25)'
-          }}
-        >
-          {badgeSize >= 12 && (
-            <CheckOutlined style={{ color: '#fff', fontSize: badgeFontSize, lineHeight: 1 }} />
-          )}
+  // ── 悬停气泡 — 对标 Lemon LMSpaceBubbleViewController 布局（紧凑两行结构）：
+  // 图标 30px 垂直居中，名称（超宽跑马灯）在上、大小在下；宽度随内容自适应：
+  // 下限 150px 防极短名称（如 bin/var）气泡窄成竖条，上限 240px 超长走跑马灯；
+  // 不展示绝对路径（完整路径可由左侧 EntryList 与面包屑导航获取）。 ──
+  // 面板底色/箭头色由 ANALYZE_ANTD_THEME 的 colorBgElevated 提供，无需额外覆盖。
+  const popoverContent = useMemo(
+    () => (
+      <div className="flex items-center gap-2.5 min-w-[150px] max-w-[240px] select-none">
+        {renderIcon(item.icon, 30)}
+        <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+          <MarqueeText
+            text={item.name}
+            className="text-sm font-medium text-white leading-tight"
+          />
+          <span className="text-xs text-white/60 font-mono">{formatSize(item.size)}</span>
         </div>
-      )}
-      {showFull && renderIcon(item.icon, Math.min(width * 0.18, 28))}
-      {showNameOnly && (
-        <span
-          style={{
-            color: isSelected ? '#FFFFFF' : 'rgba(255,255,255,0.85)',
-            fontSize: Math.max(Math.min(width * 0.065, 13), 10),
-            textAlign: 'center',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            maxWidth: Math.max(width - 12, 0),
-            lineHeight: '1.4',
-            fontWeight: isSelected ? 600 : 500
-          }}
-        >
-          {item.name}
-        </span>
-      )}
-      {showFull && (
-        <span
-          style={{
-            color: 'rgba(255,255,255,0.55)',
-            fontSize: Math.max(Math.min(width * 0.055, 12), 9),
-            lineHeight: '1.4',
-            fontFamily: 'ui-monospace, SFMono-Regular, monospace'
-          }}
-        >
-          {formatSize(item.size)}
-        </span>
-      )}
-    </div>
+      </div>
+    ),
+    [item.icon, item.name, item.size]
+  )
+
+  return (
+    <Popover
+      content={popoverContent}
+      placement="right"
+      trigger="hover"
+      arrow={{ pointAtCenter: true }}
+    >
+      <div
+        data-path={item.path}
+        data-name={item.name}
+        data-protected={item.protected ? 'true' : 'false'}
+        className="analyze-rect-block select-none"
+        style={blockStyle}
+      >
+        {isChecked && (
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: C.checkedOverlay,
+              pointerEvents: 'none',
+              zIndex: 1
+            }}
+          />
+        )}
+        {isChecked && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 3,
+              right: 3,
+              width: badgeSize,
+              height: badgeSize,
+              borderRadius: badgeSize <= 8 ? '50%' : 3,
+              background: C.checkedBadgeBg,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 2,
+              boxShadow: '0 1px 3px rgba(0,0,0,0.25)'
+            }}
+          >
+            {badgeSize >= 12 && (
+              <CheckOutlined style={{ color: '#fff', fontSize: badgeFontSize, lineHeight: 1 }} />
+            )}
+          </div>
+        )}
+        {showFull && renderIcon(item.icon, Math.min(width * 0.18, 28))}
+        {showNameOnly && (
+          <span
+            style={{
+              color: isSelected ? '#FFFFFF' : 'rgba(255,255,255,0.85)',
+              fontSize: Math.max(Math.min(width * 0.065, 13), 10),
+              textAlign: 'center',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              maxWidth: Math.max(width - 12, 0),
+              lineHeight: '1.4',
+              fontWeight: isSelected ? 600 : 500
+            }}
+          >
+            {item.name}
+          </span>
+        )}
+        {showFull && (
+          <span
+            style={{
+              color: 'rgba(255,255,255,0.55)',
+              fontSize: Math.max(Math.min(width * 0.055, 12), 9),
+              lineHeight: '1.4',
+              fontFamily: 'ui-monospace, SFMono-Regular, monospace'
+            }}
+          >
+            {formatSize(item.size)}
+          </span>
+        )}
+      </div>
+    </Popover>
   )
 })

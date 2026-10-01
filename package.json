@@ -2,25 +2,21 @@
   "name": "molestudio",
   "private": true,
   "version": "0.1.0",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "test": "vitest run",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
     "tauri:dev": "TAURI_DEV_DATA_DIR=./src-tauri/tauri_dev_data pnpm tauri dev",
-    "tauri:dev:fast": "TAURI_DEV_DATA_DIR=./src-tauri/tauri_dev_data RUSTFLAGS='-C link-arg=-fuse-ld=lld' pnpm tauri dev",
     "format": "prettier --write src && cargo fmt --manifest-path src-tauri/Cargo.toml",
     "format:rs": "cargo fmt --manifest-path src-tauri/Cargo.toml",
-    "tauri:dev:mas": "tauri dev -- --no-default-features --features mas",
-    "tauri:dev:mas:fast": "TAURI_DEV_DATA_DIR=./src-tauri/tauri_dev_data_mas RUSTFLAGS='-C link-arg=-fuse-ld=lld' tauri dev -- --no-default-features --features mas",
-    "tauri:build:mas": "tauri build -- --no-default-features --features mas",
     "prepare": "husky"
   },
   "lint-staged": {
     "src/**/*.{js,jsx,ts,tsx,json,css,scss,md,yaml,yml}": "prettier --write",
-    "src-tauri/**/*.rs": "rustfmt --edition 2024"
+    "src-tauri/**/*.rs": "rustfmt --edition 2021"
   },
   "dependencies": {
     "@ant-design/icons": "~6.3.2",

@@ -7,7 +7,7 @@
 //! - `revoke_admin_session()`   释放权限
 //! - `sudo_output(args)`        代替 `Command::new("sudo")`，自动路由到原生执行或普通 sudo
 //!
-//! 安全加固（对齐 Burrow trustedExecutable）：
+//! 安全加固：
 //! - AEWP root 执行只允许 `TRUSTED_ROOT_BINARIES` 白名单内的绝对路径二进制
 //! - GUI（无 TTY）场景禁止回退裸 sudo，避免密码提示打到控制台
 
@@ -86,7 +86,7 @@ static MOLE_AUTH_REF: OnceLock<Mutex<Option<AuthRef>>> = OnceLock::new();
 static MOLE_SUDO_KEEPALIVE_PID: OnceLock<Mutex<Option<u32>>> = OnceLock::new();
 static MOLE_SUDO_CLEANUP_REGISTERED: AtomicBool = AtomicBool::new(false);
 
-/// 可信 root 二进制白名单（对齐 Burrow `trustedExecutable`）。
+/// 可信 root 二进制白名单。
 /// AEWP 只允许这些硬编码绝对路径被 root 执行；args[0] 命中白名单之外的
 /// 路径（相对名 / 用户可控路径）一律拒绝，防止上游拼接漏洞劫持 root。
 /// 新增调用方时把绝对路径加入此表，禁止传裸命令名。
@@ -116,7 +116,7 @@ fn is_trusted_root_binary(path: &str) -> bool {
     TRUSTED_ROOT_BINARIES.contains(&path)
 }
 
-/// 管理员授权结果三态（对齐 Burrow AuthCancel 分类）。
+/// 管理员授权结果三态。
 /// `UserCanceled` 与 `Failed` 分开，上层可展示不同文案。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AdminAuthResult {
@@ -374,8 +374,8 @@ fn shell_escape(arg: &str) -> String {
 
 /// AEWP 不返回子进程 pid，无法 waitpid；改用输出协议拿真实退出码：
 /// 在 shell 命令尾部追加 `printf` 打印标记+退出码，父进程读完 stdout 后
-/// 从尾部解析标记，剥离后还原干净 stdout。对齐 Burrow `do shell script`
-/// 会抛真实退出码的语义，避免「spawn 成功即当成功」的退出码失真。
+/// 从尾部解析标记，剥离后还原干净 stdout，拿到真实退出码，
+/// 避免「spawn 成功即当成功」的退出码失真。
 const EXIT_MARK: &str = "__MOLE_ROOT_RC__:";
 
 /// 用保存的 auth_ref 以 root 身份执行命令。
@@ -396,7 +396,7 @@ fn exec_root(args: &[&str]) -> Result<std::process::Output, ()> {
     if args.is_empty() {
         return Ok(empty);
     }
-    // 可信路径白名单（对齐 Burrow trustedExecutable）：args[0] 必须是硬编码
+    // 可信路径白名单：args[0] 必须是硬编码
     // 绝对路径且在白名单内，否则拒绝 root 执行。exec_root 内部拼给 /bin/sh -c
     // 的命令串本身已 shell_escape，这里卡的是「谁被 root 跑」。
     if !is_trusted_root_binary(args[0]) {
@@ -720,7 +720,7 @@ pub fn ensure_admin_session() -> bool {
 }
 
 /// 三态版：上层需要区分「用户主动取消」和「认证失败」时使用
-/// （对齐 Burrow AuthCancel：取消 → 静默/温和提示；失败 → 错误文案）。
+/// （取消 → 静默/温和提示；失败 → 错误文案）。
 pub fn ensure_admin_session_detailed() -> AdminAuthResult {
     if is_admin_authorized() {
         return AdminAuthResult::Authorized;

@@ -572,12 +572,7 @@ export interface MoleOptimizeSummary {
 
 /** 六态结局（与 Rust `OptimizeOutcome` 的 snake_case 序列化一致） */
 export type OptimizeOutcomeStatus =
-  | 'applied'
-  | 'unchanged'
-  | 'skipped'
-  | 'unavailable'
-  | 'attention'
-  | 'failed'
+  'applied' | 'unchanged' | 'skipped' | 'unavailable' | 'attention' | 'failed'
 
 /** Optimize 执行阶段流式进度事件（与 Rust `optimize::progress` payload 一致） */
 export type OptimizeProgressEvent =
@@ -653,7 +648,7 @@ export interface MoleListAppsEntry {
   last_used_relative: string
   version: string
   running: boolean
-  /** 更新机制来源（对齐 Burrow UpdateSources.detect）："sparkle" | "app_store" | "electron" | null */
+  /** 更新机制来源（本地零网络检测）："sparkle" | "app_store" | "electron" | null */
   update_source: 'sparkle' | 'app_store' | 'electron' | null
 }
 
@@ -756,10 +751,35 @@ export interface OrphanDeleteResult {
 }
 
 // ============================================================
-// Updates types (Rust controllers/updates.rs，对齐 Burrow Updates)
+// Residual types (Rust residual_watch.rs / events.rs，定位通知链路)
 // ============================================================
 
-/** brew outdated --json=v2 行条目（对齐 Burrow OutdatedItem） */
+/** 卸载残留检测/打开事件 payload（Rust `emit_residual_detected` / `emit_residual_open`，camelCase） */
+export interface ResidualDetectedPayload {
+  /** 进入废纸篓的 .app 名称（不含 .app 后缀） */
+  appName: string
+  /** 目标 .app 的 CFBundleIdentifier（读取失败为 null） */
+  bundleId: string | null
+}
+
+/** `uninstall::residual-open` 事件 payload：与 detected 同构，语义 = 用户点击了系统通知 */
+export type ResidualOpenPayload = ResidualDetectedPayload
+
+/** `mole_residual_take_pending` 返回的待消费快照（Rust `residual_watch::ResidualTarget`） */
+export interface ResidualTarget {
+  /** 进入废纸篓的 .app 名称（不含 .app 后缀） */
+  appName: string
+  /** 从 Info.plist 解析的 bundle id（解析失败为 null） */
+  bundleId: string | null
+  /** 检测/点击时间（Unix 秒） */
+  detectedAt: number
+}
+
+// ============================================================
+// Updates types (Rust controllers/updates.rs)
+// ============================================================
+
+/** brew outdated --json=v2 行条目 */
 export interface BrewOutdatedItem {
   name: string
   installed: string
@@ -768,7 +788,7 @@ export interface BrewOutdatedItem {
   kind: string
 }
 
-/** mole_updates_check 单个 app 结果（对齐 Burrow AppUpdateItem 网络部分） */
+/** mole_updates_check 单个 app 结果（网络检查部分） */
 export interface AppCheckResult {
   path: string
   source: string
@@ -924,9 +944,12 @@ export interface PurgePathsData {
 
 export type ServiceSource = 'launchd' | 'homebrew' | 'both'
 export type ServiceScope = 'user_agent' | 'global_agent' | 'system_daemon'
-export type ServiceStatus = 'running' | 'scheduled' | 'stopped' | 'failed' | 'unloaded' | 'disabled' | 'unknown'
-export type SafetyLevel = 'user_writable' | 'admin_required' | 'readonly_system' | 'protected_vendor'
-export type Provenance = 'homebrew' | 'user_plist' | 'vendor_app' | 'system' | 'runtime_only' | 'unknown'
+export type ServiceStatus =
+  'running' | 'scheduled' | 'stopped' | 'failed' | 'unloaded' | 'disabled' | 'unknown'
+export type SafetyLevel =
+  'user_writable' | 'admin_required' | 'readonly_system' | 'protected_vendor'
+export type Provenance =
+  'homebrew' | 'user_plist' | 'vendor_app' | 'system' | 'runtime_only' | 'unknown'
 export type EnableStatus = 'all_enabled' | 'some_enabled' | 'all_disabled'
 
 /** 工具栏筛选 */
@@ -1055,6 +1078,4 @@ export interface PlatformInfo {
   current_app_bundle?: string
   /** 是否运行在 App Sandbox 中 */
   sandboxed: boolean
-  /** 是否为 full feature 构建 */
-  full_build: boolean
 }

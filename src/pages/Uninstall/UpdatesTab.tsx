@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { AppWindow, Package, CheckCircle2 } from 'lucide-react'
 import SimpleBar from 'simplebar-react'
 import 'simplebar-react/dist/simplebar.min.css'
@@ -14,7 +14,7 @@ import type {
   MoleListAppsEntry,
 } from '@/types/mole'
 
-// ── 来源 badge（对齐 Burrow UpdateSources.Source.badge）──
+// ── 来源 badge ──
 const SOURCE_BADGE: Record<string, string> = {
   sparkle: 'Sparkle',
   app_store: 'App Store',
@@ -29,11 +29,11 @@ const SOURCE_STYLE: Record<string, { color: string; bg: string }> = {
   homebrew: { color: '#fbbf24', bg: 'rgba(251,191,36,0.12)' },
 }
 
-/** 会话级 guard：自动 surface 每会话一次（对齐 Burrow UpdatesModel.brewSurfaced） */
+/** 会话级 guard：自动 surface 每会话一次 */
 let brewSurfaced = false
 
 /**
- * 版本比较：对齐 lib/updates/version.rs::is_version_newer（Burrow UpdateCheck.isNewer）：
+ * 版本比较：对齐 lib/updates/version.rs::is_version_newer：
  * trim → 剥一个前导 v/V → 点分 → 每段整数（失败归 0）→ 缺段补 0 逐段比 → 全等 false。
  */
 function isVersionNewer(remote: string, local: string): boolean {
@@ -57,7 +57,7 @@ function isVersionNewer(remote: string, local: string): boolean {
 }
 
 /**
- * 系统兼容门：对齐 Burrow OSUpdateGate.isInstallable —— minimum 空 → 可安装；
+ * 系统兼容门 —— minimum 空 → 可安装；
  * 否则 running >= minimum（每段取前导数字，缺段补 0，全等满足）。
  */
 function osIsInstallable(minimumOS: string | null | undefined, runningOS: string): boolean {
@@ -78,7 +78,7 @@ function osIsInstallable(minimumOS: string | null | undefined, runningOS: string
   return true
 }
 
-/** Burrow isStale：从未打开或 >30 天未用 → amber 高亮 */
+/** 陈旧判定：从未打开或 >30 天未用 → amber 高亮 */
 function isStale(lastUsedEpoch: number): boolean {
   if (!lastUsedEpoch) return true
   return Date.now() / 1000 - lastUsedEpoch > 30 * 86_400
@@ -91,7 +91,56 @@ function sourceChip(source: string) {
 }
 
 /**
- * 更新 tab：对齐 Burrow UpdatesView（UpdatesModel）。
+ * app 行（available / up to date / mechanism / not checkable 四区共用）：
+ * 图标 + 名称 + 来源 badge + 版本/大小/最近使用 meta + 可选右侧操作列。
+ */
+function AppUpdateRow({
+  app,
+  latestVersion,
+  action,
+  compact = false,
+}: {
+  app: MoleListAppsEntry
+  /** 传入时 meta 显示 "v旧 → v新" 箭头（available 区） */
+  latestVersion?: string
+  /** 右侧操作列（不传则不渲染该列） */
+  action?: ReactNode
+  /** 紧凑变体：无来源 badge、单行 meta、不显示最近使用（not checkable 区） */
+  compact?: boolean
+}) {
+  return (
+    <div className="flex items-center gap-3 px-[24px] py-2">
+      <AppIcon name={app.display_name || app.name} path={app.path} />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5">
+          <span className="text-[13px] font-medium text-[var(--text-primary)] truncate">
+            {app.display_name || app.name}
+          </span>
+          {!compact && sourceChip(app.update_source ?? '')}
+        </div>
+        {compact ? (
+          <div className="text-[10px] font-mono text-white/60">
+            v{app.version} · {app.size_human}
+          </div>
+        ) : (
+          <div className="flex items-center gap-1 text-[10px] font-mono text-white/60">
+            <span>{latestVersion ? `v${app.version} → v${latestVersion}` : `v${app.version}`}</span>
+            <span>·</span>
+            <span>{app.size_human}</span>
+            <span>·</span>
+            <span style={{ color: isStale(app.last_used_epoch) ? '#fbbf24' : undefined }}>
+              {app.last_used_relative}
+            </span>
+          </div>
+        )}
+      </div>
+      {action && <div className="shrink-0">{action}</div>}
+    </div>
+  )
+}
+
+/**
+ * 更新 tab。
  *
  * 数据流：
  *   挂载 → autoSurface（brew outdated，每会话一次，仅空时写入）
@@ -114,10 +163,10 @@ export function UpdatesTab({ apps }: { apps: MoleListAppsEntry[] }) {
   const [runningOs, setRunningOs] = useState('')
   const [brewItems, setBrewItems] = useState<BrewOutdatedItem[]>([])
   const [upgrading, setUpgrading] = useState<Set<string>>(new Set())
-  /** 全局升级进度短语（对齐 Burrow 单个 brewPhrase；并发 guard 保证同时只有一个升级任务） */
+  /** 全局升级进度短语（并发 guard 保证同时只有一个升级任务） */
   const [brewPhrase, setBrewPhrase] = useState('')
 
-  // ── 挂载：autoSurface（对齐 Burrow onAppear → autoSurface）──
+  // ── 挂载：autoSurface（brew outdated，每会话一次）──
   useEffect(() => {
     if (brewSurfaced) return
     brewSurfaced = true
@@ -125,7 +174,7 @@ export function UpdatesTab({ apps }: { apps: MoleListAppsEntry[] }) {
     tauri
       .mole_updates_brew_outdated()
       .then((items: BrewOutdatedItem[]) => {
-        // 仅当当前为空时写入（对齐 Burrow `if brewItems.isEmpty`）
+        // 仅当当前为空时写入
         setBrewItems((prev) => (prev.length === 0 ? (items ?? []) : prev))
       })
       .catch(() => {})
@@ -159,7 +208,7 @@ export function UpdatesTab({ apps }: { apps: MoleListAppsEntry[] }) {
     const upToDate: MoleListAppsEntry[] = []
     for (const app of mechanismApps) {
       const r = checkResults.get(app.path)
-      // latest 为空（Electron / 网络失败）→ 行静默消失（对齐 Burrow：不进任何已检查分区）
+      // latest 为空（Electron / 网络失败）→ 行静默消失（不进任何已检查分区）
       if (!r?.latest_version) continue
       if (isVersionNewer(r.latest_version, app.version) && osIsInstallable(r.minimum_os, runningOs)) {
         available.push(app)
@@ -193,7 +242,7 @@ export function UpdatesTab({ apps }: { apps: MoleListAppsEntry[] }) {
   }
 
   // ── 深链更新（对齐 update(_:)：sparkle/electron 开应用、App Store 开页面/更新页）──
-  // 失败静默（对齐 Burrow：NSWorkspace.open 失败不弹错）
+  // 失败静默（深链打开失败不弹错）
   const handleUpdate = (app: MoleListAppsEntry) => {
     const apply = (payload: { action: string; target?: string }) =>
       tauri.mole_updates_apply(payload).catch(() => {})
@@ -226,7 +275,7 @@ export function UpdatesTab({ apps }: { apps: MoleListAppsEntry[] }) {
         setBrewPhrase('')
         return refreshBrew()
       })
-      // 对齐 Burrow：升级结束（无论成败）必刷新 brew 行
+      // 升级结束（无论成败）必刷新 brew 行
       .catch(() => {
         setBrewPhrase('')
         return refreshBrew()
@@ -250,7 +299,7 @@ export function UpdatesTab({ apps }: { apps: MoleListAppsEntry[] }) {
         setBrewPhrase('')
         return refreshBrew()
       })
-      // 对齐 Burrow：升级结束（无论成败）必刷新 brew 行
+      // 升级结束（无论成败）必刷新 brew 行
       .catch(() => {
         setBrewPhrase('')
         return refreshBrew()
@@ -262,7 +311,7 @@ export function UpdatesTab({ apps }: { apps: MoleListAppsEntry[] }) {
 
   return (
     <div className="h-full flex flex-col">
-      {/* header（对齐 Burrow header；mx-24 补偿根容器移除的留白，px-52 维持原视觉缩进） */}
+      {/* header（mx-24 补偿根容器移除的留白，px-52 维持原视觉缩进） */}
       <div className="flex items-center gap-2 mr-[24px] px-[24px] py-2 shrink-0">
         {checked || brewItems.length > 0 ? (
           <span className="text-xs text-white/85">
@@ -305,7 +354,7 @@ export function UpdatesTab({ apps }: { apps: MoleListAppsEntry[] }) {
       {/* hairline（mx-24 补偿根容器移除的留白） */}
       <div className="shrink-0 h-px bg-white/[0.12] mx-[24px]" />
 
-      {/* 列表（对齐 Burrow list 分区顺序；mole-scroll 贴窗口边缘，px-24 wrapper 补偿留白） */}
+      {/* 列表（mole-scroll 贴窗口边缘，px-24 wrapper 补偿留白） */}
       <SimpleBar className="mole-scroll flex-1 min-h-0" style={{ maxHeight: '100%' }}>
         <div className="px-[24px] pb-2">
         {/* 空态：checked 后无任何更新（对齐 "Everything's up to date"） */}
@@ -324,44 +373,22 @@ export function UpdatesTab({ apps }: { apps: MoleListAppsEntry[] }) {
             <SectionHeader title={t('uninstall.updates.section.available')} count={available.length + brewItems.length} />
             {available.map((app) => {
               const r = checkResults.get(app.path)
-              const isNewer = r?.latest_version
-                ? isVersionNewer(r.latest_version, app.version)
-                : false
+              const latest = r?.latest_version ?? undefined
+              const isNewer = latest ? isVersionNewer(latest, app.version) : false
               return (
-                <div key={app.path} className="flex items-center gap-3 px-[24px] py-2">
-                  <AppIcon name={app.display_name || app.name} path={app.path} />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[13px] font-medium text-[var(--text-primary)] truncate">
-                        {app.display_name || app.name}
-                      </span>
-                      {sourceChip(app.update_source ?? '')}
-                    </div>
-                    <div className="flex items-center gap-1 text-[10px] font-mono text-white/60">
-                      {isNewer ? (
-                        <span>
-                          v{app.version} → v{r?.latest_version}
-                        </span>
-                      ) : (
-                        <span>v{app.version}</span>
-                      )}
-                      <span>·</span>
-                      <span>{app.size_human}</span>
-                      <span>·</span>
-                      <span style={{ color: isStale(app.last_used_epoch) ? '#fbbf24' : undefined }}>
-                        {app.last_used_relative}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="shrink-0">
+                <AppUpdateRow
+                  key={app.path}
+                  app={app}
+                  latestVersion={isNewer ? latest : undefined}
+                  action={
                     <button
                       onClick={() => handleUpdate(app)}
                       className="apps-primary-btn text-[11px] font-semibold px-3 py-1 rounded-full"
                     >
                       {t('uninstall.updates.update')}
                     </button>
-                  </div>
-                </div>
+                  }
+                />
               )
             })}
             {brewItems.map((item) => {
@@ -413,30 +440,9 @@ export function UpdatesTab({ apps }: { apps: MoleListAppsEntry[] }) {
         {checked && upToDate.length > 0 && (
           <>
             <SectionHeader title={t('uninstall.updates.section.upToDate')} count={upToDate.length} />
-            {upToDate.map((app) => {
-              return (
-                <div key={app.path} className="flex items-center gap-3 px-[24px] py-2">
-                  <AppIcon name={app.display_name || app.name} path={app.path} />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[13px] font-medium text-[var(--text-primary)] truncate">
-                        {app.display_name || app.name}
-                      </span>
-                      {sourceChip(app.update_source ?? '')}
-                    </div>
-                    <div className="flex items-center gap-1 text-[10px] font-mono text-white/60">
-                      <span>v{app.version}</span>
-                      <span>·</span>
-                      <span>{app.size_human}</span>
-                      <span>·</span>
-                      <span style={{ color: isStale(app.last_used_epoch) ? '#fbbf24' : undefined }}>
-                        {app.last_used_relative}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
+            {upToDate.map((app) => (
+              <AppUpdateRow key={app.path} app={app} />
+            ))}
           </>
         )}
 
@@ -447,26 +453,7 @@ export function UpdatesTab({ apps }: { apps: MoleListAppsEntry[] }) {
             {[...mechanismApps]
               .sort((a, b) => a.name.localeCompare(b.name))
               .map((app) => (
-                <div key={app.path} className="flex items-center gap-3 px-[24px] py-2">
-                  <AppIcon name={app.display_name || app.name} path={app.path} />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[13px] font-medium text-[var(--text-primary)] truncate">
-                        {app.display_name || app.name}
-                      </span>
-                      {sourceChip(app.update_source ?? '')}
-                    </div>
-                    <div className="flex items-center gap-1 text-[10px] font-mono text-white/60">
-                      <span>v{app.version}</span>
-                      <span>·</span>
-                      <span>{app.size_human}</span>
-                      <span>·</span>
-                      <span style={{ color: isStale(app.last_used_epoch) ? '#fbbf24' : undefined }}>
-                        {app.last_used_relative}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+                <AppUpdateRow key={app.path} app={app} />
               ))}
           </>
         )}
@@ -481,19 +468,7 @@ export function UpdatesTab({ apps }: { apps: MoleListAppsEntry[] }) {
             {[...uncheckableApps]
               .sort((a, b) => a.name.localeCompare(b.name))
               .map((app) => (
-                <div key={app.path} className="flex items-center gap-3 px-[24px] py-2">
-                  <AppIcon name={app.display_name || app.name} path={app.path} />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[13px] font-medium text-[var(--text-primary)] truncate">
-                        {app.display_name || app.name}
-                      </span>
-                    </div>
-                    <div className="text-[10px] font-mono text-white/60">
-                      v{app.version} · {app.size_human}
-                    </div>
-                  </div>
-                </div>
+                <AppUpdateRow key={app.path} app={app} compact />
               ))}
           </>
           )}

@@ -138,7 +138,7 @@ fn probe_dbx_collect_app_details() {
 
 /// 端到端验证前端契约：mole_uninstall dry_run 必须把 4 条 DBX 残留全部返回，
 /// 包括含空格的 Application Support 路径（du 解析修复）与 0 字节 Logs 目录
-/// （size==0 过滤移除），对齐 Burrow。
+/// （size==0 过滤移除）。
 #[test]
 fn probe_dbx_dry_run_related_files() {
     let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
@@ -185,7 +185,7 @@ fn probe_dbx_dry_run_related_files() {
     assert_eq!(
         related.len(),
         4,
-        "[probe] DBX 残留应恰为 4 条（与 Burrow 对齐），实际 {:?}",
+        "[probe] DBX 残留应恰为 4 条，实际 {:?}",
         paths
     );
 }

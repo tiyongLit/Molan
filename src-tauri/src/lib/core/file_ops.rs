@@ -3,7 +3,7 @@ use std::path::Path;
 use std::process::Command;
 
 use super::app_protection::{get_global_whitelist, is_path_whitelisted, should_protect_path};
-use super::base::{bytes_human_from_kb, get_epoch_seconds, get_path_size_kb, home_dir, run_cmd};
+use super::base::{bytes_to_human_kb, get_epoch_seconds, get_path_size_kb, home_dir, run_cmd};
 use super::dry_run_registry::dry_run_register_cleanup_target;
 use super::log::{debug_file_action, debug_log, log_error, log_operation, oplog_enabled};
 use super::sudo::sudo_output;
@@ -379,7 +379,7 @@ pub fn safe_remove_ex(path: &str, silent: bool, precomputed_size_kb: Option<u64>
             if Path::new(path).exists() {
                 let size_kb = precomputed_size_kb.unwrap_or_else(|| get_path_size_kb(path));
                 if size_kb > 0 {
-                    file_size = bytes_human_from_kb(size_kb);
+                    file_size = bytes_to_human_kb(size_kb);
                 }
                 if !Path::new(path).is_symlink()
                     && (Path::new(path).is_file() || Path::new(path).is_dir())
@@ -420,13 +420,13 @@ pub fn safe_remove_ex(path: &str, silent: bool, precomputed_size_kb: Option<u64>
         0
     };
     let size_human = if size_kb > 0 {
-        bytes_human_from_kb(size_kb)
+        bytes_to_human_kb(size_kb)
     } else {
         String::new()
     };
 
     // 用户态删除模式选择：
-    //   - MOLE_PERMANENT_DELETE=1 → 直接永久删除（对齐柠檬 removeItemAtPath / Burrow --permanent）
+    //   - MOLE_PERMANENT_DELETE=1 → 直接永久删除（对齐柠檬 removeItemAtPath 语义）
     //   - 否则 → 优先走废纸篓（trash crate + NSFileManager）
     // safe_remove_ex 是非 sudo 原语（sudo 走 safe_sudo_remove），此处即用户态清理路径。
     let permanent = std::env::var("MOLE_PERMANENT_DELETE").unwrap_or_default() == "1";
@@ -640,7 +640,7 @@ pub fn safe_sudo_remove(path: &str, precomputed_size_kb: Option<u64>) -> i32 {
                     .unwrap_or(0)
             });
             if size_kb > 0 {
-                file_size = bytes_human_from_kb(size_kb);
+                file_size = bytes_to_human_kb(size_kb);
             }
             let mtime =
                 String::from_utf8_lossy(&sudo_output(&["/usr/bin/stat", "-f%m", path]).stdout)
@@ -686,7 +686,7 @@ pub fn safe_sudo_remove(path: &str, precomputed_size_kb: Option<u64>) -> i32 {
         0
     };
     let size_human = if size_kb > 0 {
-        bytes_human_from_kb(size_kb)
+        bytes_to_human_kb(size_kb)
     } else {
         String::new()
     };

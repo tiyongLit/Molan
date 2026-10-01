@@ -131,9 +131,7 @@ pub fn collect_disks() -> Vec<DiskStatus> {
                             .plist
                             .as_ref()
                             .and_then(|p| p.container_free)
-                            .or_else(|| {
-                                apfs_container_free(&mount)
-                            });
+                            .or_else(|| apfs_container_free(&mount));
                         apfs_container_correction(corrected_total, used, free, container_free)
                     }
                 };

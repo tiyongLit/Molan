@@ -1,5 +1,4 @@
 use std::path::Path;
-use std::process::Command;
 
 use super::base::home_dir;
 use super::timeout::run_with_timeout_capture_rc;
@@ -105,13 +104,9 @@ fn filesystem_scan_finds_app(bundle_id: &str) -> bool {
                 continue;
             }
 
-            let app_bundle = Command::new("plutil")
-                .args(["-extract", "CFBundleIdentifier", "raw"])
-                .arg(&info_plist)
-                .output()
-                .ok()
-                .filter(|o| o.status.success())
-                .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+            // 纯 Rust 解析（原 `plutil -extract ... raw` 子进程的原生替代）。
+            let app_bundle = super::bundle_id_anchor::read_bundle_id_from_plist(&info_plist)
+                .map(|s| s.trim().to_string())
                 .unwrap_or_default();
 
             if app_bundle == bundle_id {

@@ -25,7 +25,7 @@
     "opener:default",
     {
       "identifier": "opener:allow-open-url",
-      "allow": [{ "url": "x-apple.systempreferences:*" }]
+      "allow": [{ "url": "x-apple.systempreferences:*" }, { "url": "https://github.com/tiyongLit/MoleStudio*" }]
     },
     "dialog:allow-open",
     "updater:default",

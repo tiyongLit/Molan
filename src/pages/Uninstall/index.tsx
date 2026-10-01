@@ -16,7 +16,8 @@ import { nativeIconRegistry } from '@/utils/nativeIconRegistry'
 import { AvatarStack } from '@/components/business/Apps/AvatarStack'
 import { useSettings } from '@/pages/Settings/useSettings'
 import { EVT_RESIDUAL_DETECTED } from '@/constants/tauri-events'
-import type { MoleListAppsEntry, StartupFilter } from '@/types/mole'
+import { useResidual } from '@/layout/ResidualContext'
+import type { MoleListAppsEntry, ResidualDetectedPayload, StartupFilter } from '@/types/mole'
 import { useI18n } from '@/i18n'
 import type { TranslationKey } from '@/i18n'
 import './style.scss'
@@ -54,7 +55,7 @@ const SORT_DEFAULT_ASC: Record<SortField, boolean> = {
 /**
  * Apps 页壳：顶部 Segmented（卸载 / 更新 / 启动项）+ 右侧工具栏 + 底部操作栏
  *
- * 布局对齐 Burrow SoftwareView：
+ * 布局：
  *   ① 顶部：Segmented 胶囊分段（左） + 随 tab 变化的右侧工具栏（排序 chips / 刷新 / 搜索）
  *   ② hairline 分隔线
  *   ③ 内容区（随 tab 切换）
@@ -82,15 +83,23 @@ export function ShellUninstall() {
   const [historyVisible, setHistoryVisible] = useState(false)
 
   // ── 卸载残留自动检测 ──
-  const [residualApp, setResidualApp] = useState<string | null>(null)
+  // 兜底通道：通知不可用（dev / 未授权 / 发送失败）时后端发事件，页面内提示条承接；
+  // 主通道（系统通知点击）由 layout 的 ResidualContext 消费，二者共用定向目标。
+  const [residualApp, setResidualApp] = useState<ResidualDetectedPayload | null>(null)
+  const { residualTarget, setResidualTarget } = useResidual()
 
   useEffect(() => {
     if (!settings.uninstall.autoDetectResidual) return
-    const unlisten = listen<{ appName: string }>(EVT_RESIDUAL_DETECTED, (event) => {
-      setResidualApp(event.payload.appName)
+    const unlisten = listen<ResidualDetectedPayload>(EVT_RESIDUAL_DETECTED, (event) => {
+      setResidualApp(event.payload)
     })
     return () => { unlisten.then(fn => fn()) }
   }, [settings.uninstall.autoDetectResidual])
+
+  // 定向目标就绪（通知点击 / 提示条「扫描残留」）→ 切到孤儿 tab，定向扫描由 OrphansTab 接管
+  useEffect(() => {
+    if (residualTarget) setActiveTab('orphans')
+  }, [residualTarget])
 
   const loadApps = useCallback(() => {
     setLoading(true)
@@ -211,7 +220,7 @@ export function ShellUninstall() {
         })
     if (!confirmed) return
 
-    // 前置授权（对齐 Clean/Optimize 与 Burrow「入口先弹认证面板」）：
+    // 前置授权（对齐 Clean/Optimize「入口先弹认证面板」）：
     // 卸载 /Applications 下的 app 及 root 残留需要管理员权限，在 apply 前
     // 弹原生认证面板（幂等，会话内免密），避免 batch 执行中途突然弹窗。
     // 用户取消 → 不开始卸载，静默退出；失败 → toast 提示并退出。
@@ -457,10 +466,23 @@ export function ShellUninstall() {
         <div className="shrink-0 flex items-center gap-2 mx-[24px] mt-2 rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-2">
           <Trash2 size={14} className="shrink-0 text-amber-400" />
           <span className="text-[11px] text-amber-200/90 flex-1 min-w-0 truncate">
-            {t('uninstall.residual.detected', { app: residualApp })}
+            {t('uninstall.residual.detected', { app: residualApp.appName })}
           </span>
           <button
-            onClick={() => { setActiveTab('orphans'); setResidualApp(null) }}
+            onClick={() => {
+              // 有 bundleId → 写入定向目标，走通知同款链路（自动切 tab + 定向扫描）；
+              // 无 bundleId → 保持原行为仅切 tab
+              if (residualApp.bundleId) {
+                setResidualTarget({
+                  appName: residualApp.appName,
+                  bundleId: residualApp.bundleId,
+                  detectedAt: Math.floor(Date.now() / 1000),
+                })
+              } else {
+                setActiveTab('orphans')
+              }
+              setResidualApp(null)
+            }}
             className="shrink-0 rounded px-2 py-0.5 text-[10px] font-medium text-amber-300 bg-amber-500/15 hover:bg-amber-500/25 transition-colors"
           >
             {t('uninstall.residual.scan')}

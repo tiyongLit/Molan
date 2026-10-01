@@ -1,5 +1,4 @@
 //! 启动项模块探针测试：plist 解析 / 目录扫描 / BTM 合并 / launchctl 冒烟。
-//! 对齐 Burrow StartupInventory / LoginItemsReader 语义。
 
 use mole_lib::startup::{
     control,

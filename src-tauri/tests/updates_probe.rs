@@ -1,5 +1,5 @@
 //! 更新（Updates）模块探针测试：绕开 Tauri IPC / 前端，直接对 lib/updates 纯函数
-//! 做行为验证（对齐 Burrow 语义，见 controllers/updates.md §6 对齐清单）。
+//! 做行为验证（语义基线见 controllers/updates.md §6 对齐清单）。
 //! 跑法：cargo test --test updates_probe -- --nocapture
 
 use mole_lib::updates::appcast::parse_appcast;
@@ -8,7 +8,7 @@ use mole_lib::updates::detect::{UpdateSource, detect_update_source, feed_url};
 use mole_lib::updates::itunes::parse_itunes_lookup;
 use mole_lib::updates::version::{is_version_newer, os_is_installable};
 
-/// 对齐 Burrow `UpdateCheck.isNewer`：去一个前导 v/V、非数字段归 0、缺段补 0、全等 false。
+/// 版本比较：去一个前导 v/V、非数字段归 0、缺段补 0、全等 false。
 #[test]
 fn probe_version_is_newer() {
     let cases: Vec<(&str, &str, bool)> = vec![
@@ -35,7 +35,7 @@ fn probe_version_is_newer() {
     }
 }
 
-/// 对齐 Burrow `OSUpdateGate.isInstallable`：minimum 空 → true；running >= minimum。
+/// 系统兼容门：minimum 空 → true；running >= minimum。
 #[test]
 fn probe_os_is_installable() {
     assert!(os_is_installable(None, "26.5.1"));
@@ -48,7 +48,7 @@ fn probe_os_is_installable() {
     assert!(!os_is_installable(Some("27"), "26.5.1"));
 }
 
-/// 对齐 Burrow `parseAppcast`：收集所有 enclosure 版本取 isNewer 最大值；
+/// appcast 解析：收集所有 enclosure 版本取版本比较最大值；
 /// shortVersionString 优先于 version。
 #[test]
 fn probe_appcast_parse() {
@@ -74,7 +74,7 @@ fn probe_appcast_parse() {
     let xml_v = r#"<rss><channel><item><enclosure sparkle:version="1.9" length="1"/></item></channel></rss>"#;
     assert_eq!(parse_appcast(xml_v).as_deref(), Some("1.9"));
 
-    // 解析中途出错但已收集到版本 → 仍返回（Burrow 宽容语义）
+    // 解析中途出错但已收集到版本 → 仍返回（宽容语义）
     let xml_broken = r#"<rss><channel><item><enclosure sparkle:version="2.5" length="1"/></item></channel><item><broken"#;
     assert_eq!(parse_appcast(xml_broken).as_deref(), Some("2.5"));
 
@@ -82,7 +82,7 @@ fn probe_appcast_parse() {
     assert_eq!(parse_appcast("<rss><channel></channel></rss>"), None);
 }
 
-/// 对齐 Burrow `parseITunesLookup`：results 第一项；resultCount=0 → None。
+/// iTunes lookup 解析：results 第一项；resultCount=0 → None。
 #[test]
 fn probe_itunes_parse() {
     let json = r#"{
@@ -108,7 +108,7 @@ fn probe_itunes_parse() {
     assert!(parse_itunes_lookup("not json").is_none());
 }
 
-/// 对齐 Burrow `UpdateSources.detect`：MAS receipt > SUFeedURL > Electron Framework。
+/// 更新源检测：MAS receipt > SUFeedURL > Electron Framework。
 #[test]
 fn probe_detect_sources() {
     let dir = tempfile::tempdir().expect("tempdir");
@@ -117,7 +117,7 @@ fn probe_detect_sources() {
     let mas_app = root.join("MASApp.app");
     std::fs::create_dir_all(mas_app.join("Contents/_MASReceipt")).unwrap();
     std::fs::write(mas_app.join("Contents/_MASReceipt/receipt"), b"x").unwrap();
-    // 同时埋 SUFeedURL：receipt 优先（Burrow 注释「Receipt beats feed」）
+    // 同时埋 SUFeedURL：receipt 优先（Receipt beats feed）
     write_plist_sufeed(&mas_app, "https://example.com/appcast.xml");
     assert_eq!(
         detect_update_source(mas_app.to_str().unwrap()),
@@ -166,7 +166,7 @@ fn write_plist_sufeed(app_dir: &std::path::Path, url: &str) {
     std::fs::write(app_dir.join("Contents/Info.plist"), plist).unwrap();
 }
 
-/// 对齐 Burrow `parseOutdated`：installed 取 installed_versions **第一项**，缺省 "?"。
+/// brew outdated 解析：installed 取 installed_versions **第一项**，缺省 "?"。
 #[test]
 fn probe_parse_outdated() {
     let json = r#"{
@@ -194,7 +194,7 @@ fn probe_parse_outdated() {
     assert!(parse_outdated("{}").is_empty());
 }
 
-/// 对齐 Burrow `BrewProgress.phrase`：`==> ` 前缀行取短语，其余噪声。
+/// 进度短语提取：`==> ` 前缀行取短语，其余噪声。
 #[test]
 fn probe_brew_progress_phrase() {
     assert_eq!(

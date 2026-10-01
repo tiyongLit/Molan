@@ -26,16 +26,24 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             enabled: true,
-            threshold: 1024,
+            threshold: 4096,
         }
     }
 }
 impl Config {
     fn validate(&self) -> Result<(), String> {
-        if [1, 10, 50, 512, 1024, 2048].contains(&self.threshold) {
+        if [512, 1024, 2048, 4096, 10240, 20480].contains(&self.threshold) {
             Ok(())
         } else {
             Err("TRASH_CONFIG_INVALID".into())
+        }
+    }
+    /// 旧版小容量阈值（1/10/50 MB）已从产品侧下架（现档位 512MB–20GB，默认 4GB）；
+    /// 读路径把存量旧值归一化为默认 4096，避免升级后被误判为损坏配置；
+    /// 不写回磁盘，待用户下次在设置页保存时自然修复。
+    fn migrate_legacy_threshold(&mut self) {
+        if [1, 10, 50].contains(&self.threshold) {
+            self.threshold = 4096;
         }
     }
 }
@@ -109,7 +117,7 @@ impl Default for Inner {
                 revision: 1,
                 state: Phase::Hidden,
                 enabled: false,
-                threshold_mb: 1024,
+                threshold_mb: 4096,
                 size_metric: "logical",
                 snoozed_until: 0,
                 error_code: None,
@@ -397,7 +405,10 @@ fn parse_settings(value: &serde_json::Value) -> Result<(Config, i64), String> {
     let object = value.as_object().ok_or("TRASH_CONFIG_INVALID")?;
     let config = match object.get("trashReminder") {
         Some(value) => {
-            serde_json::from_value::<Config>(value.clone()).map_err(|_| "TRASH_CONFIG_INVALID")?
+            let mut config = serde_json::from_value::<Config>(value.clone())
+                .map_err(|_| "TRASH_CONFIG_INVALID")?;
+            config.migrate_legacy_threshold();
+            config
         }
         None => Config::default(),
     };
@@ -601,7 +612,7 @@ pub fn start_trash_watch(app: AppHandle) {
 }
 
 fn schedule(app: AppHandle, svc: Arc<Service>, rx: Receiver<()>) {
-    let Some(path) = dirs::home_dir().map(|p| p.join(".Trash")) else {
+    let Some(path) = crate::core::base::home_dir_opt().map(|p| p.join(".Trash")) else {
         return;
     };
     let mut heartbeat = Instant::now();
@@ -792,7 +803,7 @@ mod tests {
         ] {
             assert!(parse_settings(&value).is_err());
         }
-        for threshold in [1, 10, 50, 512, 1024, 2048] {
+        for threshold in [512, 1024, 2048, 4096, 10240, 20480] {
             assert!(
                 Config {
                     enabled: true,
@@ -801,6 +812,22 @@ mod tests {
                 .validate()
                 .is_ok()
             );
+        }
+        // 旧版小容量阈值（1/10/50 MB）已下架：写入校验拒绝，读路径归一化为默认 4096
+        for threshold in [1, 10, 50] {
+            assert!(
+                Config {
+                    enabled: true,
+                    threshold
+                }
+                .validate()
+                .is_err()
+            );
+            let (config, _) = parse_settings(&serde_json::json!({
+                "trashReminder": {"enabled": true, "threshold": threshold}
+            }))
+            .unwrap();
+            assert_eq!(config.threshold, 4096);
         }
     }
     #[test]

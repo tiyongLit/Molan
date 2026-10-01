@@ -668,26 +668,10 @@ fn read_bundle_executable(app_path: &str) -> String {
 }
 
 fn read_bundle_identifier(app_path: &str) -> String {
-    let plist = format!("{app_path}/Contents/Info.plist");
-    if !Path::new(&plist).is_file() {
-        return String::new();
-    }
-    let v = Command::new("plutil")
-        .args(["-extract", "CFBundleIdentifier", "raw", &plist])
-        .output()
-        .ok()
-        .filter(|o| o.status.success())
-        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
-        .unwrap_or_default();
-    if !v.is_empty() {
-        return v;
-    }
-    Command::new("defaults")
-        .args(["read", &plist, "CFBundleIdentifier"])
-        .output()
-        .ok()
-        .filter(|o| o.status.success())
-        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+    // 原 plutil → defaults 双子进程回退，合并为 plist crate 原生解析。
+    crate::core::bundle_id_anchor::read_bundle_id_of_app(Path::new(app_path))
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
         .unwrap_or_default()
 }
 
@@ -695,11 +679,7 @@ fn pgrep_exact(name: &str) -> bool {
     if name.is_empty() {
         return false;
     }
-    Command::new("pgrep")
-        .args(["-x", name])
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false)
+    crate::core::base::pgrep_x(name)
 }
 
 fn current_user() -> String {
@@ -884,22 +864,16 @@ enum LiveBundleId {
 }
 
 fn read_live_bundle_id(info: &str) -> LiveBundleId {
-    if let Ok(out) = Command::new("plutil")
-        .args(["-extract", "CFBundleIdentifier", "raw", info])
-        .output()
+    if let Some(id) =
+        crate::core::bundle_id_anchor::plist_string_key(Path::new(info), "CFBundleIdentifier")
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty() && s != "(null)")
     {
-        if out.status.success() {
-            let id = String::from_utf8_lossy(&out.stdout).trim().to_string();
-            if !id.is_empty() && id != "(null)" {
-                return LiveBundleId::Present(id);
-            }
-        }
+        return LiveBundleId::Present(id);
     }
-    // 无 id 或提取失败 → 用 lint 区分「能解析但无 id」与「损坏」。
-    if let Ok(lint) = Command::new("plutil").args(["-lint", info]).output() {
-        if lint.status.success() {
-            return LiveBundleId::Absent;
-        }
+    // 无 id 或提取失败 → 用解析成败区分「能解析但无 id」与「损坏」（原 plutil -lint）。
+    if plist::Value::from_file(info).is_ok() {
+        return LiveBundleId::Absent;
     }
     LiveBundleId::Unreadable
 }
@@ -1247,16 +1221,11 @@ fn read_display_name_light(app_path: &str, base_name: &str) -> String {
         return base_name.to_string();
     }
     for key in ["CFBundleDisplayName", "CFBundleName"] {
-        if let Ok(out) = Command::new("plutil")
-            .args(["-extract", key, "raw", "-o", "-", &plist])
-            .output()
+        if let Some(v) = crate::core::bundle_id_anchor::plist_string_key(Path::new(&plist), key)
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty() && s != "(null)")
         {
-            if out.status.success() {
-                let v = String::from_utf8_lossy(&out.stdout).trim().to_string();
-                if !v.is_empty() && v != "(null)" {
-                    return v;
-                }
-            }
+            return v;
         }
     }
     base_name.to_string()
@@ -1945,12 +1914,9 @@ fn check_btm_leftovers(success_paths: &[String], details: &[AppDetail]) -> Vec<S
 }
 
 fn read_bundle_identifier_simple(plist: &str) -> String {
-    Command::new("plutil")
-        .args(["-extract", "CFBundleIdentifier", "raw", plist])
-        .output()
-        .ok()
-        .filter(|o| o.status.success())
-        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+    crate::core::bundle_id_anchor::plist_string_key(Path::new(plist), "CFBundleIdentifier")
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
         .unwrap_or_default()
 }
 

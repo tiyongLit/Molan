@@ -22,6 +22,7 @@ use crate::core::app_protection::{
 use crate::core::base::{
     MOLE_MAX_DS_STORE_FILES, MOLE_MAX_ORPHAN_ITERATIONS, MOLE_ORPHAN_AGE_DAYS, bytes_to_human,
     get_epoch_seconds, get_file_mtime, get_file_size, get_path_size_kb, home_dir, note_activity,
+    pgrep_x,
 };
 use crate::core::bundle_resolver::bundle_has_installed_app;
 use crate::core::dry_run_registry::dry_run_register_cleanup_target;
@@ -273,16 +274,9 @@ fn scan_installed_apps_uncached() -> Vec<String> {
 }
 
 fn read_bundle_id(app_path: &str) -> Option<String> {
-    let plist = format!("{app_path}/Contents/Info.plist");
-    if !Path::new(&plist).is_file() {
-        return None;
-    }
-    Command::new("/usr/libexec/PlistBuddy")
-        .args(["-c", "Print :CFBundleIdentifier", &plist])
-        .output()
-        .ok()
-        .filter(|o| o.status.success())
-        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+    // 原 PlistBuddy `Print :CFBundleIdentifier` 的原生替代。
+    crate::core::bundle_id_anchor::read_bundle_id_of_app(Path::new(app_path))
+        .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty() && s != "missing value")
 }
 
@@ -385,11 +379,7 @@ pub fn is_claude_vm_bundle_orphaned(
         return false;
     }
     // Claude 进程在跑就不算 orphan
-    let running = Command::new("pgrep")
-        .args(["-x", "Claude"])
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false);
+    let running = pgrep_x("Claude");
     if running {
         return false;
     }

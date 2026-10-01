@@ -9,7 +9,7 @@ import { computeGroupStatusBySection, type ScanGroupStatus } from '../scan-statu
  * 单个分组的扫描占位行。
  * 渐进式扫描下，index.tsx 逐组混合渲染：已到达条目的分组走 CategoryRow（真列表），
  * 尚未到达的分组走本占位行，显示「正在扫描垃圾... / 等待扫描」。
- * px-[24px] 与 CategoryRow 标题行对齐（外层 CleanLayout 已 pl-24，合计 48px）。
+ * px-[24px] 与 CategoryRow 标题行对齐（外层 ScanPageLayout 已 pl-24，合计 48px）。
  */
 export function ScanningGroupRow({
   group,
@@ -52,7 +52,7 @@ export interface ScanningSkeletonListProps {
  * 扫描阶段骨架列表（全部占位）：铺开所有分类标题，按 section 完成情况显示状态。
  * 渐进式扫描下，尚无任何分类到达时作为整体占位；有分类到达后 index.tsx 改走逐组混合渲染。
  *
- * 仅承担列表内容职责；头部与页面壳由 CleanLayout 提供。
+ * 仅承担列表内容职责；头部与页面壳由 ScanPageLayout 提供。
  */
 export default function ScanningSkeletonList({ completedSections }: ScanningSkeletonListProps) {
   return (

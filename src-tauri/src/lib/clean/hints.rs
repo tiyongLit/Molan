@@ -665,14 +665,12 @@ fn dotdir_has_owning_gui_app(name: &str) -> bool {
                             for key in
                                 &["CFBundleIdentifier", "CFBundleName", "CFBundleDisplayName"]
                             {
-                                if let Ok(val) = std::process::Command::new("plutil")
-                                    .args(["-extract", key, "raw", &info.to_string_lossy()])
-                                    .output()
+                                if let Some(v) =
+                                    crate::core::bundle_id_anchor::plist_string_key(&info, key)
+                                        .map(|s| s.trim().to_string())
+                                        .filter(|s| !s.is_empty() && s != "(null)")
                                 {
-                                    let v = String::from_utf8_lossy(&val.stdout).trim().to_string();
-                                    if !v.is_empty() && v != "(null)" {
-                                        tokens.push(v);
-                                    }
+                                    tokens.push(v);
                                 }
                             }
                         }

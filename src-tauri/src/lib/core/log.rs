@@ -1,6 +1,6 @@
 use super::base::{
-    ICON_ERROR, ICON_SUCCESS, ICON_WARNING, bytes_to_human, ensure_user_file, get_epoch_seconds,
-    get_file_size, home_dir,
+    ICON_ERROR, ICON_SUCCESS, ICON_WARNING, bytes_to_human, debug_enabled, ensure_user_file,
+    get_epoch_seconds, get_file_size, home_dir,
 };
 use std::path::Path;
 use std::sync::OnceLock;
@@ -11,10 +11,6 @@ pub const OPLOG_MAX_SIZE_DEFAULT: u64 = 5_242_880;
 
 static LOG_ROTATED: OnceLock<bool> = OnceLock::new();
 static SYS_INFO_LOGGED: AtomicBool = AtomicBool::new(false);
-
-fn debug_enabled() -> bool {
-    std::env::var("MO_DEBUG").unwrap_or_default() == "1"
-}
 
 /// 同时把一行写到主日志和(MO_DEBUG=1 时)调试日志,对齐 SH 第 101-103/112-114/123-125/134-136 行
 fn append_main_with_debug_mirror(line: &str) {

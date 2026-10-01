@@ -14,8 +14,8 @@ use std::time::Instant;
 
 // ── macOS sysctl 绑定：NET_RT_IFLIST2 接口类型探测 ─────────────
 //
-// 对齐 Lemon Cleaner CmcGetNetPacketsInfo() 和 Burrow IOKitHardware.netBytes()
-// 的底层数据来源。一次 sysctl 调用同时获得接口名、硬件类型、64 位字节计数器，
+// 对齐 Lemon Cleaner CmcGetNetPacketsInfo() 的底层数据来源。
+// 一次 sysctl 调用同时获得接口名、硬件类型、64 位字节计数器，
 // 避免 32 位 if_data 每 4 GiB 回绕的问题。
 //
 // 使用 if_msghdr2（64 位计数器），而非 if_msghdr（32 位）。
@@ -120,7 +120,7 @@ pub const NETWORK_HISTORY_SIZE: usize = 120;
 
 /// 对齐 Mole CLI `minNetworkSampleInterval = 100 * time.Millisecond`：
 /// 速率差分的最小时间间隔，防止 dt → 0 导致速率爆炸。
-/// Burrow `RateTracker` 用 50ms，CLI 用 100ms，取 CLI 值（更保守）。
+/// （另有用 50ms 的实现，此处取 CLI 的 100ms，更保守。）
 const MIN_SAMPLE_INTERVAL_SECS: f64 = 0.1;
 
 /// 陈旧阈值：距上次采集超过此值时，视为首次采集。
@@ -132,7 +132,7 @@ const STALE_THRESHOLD_SECS: f64 = 10.0;
 
 /// 噪声接口前缀：仅作为硬件类型过滤（`get_if_info_list`）的**兜底策略**——
 /// sysctl 失败时回退到此名单，或物理白名单结果为空时排除虚拟接口。
-/// 对齐 Mole CLI `isNoiseInterfaceName()` 和 Burrow `IOKitHardware.netBytes()`。
+/// 对齐 Mole CLI `isNoiseInterfaceName()`。
 const NOISE_PREFIXES: &[&str] = &[
     "lo", "awdl", "utun", "llw", "bridge", "gif", "stf", "xhc", "anpi", "ap",
 ];
@@ -504,7 +504,7 @@ fn get_if_info_list() -> Option<HashMap<String, (u8, u64, u64)>> {
 /// 判断接口是否为物理网卡。
 ///
 /// - sysctl 可用（`if_types.is_some()`）→ 硬件类型白名单（柠檬 `IFT_ETHER` / `IFT_PPP` / `IFT_CELLULAR`）
-/// - sysctl 不可用 → 回退到前缀排除（Burrow / Mole CLI 同款 `NOISE_PREFIXES`）
+/// - sysctl 不可用 → 回退到前缀排除（Mole CLI 同款 `NOISE_PREFIXES`）
 fn is_physical_iface(if_types: &Option<HashMap<String, (u8, u64, u64)>>, name: &str) -> bool {
     match if_types {
         Some(map) => match map.get(name) {

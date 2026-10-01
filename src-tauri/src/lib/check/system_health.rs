@@ -11,6 +11,9 @@ use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
 use wait_timeout::ChildExt;
 
+#[cfg(target_os = "macos")]
+use super::macos_path_env;
+
 const RED: &str = "\x1b[0;31m";
 const GREEN: &str = "\x1b[0;32m";
 const BLUE: &str = "\x1b[1;34m";
@@ -185,7 +188,7 @@ fn resolve_user_home() -> PathBuf {
     std::env::var_os("HOME")
         .filter(|h| !h.is_empty())
         .map(PathBuf::from)
-        .or_else(dirs::home_dir)
+        .or_else(crate::core::base::home_dir_opt)
         .unwrap_or_else(|| PathBuf::from("/"))
 }
 
@@ -561,12 +564,6 @@ fn render_macos_update(mu: &MacOSUpdateLine) -> String {
             )
         }
     }
-}
-
-#[cfg(target_os = "macos")]
-fn macos_path_env() -> String {
-    let tail = std::env::var("PATH").unwrap_or_default();
-    format!("/usr/bin:/bin:/usr/sbin:/sbin:{tail}")
 }
 
 #[cfg(target_os = "macos")]

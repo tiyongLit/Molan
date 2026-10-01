@@ -43,7 +43,7 @@ pub fn mole_request_admin_session(prompt: Option<String>) -> Result<Value, Strin
     let authorized = sudo::is_admin_authorized();
     log::info!("[diagnose] mole_request_admin_session called, is_admin_authorized={authorized}");
     let _ = prompt;
-    // 三态返回（对齐 Burrow AuthCancel）：前端可按 status 展示不同文案。
+    // 三态返回：前端可按 status 展示不同文案。
     // authorized 字段保留布尔语义，旧调用方 `if (!res.authorized)` 仍可用。
     let result = sudo::ensure_admin_session_detailed();
     let status = match result {

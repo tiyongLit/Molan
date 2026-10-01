@@ -74,7 +74,6 @@ static SPINNER_APP: OnceLock<Mutex<Option<AppHandle>>> = OnceLock::new();
 static ANALYZE_APP: OnceLock<Mutex<Option<AppHandle>>> = OnceLock::new();
 /// 当前小节 spinner（与 shell 一致：先 stop 再 start 会结束上一段并推送 duration）。
 static SPINNER_PHASE: OnceLock<Mutex<Option<SpinnerPhase>>> = OnceLock::new();
-static IS_CHINESE_SYSTEM: OnceLock<bool> = OnceLock::new();
 
 struct SpinnerPhase {
     section: String,
@@ -139,6 +138,13 @@ pub fn home_dir() -> String {
     std::env::var("HOME").unwrap_or_default()
 }
 
+/// 用户主目录（Option 语义）：`$HOME` 非空时优先，为空/缺失时回退系统账户库查询。
+/// 与 `home_dir()`（纯 `$HOME` 字符串，可能为空串）区分使用；调用方需要失败分支时用此版，
+/// 是全项目解析主目录的规范入口（勿在业务代码直调 `dirs::home_dir`）。
+pub fn home_dir_opt() -> Option<PathBuf> {
+    dirs::home_dir()
+}
+
 pub fn run_cmd(bin: &str, args: &[&str]) -> Option<String> {
     let out = Command::new(bin).args(args).output().ok()?;
     if !out.status.success() {
@@ -147,16 +153,24 @@ pub fn run_cmd(bin: &str, args: &[&str]) -> Option<String> {
     Some(String::from_utf8_lossy(&out.stdout).trim().to_string())
 }
 
-pub fn run_cmd_with_stderr(bin: &str, args: &[&str]) -> Option<(String, String)> {
-    let out = Command::new(bin).args(args).output().ok()?;
-    let stdout = String::from_utf8_lossy(&out.stdout).trim().to_string();
-    let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
-    Some((stdout, stderr))
+/// `pgrep -x` 三态探针：`Some(true)`=进程存在（rc=0）/ `Some(false)`=无进程（rc=1）/
+/// `None`=探测异常（rc≥2 或无法执行）。调用方需要区分"无进程"与"探测失败"时用此版。
+pub fn pgrep_x_status(name: &str) -> Option<bool> {
+    match Command::new("pgrep").args(["-x", name]).output() {
+        Ok(o) if o.status.success() => Some(true),
+        Ok(o) if o.status.code() == Some(1) => Some(false),
+        _ => None,
+    }
 }
 
 pub fn pgrep_x(name: &str) -> bool {
+    pgrep_x_status(name).unwrap_or(false)
+}
+
+/// `pgrep -f`：按完整命令行模糊匹配进程。
+pub fn pgrep_f(pattern: &str) -> bool {
     Command::new("pgrep")
-        .args(["-x", name])
+        .args(["-f", pattern])
         .output()
         .map(|o| o.status.success())
         .unwrap_or(false)
@@ -410,53 +424,6 @@ fn chown_to_invoking_user(path: &str) {
         .status();
 }
 
-pub fn get_brand_name(name: &str) -> String {
-    let is_chinese = *IS_CHINESE_SYSTEM.get_or_init(|| {
-        std::process::Command::new("defaults")
-            .args(["read", "-g", "AppleLanguages"])
-            .output()
-            .ok()
-            .map(|o| String::from_utf8_lossy(&o.stdout).contains("zh"))
-            .unwrap_or(false)
-    });
-    if is_chinese {
-        match name {
-            "qiyimac" | "iQiyi" => "爱奇艺".to_string(),
-            "wechat" | "WeChat" => "微信".to_string(),
-            "QQ" => "QQ".to_string(),
-            "VooV Meeting" => "腾讯会议".to_string(),
-            "dingtalk" | "DingTalk" => "钉钉".to_string(),
-            "NeteaseMusic" | "NetEase Music" => "网易云音乐".to_string(),
-            "BaiduNetdisk" | "Baidu NetDisk" => "百度网盘".to_string(),
-            "alipay" | "Alipay" => "支付宝".to_string(),
-            "taobao" | "Taobao" => "淘宝".to_string(),
-            "futunn" | "Futu NiuNiu" => "富途牛牛".to_string(),
-            "tencent lemon" | "Tencent Lemon Cleaner" | "Tencent Lemon" => {
-                "腾讯柠檬清理".to_string()
-            }
-            _ => name.to_string(),
-        }
-    } else {
-        match name {
-            "qiyimac" | "爱奇艺" => "iQiyi".to_string(),
-            "wechat" | "微信" => "WeChat".to_string(),
-            "QQ" => "QQ".to_string(),
-            "腾讯会议" => "VooV Meeting".to_string(),
-            "dingtalk" | "钉钉" => "DingTalk".to_string(),
-            "网易云音乐" => "NetEase Music".to_string(),
-            "百度网盘" => "Baidu NetDisk".to_string(),
-            "alipay" | "支付宝" => "Alipay".to_string(),
-            "taobao" | "淘宝" => "Taobao".to_string(),
-            "富途牛牛" => "Futu NiuNiu".to_string(),
-            "腾讯柠檬清理" | "Tencent Lemon Cleaner" => "Tencent Lemon".to_string(),
-            "keynote" | "Keynote" => "Keynote".to_string(),
-            "pages" | "Pages" => "Pages".to_string(),
-            "numbers" | "Numbers" => "Numbers".to_string(),
-            _ => name.to_string(),
-        }
-    }
-}
-
 pub fn bytes_to_human(bytes: u64) -> String {
     let k = crate::constants::SIZE_BASE;
     let mb = k.saturating_mul(k);
@@ -474,16 +441,9 @@ pub fn bytes_to_human(bytes: u64) -> String {
     }
 }
 
+/// KB 数值 → 人类可读字符串（委托 [`bytes_to_human`]，内部 ×1024 换算）。
 pub fn bytes_to_human_kb(kb: u64) -> String {
     bytes_to_human(kb.saturating_mul(1024))
-}
-
-pub fn bytes_human_from_kb(kb: u64) -> String {
-    bytes_to_human(kb.saturating_mul(1024))
-}
-
-pub fn cleanup_result_color_kb() -> &'static str {
-    GREEN
 }
 
 /// iCloud「优化 Mac 存储」下未下载到本地的占位文件（dataless）标记位（`st_flags`）。
@@ -846,6 +806,11 @@ pub fn is_dry_run() -> bool {
         || std::env::var("DRY_RUN").unwrap_or_default() == "true"
 }
 
+/// `MO_DEBUG=1` 时输出调试信息（stderr 实时观察 + 调试日志文件）。
+pub fn debug_enabled() -> bool {
+    std::env::var("MO_DEBUG").unwrap_or_default() == "1"
+}
+
 fn get_export_list_path() -> std::path::PathBuf {
     let export_file = EXPORT_LIST_FILE.get_or_init(|| Mutex::new(String::new()));
     if let Ok(guard) = export_file.lock() {
@@ -1036,14 +1001,6 @@ pub fn stop_section_spinner() {
             let _ = std::io::stderr().flush();
         }
     }
-}
-
-pub fn safe_clear_lines(_lines: usize, _tty_device: Option<&str>) -> bool {
-    is_ansi_supported()
-}
-
-pub fn safe_clear_line(_tty_device: Option<&str>) -> bool {
-    is_ansi_supported()
 }
 
 pub fn update_progress_if_needed(

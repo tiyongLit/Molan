@@ -6,17 +6,17 @@
 //!     Silicon 上均实证有效；
 //!   - **Classic**（data_size = IOByteCount = u64，88 字节）：lemon-cleaner
 //!     CmcAppleSmc.m 的经典布局（部分 Intel 机型）；
-//!   - **Modern**（u32 dataSize + 显式 padding，84 字节）：Stats/Burrow 血统。
+//!   - **Modern**（u32 dataSize + 显式 padding，84 字节）：Stats 血统。
 //! 三种布局在内核侧的字段偏移完全不同，传错布局所有键读取都会被内核拒绝。
 //! 首次连接用 "#KEY" 逐个探测，命中即全局缓存（布局不随时间变化）。
 //!
 //! 其他对齐点：
 //!   - 检查 `output.result != 0`（SMC 协议级错误码，lemon-cleaner 同款）；
-//!   - 连接常驻复用（Burrow SMC.shared / lemon-cleaner g_connect 同款），
+//!   - 连接常驻复用（lemon-cleaner g_connect 同款），
 //!     不再每次读取新开连接；
 //!   - 读取 SMC 键不需要任何特权（只有*修改*风扇转速才需要特权 helper）。
 //!
-//! 传感器节流：SMC 读数变化慢，外层缓存 TTL 2.5s（Burrow #235 同款），
+//! 传感器节流：SMC 读数变化慢，外层缓存 TTL 2.5s，
 //! 避免气泡 1s/帧刷新时轰炸 IOKit。温度键按机型差异大，首次全键扫描
 //! 分类后缓存键列表（CPU: Te*/TC*）。
 
@@ -80,7 +80,7 @@ struct KeyDataInfoClassic {
     data_attributes: u8,
 }
 
-/// Modern 布局 keyInfo：u32 dataSize（Stats/Burrow 血统）。
+/// Modern 布局 keyInfo：u32 dataSize（Stats 血统）。
 #[repr(C)]
 #[derive(Clone, Copy, Default)]
 struct KeyDataInfoModern {
@@ -106,7 +106,7 @@ struct KeyDataClassic {
     bytes: [u8; 32],
 }
 
-/// Modern 布局（84 字节）：Stats/Burrow 同款，keyInfo 与 result 之间的
+/// Modern 布局（84 字节）：Stats 同款，keyInfo 与 result 之间的
 /// `padding` 是 load-bearing 的——删掉它内核结构错位，读取返回 0/垃圾。
 #[repr(C)]
 #[derive(Clone, Copy, Default)]
@@ -408,7 +408,7 @@ impl Smc {
         true
     }
 
-    /// 解码键值为 Double（覆盖 Burrow 读取的全部 SMC 数值类型）。
+    /// 解码键值为 Double（覆盖全部 SMC 数值类型）。
     fn double(&self, key: &str) -> Option<f64> {
         let (ty, b) = self.read_raw(key)?;
         match ty.as_str() {
@@ -433,7 +433,7 @@ impl Smc {
     }
 }
 
-// ── 连接常驻 + 布局探测（Burrow SMC.shared / lemon-cleaner g_connect 同款） ──
+// ── 连接常驻 + 布局探测（lemon-cleaner g_connect 同款） ──
 
 static SMC: Mutex<Option<Smc>> = Mutex::new(None);
 
@@ -473,9 +473,9 @@ fn with_smc<R>(f: impl FnOnce(&Smc) -> R) -> Option<R> {
     guard.as_ref().map(f)
 }
 
-// ── 传感器层（TTL 缓存 + 温度键发现缓存，Burrow SensorReader 同款） ──
+// ── 传感器层（TTL 缓存 + 温度键发现缓存） ──
 
-/// 传感器 TTL：读数变化慢，2.5s 刷新一次足够（Burrow #235）。
+/// 传感器 TTL：读数变化慢，2.5s 刷新一次足够。
 const SENSOR_TTL: Duration = Duration::from_millis(2500);
 
 struct SensorCache {
@@ -522,7 +522,7 @@ fn average(smc: &Smc, keys: &[String]) -> Option<f64> {
 }
 
 /// 一次性全键扫描：按前缀分类 die 温度传感器（CPU: Te/TC；
-/// 皮肤/电池/VRM/磁盘/GPU 传感器跳过）。Burrow discoverIfNeeded 同款。
+/// 皮肤/电池/VRM/磁盘/GPU 传感器跳过）。
 fn discover_temp_keys(smc: &Smc) -> TempKeys {
     let mut cpu = Vec::new();
     for key in smc.all_keys() {
@@ -566,9 +566,7 @@ fn read_sensors() -> ((i32, Vec<i32>), Option<f64>) {
     let result = with_smc(|smc| (read_fans(smc), read_temps(smc)));
     let (fans, temps) = match result {
         Some(r) => r,
-        None => {
-            ((0, Vec::new()), None)
-        }
+        None => ((0, Vec::new()), None),
     };
     *SENSOR_CACHE.lock().unwrap() = Some(SensorCache {
         at: Instant::now(),

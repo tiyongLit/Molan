@@ -1,7 +1,7 @@
 //! 清空当前用户废纸篓（~/.Trash）—— 独立于 Clean 缓存清理链路的专用能力。
 //!
 //! 安全边界：
-//! - 路径服务端硬编码为 `dirs::home_dir()/.Trash`，不接受任何外部路径参数（零信任）；
+//! - 路径服务端硬编码为 `base::home_dir_opt()/.Trash`，不接受任何外部路径参数（零信任）；
 //! - 用原生 `std::fs` 删除（`remove_file` / `remove_dir_all`），不调用外部 `rm` 二进制（守红线1）；
 //! - 不跟随符号链接：symlink 用 `remove_file` 断链，绝不递归进其目标；
 //! - 清空废纸篓 = 永久删除（文件已在废纸篓内，无法再次移入），属红线4记录在案的例外：
@@ -24,7 +24,7 @@ pub struct EmptyTrashResult {
 
 /// 清空 `~/.Trash`。目录不存在/不可读返回稳定错误码；单条失败计入 `failed` 不中断整体。
 pub fn empty_trash() -> Result<EmptyTrashResult, String> {
-    let home = dirs::home_dir().ok_or("TRASH_HOME_UNAVAILABLE")?;
+    let home = crate::core::base::home_dir_opt().ok_or("TRASH_HOME_UNAVAILABLE")?;
     let trash = home.join(".Trash");
     // 二次校验：必须是当前用户 ~/.Trash 的真实目录（非符号链接），杜绝被诱导删到别处。
     let meta = std::fs::symlink_metadata(&trash).map_err(|_| "TRASH_UNAVAILABLE")?;

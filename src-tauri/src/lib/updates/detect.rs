@@ -1,5 +1,5 @@
 //! 更新来源检测（纯本地文件系统检查，零网络）。
-//! 对齐 Burrow `UpdateSources.detect(appPath:)` / `feedURL(appPath:)`。
+//! 检测优先级：MAS receipt > SUFeedURL > Electron Framework。
 
 use serde::Serialize;
 
@@ -22,7 +22,7 @@ impl UpdateSource {
     }
 }
 
-/// 检测 app 的更新机制。优先级（对齐 Burrow `detect` 注释「Receipt beats feed」）：
+/// 检测 app 的更新机制。优先级（Receipt beats feed）：
 /// 1. `Contents/_MASReceipt/receipt` 存在 → AppStore（MAS 拷贝走商店更新，即使内嵌 Sparkle）
 /// 2. Info.plist 含 `SUFeedURL` key → Sparkle
 /// 3. `Contents/Frameworks/Electron Framework.framework` 存在 → Electron
@@ -45,7 +45,7 @@ pub fn detect_update_source(app_path: &str) -> Option<UpdateSource> {
     None
 }
 
-/// Info.plist 是否含 `SUFeedURL` key（对齐 Burrow `detect`：只查 key 存在，不校验值）。
+/// Info.plist 是否含 `SUFeedURL` key（只查 key 存在，不校验值）。
 fn info_has_sufeed_url(app_path: &str) -> bool {
     let plist_path = format!("{app_path}/Contents/Info.plist");
     if !std::path::Path::new(&plist_path).is_file() {
@@ -58,19 +58,14 @@ fn info_has_sufeed_url(app_path: &str) -> bool {
         .unwrap_or(false)
 }
 
-/// app 的 Sparkle feed URL（对齐 Burrow `feedURL`：要求值是 String）。
+/// app 的 Sparkle feed URL（要求值是 String）。
 /// 非空返回；用于 `mole_updates_check` 拉 appcast。
 pub fn feed_url(app_path: &str) -> String {
     let plist_path = format!("{app_path}/Contents/Info.plist");
     if !std::path::Path::new(&plist_path).is_file() {
         return String::new();
     }
-    match plist::Value::from_file(&plist_path)
-        .ok()
-        .and_then(|v| v.into_dictionary())
-        .and_then(|mut d| d.remove("SUFeedURL"))
-    {
-        Some(plist::Value::String(s)) if !s.trim().is_empty() => s,
-        _ => String::new(),
-    }
+    crate::core::bundle_id_anchor::plist_string_key(std::path::Path::new(&plist_path), "SUFeedURL")
+        .filter(|s| !s.trim().is_empty())
+        .unwrap_or_default()
 }

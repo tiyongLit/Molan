@@ -10,6 +10,7 @@ import { moleNativeConfirm } from '@/hooks/useMoleConfirm'
 import Sidebar from './Sidebar'
 import { ShellContent } from './ShellContent'
 import { ShellNavProvider } from './ShellNavContext'
+import { ResidualProvider } from './ResidualContext'
 import { ScanButtonProvider } from './ScanButtonContext'
 import { useActiveId } from './routing'
 import { useBackgroundGradient } from './hooks/useBackgroundGradient'
@@ -86,6 +87,8 @@ export default function Layout() {
 
   return (
     <ScanButtonProvider>
+      {/* 卸载残留定向链路：Shell 常驻层（不随页面卸载），消费 pending 快照 + 通知点击事件 */}
+      <ResidualProvider>
         <ShellNavProvider currentId={activeId} onNavigate={handleNavigate}>
           <div className="shell-page w-full h-full relative">
             <motion.div
@@ -105,6 +108,7 @@ export default function Layout() {
             </motion.div>
           </div>
         </ShellNavProvider>
-      </ScanButtonProvider>
+      </ResidualProvider>
+    </ScanButtonProvider>
   )
 }

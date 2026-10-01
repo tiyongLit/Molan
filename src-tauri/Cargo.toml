@@ -2,19 +2,14 @@
 name = "mole"
 version = "0.1.0"
 description = "A Tauri App"
-authors = ["you"]
+authors = ["tiyongliu"]
+license = "MIT"
 edition = "2021"
 # src/bin/ 下的探针/工具二进制（如 probe_icon）会让 cargo run 无法确定默认目标；
 # 显式指定 mole 为默认运行二进制。
 default-run = "mole"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[features]
-# 默认官网完整版；`mas` 为 App Store 精简版（与 `full` 互斥）。
-default = ["full"]
-full = []
-mas = []
+# See more keys and their documentation at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
 # ── 改动 ── 纯 macOS 桌面端只需 rlib；staticlib/cdylib 是给 iOS/Android 用的，去掉可省两次链接和磁盘占用。
@@ -30,6 +25,7 @@ tauri = { version = "2", features = ["macos-private-api", "tray-icon"] }
 tauri-plugin-opener = "2"
 tauri-plugin-store = "2"
 tauri-plugin-log = "2"
+tauri-plugin-single-instance = "2" # 单实例守卫：第二实例启动即退出，并唤起已有实例主窗口
 log = "0.4"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -81,7 +77,7 @@ codegen-units = 1    # 全量代码生成单元：扫描热路径跨模块内联
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = { version = "0.6.4", features = ["std"] }
-objc2-foundation = { version = "0.3.2", features = ["NSString", "NSData", "NSDictionary", "NSArray", "NSURL"] }
+objc2-foundation = { version = "0.3.2", features = ["NSString", "NSData", "NSDictionary", "NSArray", "NSURL", "NSObject", "NSError"] }
 objc2-core-foundation = { version = "0.3.2", default-features = false, features = ["objc2"] }
 objc2-app-kit = { version = "0.3.2", features = [
   "NSWorkspace",
@@ -105,3 +101,4 @@ dispatch2 = { version = "0.3.1", default-features = false, features = ["std", "a
 block2 = "0.6.2"    # macos_dialog：sheet 完成回调（原为 objc2-app-kit 传递依赖，提为直接依赖零新编译）
 core-foundation = "0.10"
 base64 = "0.22"
+objc2-user-notifications = "0.3.2"

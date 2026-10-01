@@ -37,7 +37,7 @@ pub struct RunningApp {
     pub pid: i32,
     /// NSRunningApplication.localizedName
     pub name: String,
-    /// executableURL 末段（Burrow 同款双键之一）
+    /// executableURL 末段（名字索引双键之一）
     pub exec_name: String,
     /// executableURL 完整路径：图标 fallback 键（对齐柠檬 `iconForFile:pExecutePath`）。
     /// 当 bundleURL 为 nil（裸二进制 / dev 模式）时，用此路径走 NSWorkspace.iconForFile 取图。
@@ -51,7 +51,7 @@ pub struct RunningApp {
 
 /// 进程域索引（纯元信息）。`Arc` 共享，调用方每 2s 取一次只增引用计数。
 pub struct AppIconIndex {
-    /// 名字键：localizedName + 可执行文件名（Burrow 同款双键）
+    /// 名字键：localizedName + 可执行文件名（双键索引）
     pub by_name: HashMap<String, Arc<RunningApp>>,
     /// pid 键：NSRunningApplication.processIdentifier（柠檬同款）
     pub by_pid: HashMap<i32, Arc<RunningApp>>,
@@ -187,7 +187,7 @@ fn build_index_inner() -> AppIconIndex {
                 .by_pid
                 .entry(pid)
                 .or_insert_with(|| Arc::clone(&entry));
-            // 双键索引：本地化显示名 + 可执行文件名（Burrow 同款）
+            // 双键索引：本地化显示名 + 可执行文件名
             if !entry.name.is_empty() {
                 index
                     .by_name

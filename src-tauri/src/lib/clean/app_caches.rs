@@ -12,6 +12,7 @@ use std::process::Command;
 
 use crate::core::base::{
     bytes_to_human, command_available, get_file_size, get_path_size_kb, home_dir, note_activity,
+    pgrep_f, pgrep_x,
 };
 use crate::core::dry_run_registry::dry_run_register_cleanup_target;
 use crate::core::file_ops::{safe_clean, safe_remove};
@@ -73,14 +74,6 @@ fn run_clean_jobs(jobs: &[(&[&str], &str)]) -> (u64, u64) {
 // Xcode
 // =============================================================================
 
-fn pgrep_x_running(name: &str) -> bool {
-    Command::new("pgrep")
-        .args(["-x", name])
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false)
-}
-
 /// 对齐 SH `clean_xcode_derived_data()` 第 6-58 行。
 /// 关键守卫:Xcode 在跑就不删,以免打断构建。
 pub fn clean_xcode_derived_data() -> (u64, u64) {
@@ -88,7 +81,7 @@ pub fn clean_xcode_derived_data() -> (u64, u64) {
     if !Path::new(&dd_dir).is_dir() {
         return (0, 0);
     }
-    if pgrep_x_running("Xcode") {
+    if pgrep_x("Xcode") {
         log_warning("Xcode is running, skipping DerivedData cleanup");
         return (0, 0);
     }
@@ -150,8 +143,8 @@ pub(super) fn simctl_available() -> bool {
 /// 对齐 SH `clean_xcode_tools()` 第 60-132 行。
 pub fn clean_xcode_tools() -> (u64, u64) {
     let home = home_dir();
-    let xcode_running = pgrep_x_running("Xcode");
-    let simulator_running = pgrep_x_running("Simulator");
+    let xcode_running = pgrep_x("Xcode");
+    let simulator_running = pgrep_x("Simulator");
 
     let mut total_kb: u64 = 0;
     let mut total_count: u64 = 0;
@@ -538,12 +531,7 @@ pub fn clean_video_tools() -> (u64, u64) {
 
 /// 对齐 SH `final_cut_pro_is_running()` 第 201-207 行。
 fn fcp_is_running() -> bool {
-    pgrep_x_running("Final Cut Pro")
-        || Command::new("pgrep")
-            .args(["-f", "/Final Cut Pro.app/"])
-            .output()
-            .map(|o| o.status.success())
-            .unwrap_or(false)
+    pgrep_x("Final Cut Pro") || pgrep_f("/Final Cut Pro.app/")
 }
 
 /// 对齐 SH `final_cut_pro_path_has_protected_component()` 第 209-220 行。

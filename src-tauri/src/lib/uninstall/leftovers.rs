@@ -165,26 +165,15 @@ fn is_uuid_name(name: &str) -> bool {
     true
 }
 
-/// 读容器 metadata plist 的 MCMMetadataIdentifier（plutil + 超时，失败返回 None）。
+/// 读容器 metadata plist 的 MCMMetadataIdentifier（纯 Rust 解析，失败返回 None）。
 fn container_metadata_identifier(dir: &str) -> Option<String> {
     let plist = format!("{dir}/.com.apple.containermanagerd.metadata.plist");
     if !Path::new(&plist).is_file() {
         return None;
     }
-    run_with_timeout_capture(
-        PROBE_TIMEOUT_SEC,
-        "plutil",
-        &[
-            "-extract",
-            "MCMMetadataIdentifier",
-            "raw",
-            "-o",
-            "-",
-            &plist,
-        ],
-    )
-    .map(|s| s.trim().to_string())
-    .filter(|s| !s.is_empty())
+    crate::core::bundle_id_anchor::plist_string_key(Path::new(&plist), "MCMMetadataIdentifier")
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
 }
 
 /// 遍历 `~/Library/Containers`，把归属本 app（含内嵌 bundle id）的 UUID 容器挑出来。
@@ -241,10 +230,9 @@ fn embedded_bundle_ids(app_path: &str, primary: &str) -> Vec<String> {
             if !Path::new(&info).is_file() {
                 continue;
             }
-            let Some(id) = run_with_timeout_capture(
-                PROBE_TIMEOUT_SEC,
-                "plutil",
-                &["-extract", "CFBundleIdentifier", "raw", "-o", "-", &info],
+            let Some(id) = crate::core::bundle_id_anchor::plist_string_key(
+                Path::new(&info),
+                "CFBundleIdentifier",
             )
             .map(|s| s.trim().to_string())
             .filter(|s| !s.is_empty() && s != "(null)") else {

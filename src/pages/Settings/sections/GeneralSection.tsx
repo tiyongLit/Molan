@@ -108,12 +108,12 @@ export function GeneralSection({ settings, trashSaving, trashError, onToggleAuto
               disabled={trashSaving}
               minWidth={84}
               options={[
-                { value: 1, label: '1 MB' },
-                { value: 10, label: '10 MB' },
-                { value: 50, label: '50 MB' },
                 { value: 512, label: '512 MB' },
                 { value: 1024, label: '1 GB' },
                 { value: 2048, label: '2 GB' },
+                { value: 4096, label: '4 GB' },
+                { value: 10240, label: '10 GB' },
+                { value: 20480, label: '20 GB' },
               ]}
             />
           }

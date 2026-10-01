@@ -37,7 +37,7 @@ use crate::events::{ScanProgressPayload, emit_analyze_scan_progress};
 // ── 扫描代际与取消（全局） ──────────────────────────────────────────────────
 //
 // 同一时刻只允许一个活跃扫描：`begin_scan` 递增代际并清除取消标记，旧扫描的
-// walker/consumer 每批调用 `is_scan_stale(gen)` 发现代际变化后自行退出。
+// walker/consumer 每批调用 `is_scan_stale(generation)` 发现代际变化后自行退出。
 // 注意：analyze 子窗口与 shell 主窗口共享同一进程，代际为全局（多窗口并发扫描
 // 会互相取消，属已知限制——UI 层同一用户同一时刻只会操作一个分析会话）。
 
@@ -62,8 +62,8 @@ pub fn cancel_active_scan() {
     SCAN_GENERATION.fetch_add(1, Ordering::SeqCst);
 }
 
-pub(crate) fn is_scan_stale(gen: i64) -> bool {
-    SCAN_CANCEL.load(Ordering::SeqCst) || SCAN_GENERATION.load(Ordering::SeqCst) != gen
+pub(crate) fn is_scan_stale(generation: i64) -> bool {
+    SCAN_CANCEL.load(Ordering::SeqCst) || SCAN_GENERATION.load(Ordering::SeqCst) != generation
 }
 
 /// 扫描字节目标估算（进度百分比分母）：优先既往快照子树大小（重扫/钻取），
@@ -539,7 +539,7 @@ pub fn scan_subtree(
     current_path: Option<&Mutex<String>>,
 ) -> io::Result<ScanOutcome> {
     let t0 = Instant::now();
-    let gen = begin_scan();
+    let generation = begin_scan();
 
     let root_meta = fs::symlink_metadata(root)?;
     if !root_meta.file_type().is_dir() {
@@ -563,7 +563,7 @@ pub fn scan_subtree(
 
     let mut workers = bulkwalk::parallel_walk(
         root,
-        gen,
+        generation,
         Some(progress),
         || WorkerAgg::new(),
         |w: &mut WorkerAgg, parent: &str, parent_depth: usize, info: &EntryInfo<'_>| {
@@ -573,7 +573,7 @@ pub fn scan_subtree(
     );
     let t_walk = t0.elapsed();
 
-    if is_scan_stale(gen) {
+    if is_scan_stale(generation) {
         return Err(io::Error::new(
             io::ErrorKind::Interrupted,
             SCAN_CANCELLED_MARK,
@@ -804,7 +804,7 @@ pub fn measure_dir_size_native(
     exclude_path: &str,
     ignore_names: &[String],
 ) -> Result<i64, String> {
-    let gen = SCAN_GENERATION.load(Ordering::SeqCst);
+    let generation = SCAN_GENERATION.load(Ordering::SeqCst);
     let p = Path::new(path);
     if !p.is_absolute() {
         return Err(format!("path must be absolute: {path}"));
@@ -817,7 +817,7 @@ pub fn measure_dir_size_native(
     let ignore = ignore_names.to_vec();
     let workers = bulkwalk::parallel_walk(
         path,
-        gen,
+        generation,
         None,
         || 0i64,
         |sum, parent, _depth, info| {
@@ -836,7 +836,7 @@ pub fn measure_dir_size_native(
         },
         |_| {},
     );
-    if is_scan_stale(gen) {
+    if is_scan_stale(generation) {
         return Err(SCAN_CANCELLED_MARK.into());
     }
     Ok(workers.iter().sum())

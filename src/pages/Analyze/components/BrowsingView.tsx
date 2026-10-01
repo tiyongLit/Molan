@@ -10,7 +10,6 @@ import { EntryList } from './EntryList'
 import { Treemap } from './Treemap'
 import { BottomBar } from './BottomBar'
 import { AnalyzeContextMenu } from './AnalyzeContextMenu'
-import { AnalyzeHoverCard } from './AnalyzeHoverCard'
 import { useKeyboard } from '../hooks/useKeyboard'
 import { useI18n } from '@/i18n'
 import type { MoleAnalyzeResult } from '@/types/mole'
@@ -141,9 +140,8 @@ function BrowsingInner() {
 
       <BottomBar />
 
-      {/* 单例覆盖层：右键菜单 + 悬停气泡（替代原先每个条目各自的 Dropdown/Popover） */}
+      {/* 单例覆盖层：右键菜单（替代原先每个条目各自的 Dropdown）；悬停气泡由每格 antd Popover 承载 */}
       <AnalyzeContextMenu />
-      <AnalyzeHoverCard />
     </div>
   )
 }

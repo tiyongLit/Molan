@@ -16,12 +16,10 @@ use std::sync::OnceLock;
 use std::time::Duration;
 use wait_timeout::ChildExt;
 
+use super::base::debug_enabled;
+
 static TIMEOUT_BIN: OnceLock<Option<String>> = OnceLock::new();
 static PERL_BIN: OnceLock<Option<String>> = OnceLock::new();
-
-fn debug_enabled() -> bool {
-    std::env::var("MO_DEBUG").unwrap_or_default() == "1"
-}
 
 pub fn detect_timeout_bin() -> Option<String> {
     TIMEOUT_BIN

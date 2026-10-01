@@ -48,6 +48,9 @@ export const EVT_DOCK_QUIT_REQUESTED = 'dock-quit-requested' as const
 /** 卸载残留自动检测：检测到新 .app 进入废纸篓（与 Rust `uninstall::residual-detected` 一致） */
 export const EVT_RESIDUAL_DETECTED = 'uninstall::residual-detected' as const
 
+/** 卸载残留：用户点击系统通知，请求跳转卸载页定向扫描；数据以 pending 快照为准（与 Rust `uninstall::residual-open` 一致） */
+export const EVT_RESIDUAL_OPEN = 'uninstall::residual-open' as const
+
 /** Clean 任务状态机快照：后端每次状态转换整体广播（与 Rust `clean::job-state` 一致），前端按 seq 单调应用 */
 export const EVT_CLEAN_JOB_STATE = 'clean::job-state' as const
 

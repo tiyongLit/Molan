@@ -47,7 +47,7 @@ pub fn collect_health_json() -> Result<HealthJson, String> {
 #[cfg(target_os = "macos")]
 fn collect_health_json_macos() -> Result<HealthJson, String> {
     let (mem_used, mem_total) = memory_info_gb()?;
-    let home = dirs::home_dir().ok_or_else(|| "无法解析主目录".to_string())?;
+    let home = crate::core::base::home_dir_opt().ok_or_else(|| "无法解析主目录".to_string())?;
     let (disk_used, disk_total, disk_pct) = disk_info_gb(&home)?;
     let uptime = uptime_days()?;
     Ok(HealthJson {

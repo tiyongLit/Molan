@@ -2,7 +2,7 @@ use std::path::Path;
 use std::process::Command;
 use std::sync::{Mutex, OnceLock};
 
-use super::base::{extract_bundle_from_path, normalize_slashes, wildcard_match};
+use super::base::{extract_bundle_from_path, normalize_slashes, pgrep_x, wildcard_match};
 use rayon::prelude::*;
 
 // 全局白名单存储:对齐 SH 中 WHITELIST_PATTERNS 全局数组
@@ -1039,19 +1039,12 @@ fn path_belongs_to_independent_cli(path: &str, home: &str) -> bool {
 }
 
 /// 直接读 Info.plist 里的 CFBundleIdentifier（接受 plist 完整路径）。
+/// 纯 Rust 解析（原 `plutil -extract ... raw` 子进程的原生替代）。
 fn read_bundle_id_from_plist(plist_path: &str) -> String {
-    if let Ok(out) = Command::new("plutil")
-        .args(["-extract", "CFBundleIdentifier", "raw", plist_path])
-        .output()
-    {
-        if out.status.success() {
-            let v = String::from_utf8_lossy(&out.stdout).trim().to_string();
-            if !v.is_empty() && v != "(null)" {
-                return v;
-            }
-        }
-    }
-    String::new()
+    super::bundle_id_anchor::read_bundle_id_from_plist(Path::new(plist_path))
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty() && s != "(null)")
+        .unwrap_or_default()
 }
 
 /// 递归收集 `dir` 下 `*/Contents/Info.plist`（对齐 SH `find -maxdepth 12 -path */Contents/Info.plist`）。
@@ -2403,21 +2396,9 @@ pub fn find_app_receipt_files(_bundle_id: &str, _app_name: &str) -> Vec<String> 
 
 /// 读 CFBundleIdentifier（对齐 SH force_kill_app 第 2111 行的 plutil -extract）。
 fn read_bundle_identifier(app_path: &str) -> Option<String> {
-    let plist_path = format!("{app_path}/Contents/Info.plist");
-    if !Path::new(&plist_path).is_file() {
-        return None;
-    }
-    let out = Command::new("plutil")
-        .args(["-extract", "CFBundleIdentifier", "raw", &plist_path])
-        .output()
-        .ok()?;
-    if out.status.success() {
-        let v = String::from_utf8_lossy(&out.stdout).trim().to_string();
-        if !v.is_empty() && v != "(null)" {
-            return Some(v);
-        }
-    }
-    None
+    super::bundle_id_anchor::read_bundle_id_of_app(Path::new(app_path))
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty() && s != "(null)")
 }
 
 pub fn force_kill_app(app_name: &str, app_path: &str) -> bool {
@@ -2457,13 +2438,7 @@ pub fn force_kill_app(app_name: &str, app_path: &str) -> bool {
         return false;
     }
 
-    let is_running = || {
-        Command::new("pgrep")
-            .args(["-x", &match_pattern])
-            .output()
-            .map(|o| o.status.success())
-            .unwrap_or(false)
-    };
+    let is_running = || pgrep_x(&match_pattern);
 
     if !is_running() {
         return true;

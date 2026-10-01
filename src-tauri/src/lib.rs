@@ -1,8 +1,3 @@
-#[cfg(all(feature = "mas", feature = "full"))]
-compile_error!(
-    "Cargo features `mas` 与 `full` 不能同时启用；MAS 构建请使用: --no-default-features --features mas"
-);
-
 pub mod cmd;
 pub mod constants;
 pub mod controllers;
@@ -57,7 +52,24 @@ fn mole_quick_look(path: String) -> Result<(), String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // 原生通知 delegate 必须最早注册（Builder 构建前），覆盖"应用未运行 →
+    // 点击通知冷启动"场景；失败（dev 裸二进制无合法 bundle）不影响启动，
+    // 由 residual_watch 降级为事件兜底。
+    #[cfg(target_os = "macos")]
+    {
+        if let Err(err) = crate::platform::macos_notifications::install_early() {
+            log::info!("[notifications] native notifications unavailable: {err}");
+        }
+    }
+
     tauri::Builder::default()
+        // 单实例守卫：必须最先注册（官方约束）。第二实例启动即退出，并在已有实例中
+        // 执行回调——按「用户再次打开应用」语义唤起主窗口。覆盖 open -n、直接 exec
+        // 裸二进制、macOS 12 Launch Agent 等不经 LaunchServices 的去重旁路。
+        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            log::info!("[single_instance] duplicate launch blocked; restoring main window");
+            crate::macos_dock_quit::restore_main_window(app);
+        }))
         .plugin(
             tauri_plugin_log::Builder::new()
                 .level(if cfg!(debug_assertions) {
@@ -136,7 +148,10 @@ pub fn run() {
             // Orphan — 孤儿残留扫描（对齐 PureMac ReversePathsFetch）
             controllers::uninstall::mole_orphan_scan,
             controllers::uninstall::mole_orphan_delete,
-            // Updates — 应用更新（对齐 Burrow Updates 标签页）
+            // 卸载残留定向链路 — 通知点击 → pending 快照消费 → 定向扫描
+            controllers::uninstall::mole_residual_take_pending,
+            controllers::uninstall::mole_orphan_scan_for,
+            // Updates — 应用更新（Updates 标签页后端）
             controllers::updates::mole_updates_brew_outdated,
             controllers::updates::mole_updates_check,
             controllers::updates::mole_updates_apply,
@@ -145,7 +160,7 @@ pub fn run() {
             controllers::app_version::mole_app_version_check,
             controllers::app_version::mole_app_version_install,
             controllers::app_version::mole_app_version_open_appstore,
-            // Startup — 启动项（对齐 Burrow StartupView）
+            // Startup — 启动项
             controllers::startup::mole_startup_scan,
             controllers::startup::mole_startup_action,
             // settings
@@ -182,6 +197,10 @@ pub fn run() {
         .setup(|app| {
             use tauri::Manager;
             let handle = app.handle().clone();
+
+            // 原生通知点击回调需要 AppHandle（唤起主窗 + emit 事件）。
+            #[cfg(target_os = "macos")]
+            crate::platform::macos_notifications::bind_app(handle.clone());
 
             crate::tray::create_tray(app.handle())?;
 
@@ -277,23 +296,11 @@ pub fn run() {
             if matches!(event, tauri::RunEvent::Exit) {
                 crate::trash_watch::service(app_handle).stop();
             }
-            // Dock 图标点击恢复：主窗口 hide 到托盘后，用户点 Dock 图标时
-            // macOS 会发送 Reopen 事件；若无可见窗口则恢复主窗口。
-            if let tauri::RunEvent::Reopen {
-                has_visible_windows,
-                ..
-            } = event
-            {
-                if !has_visible_windows {
-                    use tauri::Manager;
-                    // 恢复 Dock 图标（可能被 Dock 退出隐藏了）
-                    macos_dock_quit::show_dock_icon();
-                    if let Some(window) = app_handle.get_webview_window("MoleStudio") {
-                        let _ = window.show();
-                        let _ = window.set_focus();
-                        log::info!("[reopen] main window restored from dock click");
-                    }
-                }
+            // Dock 图标点击 / 已运行时再次双击 .app：统一唤起主窗口（含 accessory
+            // 驻留态的 Dock 图标还原），与 single-instance 回调共用 restore_main_window。
+            if let tauri::RunEvent::Reopen { .. } = event {
+                log::info!("[reopen] restoring main window");
+                macos_dock_quit::restore_main_window(app_handle);
             }
 
             // ── 退出终极闸门 ───────────────────────────────────

@@ -14,8 +14,8 @@ use walkdir::WalkDir;
 
 use crate::core::app_protection::{is_path_whitelisted_from_global, should_protect_path};
 use crate::core::base::{
-    bytes_to_human, command_available, get_epoch_seconds, get_lsregister_path, get_path_size_kb,
-    home_dir, is_dry_run,
+    bytes_to_human, command_available, debug_enabled, get_epoch_seconds, get_lsregister_path,
+    get_path_size_kb, home_dir, is_dry_run, pgrep_x_status,
 };
 use crate::core::bundle_resolver::bundle_has_installed_app_checked;
 use crate::core::file_ops::safe_remove;
@@ -36,10 +36,6 @@ pub const MOLE_TM_THIN_VALUE: u64 = 9_999_999_999;
 pub const MOLE_SQLITE_MAX_SIZE: u64 = 104_857_600;
 
 static DNS_FLUSHED: AtomicBool = AtomicBool::new(false);
-
-fn debug_enabled() -> bool {
-    std::env::var("MO_DEBUG").unwrap_or_default() == "1"
-}
 
 /// 对齐 SH `optimize_sudo_available`：测试模式硬拒绝，其余看控制器预设的环境变量。
 pub fn optimize_sudo_available() -> bool {
@@ -369,10 +365,14 @@ pub fn opt_cache_refresh() -> OptimizeOutcome {
         opt_msg("Icon services cache rebuilt");
     }
     if remove_failed > 0 {
-        note_failure(&format!("Failed to remove {remove_failed} Finder cache target(s)"));
+        note_failure(&format!(
+            "Failed to remove {remove_failed} Finder cache target(s)"
+        ));
     }
     if refresh_failed > 0 {
-        note_failure(&format!("Failed to rebuild {refresh_failed} Finder cache service(s)"));
+        note_failure(&format!(
+            "Failed to rebuild {refresh_failed} Finder cache service(s)"
+        ));
     }
     OptimizeOutcome::from_counts(
         removed_count + quicklook_refreshed + icons_refreshed,
@@ -462,7 +462,9 @@ pub fn opt_saved_state_cleanup() -> OptimizeOutcome {
         opt_msg(&format!("Removed {removed} old saved state(s)"));
     }
     if remove_failed > 0 {
-        note_failure(&format!("Failed to remove {remove_failed} old saved state(s)"));
+        note_failure(&format!(
+            "Failed to remove {remove_failed} old saved state(s)"
+        ));
     }
     OptimizeOutcome::from_counts(removed, scan_failed + remove_failed, 0)
 }
@@ -631,11 +633,12 @@ pub fn opt_sqlite_vacuum() -> OptimizeOutcome {
     // 对齐 SH 3ebe4f0d:pgrep 退出码 0=有进程、1=无进程;非 0 非 1 视为探测异常 → 任务失败
     let mut busy: Vec<&str> = Vec::new();
     for app in ["Mail", "Safari", "Messages"] {
-        let out = Command::new("pgrep").args(["-x", app]).output();
-        match out {
-            Ok(o) if o.status.success() => busy.push(app),
-            Ok(o) if o.status.code() == Some(1) => {}
-            _ => return optimize_fail("Failed to inspect active apps before database optimization"),
+        match pgrep_x_status(app) {
+            Some(true) => busy.push(app),
+            Some(false) => {}
+            None => {
+                return optimize_fail("Failed to inspect active apps before database optimization");
+            }
         }
     }
     if !busy.is_empty() {
@@ -1694,14 +1697,10 @@ fn login_item_name_matches(actual: &str, expected: &str) -> bool {
     false
 }
 
-/// 通过 `plutil -extract` 提取 plist 键的原始字符串值。
-fn plutil_extract_raw(plist: &str, key: &str) -> Option<String> {
-    Command::new("plutil")
-        .args(["-extract", key, "raw", plist])
-        .output()
-        .ok()
-        .filter(|o| o.status.success())
-        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+/// 提取 plist 键的字符串值（纯 Rust，原 `plutil -extract <key> raw` 的原生替代）。
+fn plist_raw_string(plist: &str, key: &str) -> Option<String> {
+    crate::core::bundle_id_anchor::plist_string_key(Path::new(plist), key)
+        .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
 }
 
@@ -1741,9 +1740,9 @@ fn login_item_build_app_inventory()
                 continue;
             }
             let info_str = info.to_string_lossy().to_string();
-            let display_name = plutil_extract_raw(&info_str, "CFBundleDisplayName");
-            let bundle_name = plutil_extract_raw(&info_str, "CFBundleName");
-            let executable = plutil_extract_raw(&info_str, "CFBundleExecutable");
+            let display_name = plist_raw_string(&info_str, "CFBundleDisplayName");
+            let bundle_name = plist_raw_string(&info_str, "CFBundleName");
+            let executable = plist_raw_string(&info_str, "CFBundleExecutable");
             inventory.push((
                 p.to_string_lossy().to_string(),
                 display_name,

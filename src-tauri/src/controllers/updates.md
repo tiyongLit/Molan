@@ -1,18 +1,11 @@
-# 更新（Updates）功能 — 移植方案与实现设计（评审稿）
+# 更新（Updates）功能 — 设计实现方案（评审稿）
 
-> 目的：把 Burrow 的 Updates 标签页后端逻辑移植到 MoleStudio2（Tauri 2 + Rust）。
+> 目的：为 MoleStudio2（Tauri 2 + Rust）实现「应用更新」（Updates 标签页）后端。
 > 本文件是**设计方案**，含架构决策、命令契约、语义对齐清单与实现顺序；评审通过后按第 7 节执行。
 >
 > 关键前提：**此功能与 Mole 无对齐关系**。Mole CLI 没有应用更新检查（`mo update` 只更新 Mole 自身）。
-> Burrow 的更新逻辑是它自己的 Swift 原创，唯一复用 Mole 的部分是应用清单（`mo uninstall --list`），
-> 而那份清单我们已有等价物 `mole_list_apps`。因此这是「移植 Burrow 原创逻辑」，不是「对齐 Mole」。
-
-参考实现（行为权威）：
-- `Burrow/macos/Sources/UpdatesView.swift`（UpdatesModel，交互与状态机）
-- `Burrow/macos/Sources/UpdateSources.swift`（detect / feedURL / appcast / iTunes 解析）
-- `Burrow/macos/Sources/UpdateCheck.swift` L386-400（isNewer 版本比较）
-- `Burrow/macos/Sources/OSUpdateGate.swift`（App Store 更新与当前 macOS 的兼容门）
-- `Burrow/macos/Sources/BrewProgress.swift`（brew 输出 → 进度短语）
+> 本功能的逻辑基线为独立原创设计，唯一复用 Mole 的部分是应用清单（`mo uninstall --list`），
+> 而那份清单我们已有等价物 `mole_list_apps`。因此这是独立原创实现，不是「对齐 Mole」。
 
 ---
 
@@ -21,13 +14,13 @@
 | 维度 | 结论 |
 |---|---|
 | 可行性 | ✅ 可移植，且比卸载 tab 简单得多（纯检测 + 网络 + 深链，无扫描残留的复杂度） |
-| 输入数据 | ✅ 100% 覆盖：`mole_list_apps` 返回的 `MoleListAppsEntry` 已含 `version / bundle_id / size_human / last_used_epoch / source / uninstall_name`（Burrow 还要惰性读 Info.plist 拿版本，我们列表里直接有） |
+| 输入数据 | ✅ 100% 覆盖：`mole_list_apps` 返回的 `MoleListAppsEntry` 已含 `version / bundle_id / size_human / last_used_epoch / source / uninstall_name`（版本信息在列表里直接有，无需二次读取 Info.plist） |
 | 新依赖 | ✅ 零新增 crate：网络用系统自带 `curl`；XML 用 `quick-xml 0.41`（已在 Cargo.lock，是 `plist` 的传递依赖，提为直接依赖即可，零新编译） |
 | 规模 | 约 500 行 Rust（含探针测试）+ 300 行 TS |
 
 ---
 
-## 2. Burrow 行为基线（移植权威语义）
+## 2. 行为基线（权威语义）
 
 ### 2.1 生命周期
 
@@ -40,17 +33,17 @@
   → update()/upgrade()  深链更新操作 / brew 流式升级
 ```
 
-### 2.2 各方法语义（UpdatesView.swift 实测）
+### 2.2 各方法语义（实测基线）
 
 | 方法 | 行为 |
 |---|---|
-| `prepare(apps)` | 逐 app `UpdateSources.detect`：可检测 → `appItems`；不可检测 → `uncheckableApps`。幂等：`apps.count` 不变不重跑 |
+| `prepare(apps)` | 逐 app 做更新源检测：可检测 → `appItems`；不可检测 → `uncheckableApps`。幂等：`apps.count` 不变不重跑 |
 | `autoSurface()` | guard `!brewSurfaced && !checking`；置 `brewSurfacing` 指示器；`brewOutdated()` 完成后**仅当 brew 行为空时写入**；会话内只跑一次 |
 | `checkNow()` | guard `!checking`；TaskGroup 并发上限 6；app 检查全部完成后 `brewOutdated()` 刷新 brew 行（必刷新）；`checked=true`；另起低优先级任务用 fs 日期回填 lastUsed |
 | `check(item)` | sparkle → feedURL + fetch + parseAppcast；appStore → iTunes lookup（bundleID 为空则跳过）；**electron/homebrew → 不请求**（v1 只打徽标，它们自带更新器） |
 | `fetch(url)` | timeout 10s；`reloadIgnoringLocalCacheData`（手动检查 = 拿新鲜元数据） |
 | `update(item)` | sparkle/electron → `openApplication(path)`；appStore → 有 pageURL 开 pageURL，否则开 `macappstore://showUpdatesPage`；homebrew → 无操作 |
-| `upgrade(item)` | guard `upgrading` 集合（brew 自带锁，禁止并发）；`brew upgrade <name>` 流式 1800s；逐行 `BrewProgress.phrase`（`==> ` 前缀行）→ `brewPhrase`；结束后刷新 brew 行 |
+| `upgrade(item)` | guard `upgrading` 集合（brew 自带锁，禁止并发）；`brew upgrade <name>` 流式 1800s；逐行提取 `==> ` 前缀短语 → `brewPhrase`；结束后刷新 brew 行 |
 | `upgradeAll()` | `brew upgrade` 流式 3600s，其余同上 |
 
 ### 2.3 UI 分区规则
@@ -61,7 +54,7 @@
   - `upToDate`：`latestVersion != nil && !isNewer`
   - **Electron 行消失**：source 有值但 `latestVersion == nil`，既非 available/upToDate，也非 uncheckable（其自带更新器接管，查无可查）
   - `uncheckable`：`detect` 返回 nil 的 app
-- App Store 行另有 `OSUpdateGate`：更新要求的 macOS 高于当前系统时，该行不显示（不可安装）。
+- App Store 行另有系统兼容门（`OSUpdateGate` 等价）：更新要求的 macOS 高于当前系统时，该行不显示（不可安装）。
 
 ---
 
@@ -70,11 +63,11 @@
 | # | 决策 | 结论 | 理由 |
 |---|---|---|---|
 | D1 | 网络层 | **Rust 命令内 `curl` 子进程**，不加任何 HTTP 库 | 沿用 MoleStudio 现有约定（所有外部能力走 Tauri 命令 + useTauri IPC）；零依赖；`-o 临时文件`天然规避管道死锁 |
-| D2 | 检测落点 | **`mole_list_apps` 返回加 `update_source` 字段** | 对齐 Burrow `prepare()` 一次性检测（纯本地、极快），切到更新 tab 零额外 IPC |
+| D2 | 检测落点 | **`mole_list_apps` 返回加 `update_source` 字段** | 一次性检测（纯本地、极快），切到更新 tab 零额外 IPC |
 | D3 | XML 解析 | `quick-xml`（提为直接依赖） | 已在 lock 中（plist 传递依赖），零新编译；只做 `<enclosure>` 属性提取 |
 | D4 | 版本比较 | **新写 `is_version_newer`**，不复用 `lib/clean/user.rs::version_compare` | 语义不同（见 §6.1），复用会出 bug |
 | D5 | brew 输出捕获 | 临时文件（outdated）/ 排空线程（upgrade 流式） | `lib/core/timeout.rs::run_with_timeout_capture` 有 64KB 管道死锁 bug（卸载 tab 根因）；顺手修掉 |
-| D6 | 「每会话一次」guard | 前端 React state | Burrow 是 model 属性，前端等价物；后端命令保持无状态 |
+| D6 | 「每会话一次」guard | 前端 React state | 前端 state 是等价物；后端命令保持无状态 |
 
 ---
 
@@ -82,15 +75,15 @@
 
 ### 4.1 模块结构（新增 `lib/updates/`，与 `lib/uninstall/` 平级）
 
-| 文件 | 职责 | 对应 Burrow |
-|---|---|---|
-| `lib/updates/mod.rs` | 公共类型 `UpdateSource`、`OutdatedItem`、`UpdateCheckItem` | — |
-| `lib/updates/detect.rs` | `detect_update_source(path)`：3 个 fs 检查 | `UpdateSources.detect` |
-| `lib/updates/appcast.rs` | `feed_url(path)`（读 Info.plist `SUFeedURL`）+ `parse_appcast(xml)` | `UpdateSources.feedURL/parseAppcast` |
-| `lib/updates/itunes.rs` | `itunes_lookup(bundle_id)` + `parse_itunes_lookup(json)` | `UpdateSources.parseITunesLookup` |
-| `lib/updates/version.rs` | `is_version_newer(remote, local)` + `os_is_installable(minimum, running)` | `UpdateCheck.isNewer` + `OSUpdateGate` |
-| `lib/updates/brew.rs` | `brew_path()`、`brew_outdated()`、`brew_upgrade_streaming()` | `UpdatesModel.brewOutdated/upgrade/upgradeAll` |
-| `controllers/updates.rs` | Tauri 命令薄层（4 个命令） | — |
+| 文件 | 职责 |
+|---|---|
+| `lib/updates/mod.rs` | 公共类型 `UpdateSource`、`OutdatedItem`、`UpdateCheckItem` |
+| `lib/updates/detect.rs` | `detect_update_source(path)`：3 个 fs 检查 |
+| `lib/updates/appcast.rs` | `feed_url(path)`（读 Info.plist `SUFeedURL`）+ `parse_appcast(xml)` |
+| `lib/updates/itunes.rs` | `itunes_lookup(bundle_id)` + `parse_itunes_lookup(json)` |
+| `lib/updates/version.rs` | `is_version_newer(remote, local)` + `os_is_installable(minimum, running)` |
+| `lib/updates/brew.rs` | `brew_path()`、`brew_outdated()`、`brew_upgrade_streaming()` |
+| `controllers/updates.rs` | Tauri 命令薄层（4 个命令） |
 
 ### 4.2 数据结构（serde 默认 snake_case，与前端 camelCase 由 Tauri 映射）
 
@@ -139,13 +132,13 @@ pub struct UpdatesCheckResult {
   2. Info.plist 含 `SUFeedURL` → Sparkle（复用现有 plist 读取方式，与列表扫描一致）
   3. `<app>/Contents/Frameworks/Electron Framework.framework` 存在 → Electron
   4. 否则 None
-- `is_version_newer(remote, local) -> bool`（逐条对齐 `UpdateCheck.isNewer`）
+- `is_version_newer(remote, local) -> bool`（版本比较语义）：
   1. trim 两端空白；剥离**一个**前导 `v`/`V`
   2. 按 `.` 拆分；每段 `parse::<i64>().unwrap_or(0)`（非数字段归 0，`"2024b"` → 0）
   3. 缺段补 0 逐段比；任一段不等即返回 `remote > local`
   4. 全等返回 `false`
 - `parse_appcast(xml: &str) -> Option<String>`：quick-xml Reader 遍历，`<enclosure>` 元素属性优先取 `sparkle:shortVersionString`，无则取 `sparkle:version`（属性名带前缀，按字面匹配）。
-- `curl` 调用规格：`curl -sSL --max-time <N> -o <tmpfile> <url>`；tmpfile 用 `temp_dir()` + pid/时间戳唯一名，读完即删；任何失败（非零退出/文件缺失/解析失败）→ 静默返回 None（对齐 Burrow `try?` + `guard let else` 语义，行保留原状）。
+- `curl` 调用规格：`curl -sSL --max-time <N> -o <tmpfile> <url>`；tmpfile 用 `temp_dir()` + pid/时间戳唯一名，读完即删；任何失败（非零退出/文件缺失/解析失败）→ 静默返回 None（失败静默、行保留原状）。
   - appcast / iTunes：`--max-time 10`
   - brew outdated：`--max-time 120`（不用 curl，直接 `brew` 命令落临时文件）
 
@@ -164,7 +157,7 @@ export type UpdatesApplyAction = 'open_app' | 'open_url' | 'macappstore'
 export interface BrewProgressEvent { id: string; phrase: string }
 ```
 
-### 5.2 UpdatesTab 状态机（对齐 UpdatesModel）
+### 5.2 UpdatesTab 状态机
 
 | 状态 | 触发 | 行为 |
 |---|---|---|
@@ -177,19 +170,19 @@ export interface BrewProgressEvent { id: string; phrase: string }
 
 ### 5.3 壳层与其余改动
 
-- `index.tsx`：`<UpdatesTab apps={apps} />`（Burrow 的 UpdatesView 同样是拿 apps 数组）；顶部右侧"检查更新会访问 Apple 与厂商服务器"提示文案已就位，不动。
+- `index.tsx`：`<UpdatesTab apps={apps} />`；顶部右侧"检查更新会访问 Apple 与厂商服务器"提示文案已就位，不动。
 - `mock.ts`：删除 updates 部分（startup 仍 mock）。
 - `constants/tauri-commands.ts`：+4 个命令名；`constants/tauri-events.ts`：+`EVT_UPDATES_BREW_PROGRESS`。
 
-### 5.4 mock 与 Burrow 的差异修正
+### 5.4 mock 的差异修正
 
-现 mock 中 Homebrew 徽标出现在**应用行**上；Burrow 只在 **brew 行**显示 homebrew 徽标。接真实数据时按 Burrow 修正。
+现 mock 中 Homebrew 徽标出现在**应用行**上；正确的做法是只在 **brew 行**显示 homebrew 徽标。接真实数据时按此修正。
 
 ---
 
 ## 6. 语义对齐清单（实现时逐条对照）
 
-| # | Burrow 行为 | 实现落点 |
+| # | 行为基线 | 实现落点 |
 |---|---|---|
 | 1 | `isNewer`：去一个前导 v/V、非数字段归 0、缺段补 0、全等 false | `version.rs::is_version_newer`；**禁止**复用 `clean/user.rs::version_compare`（sort -V 语义：不剥 v、非数字段字典序、不等长直接比长度，三处都不同） |
 | 2 | 检测三来源顺序：MAS receipt → SUFeedURL → Electron Framework | `detect.rs` 同序 |
@@ -232,4 +225,4 @@ export interface BrewProgressEvent { id: string; phrase: string }
 3. **curl 无重定向默认**：忘记 `-L` 会让大量 appcast 静默失败（302 → 空文件 → None），症状是"全部无更新"，难排查。
 4. **`open macappstore://showUpdatesPage`** 在部分系统版本行为不一致：失败不致命（返回 ok=false 即可），不阻塞 UI。
 5. **升级中用户切走 tab**：`updates::brew-progress` 事件监听随组件卸载销毁；后端子进程照常跑完，前端回来自动刷新 brew 行（autoSurface 已消耗时需靠行内刷新按钮，见 5.2 `upgrading` 完成路径）。
-6. **并发 check 的 curl 进程数**：6 个并发上限与 Burrow 一致，避免压垮弱网络。
+6. **并发 check 的 curl 进程数**：6 个并发上限，避免压垮弱网络。

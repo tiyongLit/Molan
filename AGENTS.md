@@ -60,6 +60,7 @@ MoleStudio 是一款 **macOS 清理 / 优化 GUI 软件**，面向最终用户�
 - 后端事件名 → 前端在 `src/constants/tauri-events.ts` 登记。
 - 数据结构 → 前端 `src/types/mole.ts`。
 - **原生图标**：文件/应用图标统一走内容寻址注册表（IPC 命令 `mole_native_icons_resolve`），架构、使用规范与红线见 `docs/原生图标系统架构.md`；前端入口 `src/utils/nativeIconRegistry.ts`。
+- **卸载残留通知**：设置项「自动检测卸载残留」的完整链路（原生通知、双通道送达、定向扫描、事件契约、排障手册）见 `docs/卸载残留通知与定向扫描方案总结.md`；全局状态入口 `src/layout/ResidualContext.tsx`。
 
 ### 项目根目录约定
 
@@ -76,24 +77,22 @@ clean（深度清理）、uninstall（智能卸载）、optimize（优化维护�
 
 ## 2. 参考项目分工
 
-MoleStudio 不是从零开始，有五个参考项目。每个项目角色清晰，**只参考其角色范围内内容，不跨界**。
+MoleStudio 不是从零开始，有四个参考项目。每个项目角色清晰，**只参考其角色范围内内容，不跨界**。
 
 | 项目 | 技术栈 | 角色 | 可参考 | 不可参考 |
 |---|---|---|---|---|
 | **Mole**（`tw93/mole`，`mo` CLI） | Go + Bash | **算法/扫描清理逻辑的权威参考** | 路径规则、清理分类、size 算法、protected 名单、命令行口径 | **不嵌入** Go 二进制或 Shell 脚本；逻辑全部 Rust 重写 |
 | **lemon-cleaner**（腾讯 Lemon） | Objective-C / Cocoa | **UI/UX 交互基准** | 扫描入口、分类折叠面板、可展开目录、勾选+统计呈现 | 不参考其代码实现 |
 | **CleanMyMac X** | 闭源 | 商业产品 UX 对照 | 功能流程、信息架构 | 不涉及代码 |
-| **Burrow** | Swift / SwiftUI | **同为 Mole 的 GUI 封装，参考产品形态与功能流程** | 功能拆分、卸载预览、重复文件、端口检查、本地历史 DB、onboarding/权限引导、doctor、MCP/AI agent 接入思路 | **不移植 Swift 代码**，不引入原生 Xcode 工程 |
 | **MoleStudio v1** | Tauri + React + Rust | **已验证的 Rust 后端来源 + 架构约束出处** | Rust 后端实现、架构红线 | 前端页面组织已被 v2 替换 |
 
-**一句话总结**：Mole 给"算什么"、Lemon 给"长什么样"、Burrow 给"还能做什么"、v1 给"已实现的底座和红线"、v2 在此之上重做 UI 并补功能。
+**一句话总结**：Mole 给"算什么"、Lemon 给"长什么样"、v1 给"已实现的底座和红线"、v2 在此之上重做 UI 并补功能。
 
 ### 参考时的强制动作
 
 1. 涉及**扫描/清理/统计逻辑**：先查 Mole 对应实现看逻辑口径，再查 v1/v2 是否已有 Rust 实现。
 2. 涉及**UI 交互/信息架构**：对照 lemon-cleaner 看交互范式，但不抄代码。
-3. 涉及**功能流程/产品形态**：可参考 Burrow，但仅限流程与拆分，不引入 Swift。
-4. 任何参考都**不得引入与硬约束冲突**的实现。
+3. 任何参考都**不得引入与硬约束冲突**的实现。
 
 ---
 
@@ -113,10 +112,10 @@ MoleStudio 不是从零开始，有五个参考项目。每个项目角色清晰
 - Tauri 官方插件（`tauri-plugin-dialog` / `tauri-plugin-opener` 等）提供的系统能力。
 - 通过 Rust crate（`core-foundation`、`objc2`）调用 macOS 系统 API，不算"外部二进制"。
 
-### 红线 2：不把 Mole / Burrow 当运行时嵌入
+### 红线 2：不把 Mole 当运行时嵌入
 
-- Mole、Lemon、Burrow 都只是**需求与对照基准**，在约束内用 Rust 重写。
-- **不打包** Mole 的 Go 二进制，**不打包** Burrow 的 Swift 工程或 `burrow-engine`。
+- Mole、Lemon 都只是**需求与对照基准**，在约束内用 Rust 重写。
+- **不打包** Mole 的 Go 二进制。
 - 禁止在 `src-tauri/` 中引入 Swift / Objective-C 源文件或 Xcode 工程。
 
 ### 红线 3：清理规则编译期内嵌
@@ -177,7 +176,7 @@ MoleStudio 不是从零开始，有五个参考项目。每个项目角色清晰
 | `src-tauri/src/lib/optimize/` | 优化维护（diagnostics、maintenance、tasks） |
 | `src-tauri/src/lib/uninstall/` | 智能卸载（batch、brew） |
 | `src-tauri/src/lib/check/` | 健康检查、安全检查、开发环境检查 |
-| `src-tauri/src/lib/platform/` | macOS 平台能力（原生图标注册表 `native_icon_registry` + 编码管线 `macos_file_icon`、特权路由） |
+| `src-tauri/src/lib/platform/` | macOS 平台能力（原生图标注册表 `native_icon_registry` + 编码管线 `macos_file_icon`、原生通知 `macos_notifications`、特权路由） |
 | `src-tauri/src/cmd/` | 命令行能力迁移（analyze、status） |
 | `src-tauri/src/controllers/` | Tauri command 入口，薄层，只做参数解析与分发 |
 | `src-tauri/src/embedded_rules.rs` | 编译期内嵌清理规则 |
@@ -239,7 +238,7 @@ MoleStudio 不是从零开始，有五个参考项目。每个项目角色清晰
 ### 页面与外壳
 
 - 顶层路由在 `src/routers.tsx`，页面以 `Shell*` 外壳组织。
-- 全局上下文：`ScanButtonContext`、`ScanSessionsContext`、`ShellNavContext`、`useBackgroundGradient`。
+- 全局上下文：`ScanButtonContext`、`ScanSessionsContext`、`ShellNavContext`、`useBackgroundGradient`、`ResidualContext`（卸载残留定向目标，见 `docs/卸载残留通知与定向扫描方案总结.md`）。
 - 页面切换动效走 `PageTransition` / `PageWrapper`。
 
 ### 组件命名与样式
@@ -326,11 +325,11 @@ MoleStudio 不是从零开始，有五个参考项目。每个项目角色清晰
 | **精度与深度** | 以 **Mole** 为算法参考：提供与 Mole 一致的物理口径能力；默认展示口径可与 Lemon / Finder 对齐。 |
 | **数据契约** | 后端返回的 JSON 必须能映射到 Lemon 式结构：分类 → 子项 → 路径/文件列表。`ScanResult.rule_categories` 为编译期内嵌规则骨架，`items` 为整盘扫描树。 |
 
-> ⚠️ 待修订点：作者认为"以 Lemon 为唯一 UI 基准"可能过窄，未来或综合 Lemon + Burrow + CleanMyMac。
+> ⚠️ 待修订点：作者认为"以 Lemon 为唯一 UI 基准"可能过窄，未来或综合 Lemon + CleanMyMac。
 
 ### 技术栈选择结论
 
-坚持 **Rust 单栈**；不把 Mole 当作要嵌入的运行时代码，而把 Mole / Lemon / Burrow 都当作需求与对照基准，在约束内重写。
+坚持 **Rust 单栈**；不把 Mole 当作要嵌入的运行时代码，而把 Mole / Lemon 都当作需求与对照基准，在约束内重写。
 
 > ⚠️ 待修订点：作者保留调整技术栈细节的权利（如是否引入部分原生能力）。
 

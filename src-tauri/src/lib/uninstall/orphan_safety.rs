@@ -336,6 +336,66 @@ pub fn scan_orphans(installed_apps: &[(String, String)], home: &str) -> Vec<Orph
         .filter(|s| !s.is_empty() && s.len() >= 3)
         .collect();
 
+    let orphans = scan_candidates(home, |normalized| {
+        // 排除属于已安装 app 的条目
+        !(known_ids.iter().any(|id| normalized.contains(id.as_str()))
+            || known_names
+                .iter()
+                .any(|name| normalized.contains(name.as_str())))
+    });
+
+    log::info!(
+        "[orphan_scan] found {} orphan(s), {} deletable",
+        orphans.len(),
+        orphans.iter().filter(|o| o.deletable).count()
+    );
+    orphans
+}
+
+/// 定向孤儿扫描：只返回与指定 app 相关的残留（通知点击 → 卸载页定向清理链路）。
+///
+/// 与 `scan_orphans` 共用候选收集与安全策略管线（跳前缀 / 白名单 / 黑名单 /
+/// `deletable` 规则），差异仅在**命中判定**——安全口径不因定向放宽。
+///
+/// 命中规则：
+/// - `bundle_id` 非空 → 归一化后 `file_name.contains(bundle_id)`；
+/// - `bundle_id` 为空 → 归一化后 `file_name.contains(app_name)`，且 app_name
+///   归一化长度 ≥ 3（短名误报面过大，仅允许走 bundleId）。
+///
+/// 不套用"已安装 app 排除"逻辑：目标即已卸载 app，该函数仅面向目标匹配。
+pub fn scan_orphans_for(bundle_id: Option<&str>, app_name: &str, home: &str) -> Vec<OrphanEntry> {
+    let target_id = bundle_id
+        .map(normalize_for_matching)
+        .filter(|s| !s.is_empty());
+    let target_name = {
+        let normalized = normalize_for_matching(app_name);
+        (normalized.len() >= 3).then_some(normalized)
+    };
+
+    let orphans = scan_candidates(home, |normalized| match &target_id {
+        Some(id) => normalized.contains(id.as_str()),
+        None => target_name
+            .as_deref()
+            .is_some_and(|name| normalized.contains(name)),
+    });
+
+    log::info!(
+        "[orphan_scan] targeted scan (bundleId={:?}, name={:?}) hit {} entr(ies)",
+        bundle_id,
+        app_name,
+        orphans.len()
+    );
+    orphans
+}
+
+// ---- 内部工具 ----
+
+/// 候选收集公共管线：遍历 `ORPHAN_SCAN_PATHS` → 跳过系统项 → 目标判定 →
+/// 安全策略判定 + 分类 + 大小统计 → 按文件名排序。
+///
+/// `include` 由调用方提供命中口径（全量扫描 = 排除已安装 app；定向扫描 =
+/// 命中目标 app），安全部分两条链路完全一致。
+fn scan_candidates(home: &str, include: impl Fn(&str) -> bool) -> Vec<OrphanEntry> {
     let mut orphans: Vec<OrphanEntry> = Vec::new();
 
     for scan_path in ORPHAN_SCAN_PATHS {
@@ -363,12 +423,8 @@ pub fn scan_orphans(installed_apps: &[(String, String)], home: &str) -> Vec<Orph
                 continue;
             }
 
-            // 2. 检查是否属于已安装 app
-            let belongs_to_app = known_ids.iter().any(|id| normalized.contains(id.as_str()))
-                || known_names
-                    .iter()
-                    .any(|name| normalized.contains(name.as_str()));
-            if belongs_to_app {
+            // 2. 目标判定（口径由调用方决定）
+            if !include(&normalized) {
                 continue;
             }
 
@@ -390,15 +446,8 @@ pub fn scan_orphans(installed_apps: &[(String, String)], home: &str) -> Vec<Orph
 
     // 按文件名排序
     orphans.sort_by(|a, b| a.file_name.cmp(&b.file_name));
-    log::info!(
-        "[orphan_scan] found {} orphan(s), {} deletable",
-        orphans.len(),
-        orphans.iter().filter(|o| o.deletable).count()
-    );
     orphans
 }
-
-// ---- 内部工具 ----
 
 /// 展开 `~` 为用户 home 目录。
 fn expand_tilde(path: &str, home: &str) -> String {
@@ -604,5 +653,62 @@ mod tests {
         assert_eq!(format_size(2048), "2 KB");
         assert_eq!(format_size(5_242_880), "5.0 MB");
         assert_eq!(format_size(2_147_483_648), "2.0 GB");
+    }
+
+    /// 造一个临时 home，在 `Library/Caches` 下预置残留候选。
+    fn make_fake_home(files: &[&str]) -> (tempfile::TempDir, String) {
+        let dir = tempfile::tempdir().unwrap();
+        let caches = dir.path().join("Library/Caches");
+        std::fs::create_dir_all(&caches).unwrap();
+        for f in files {
+            std::fs::write(caches.join(f), b"x").unwrap();
+        }
+        let home = dir.path().to_string_lossy().to_string();
+        (dir, home)
+    }
+
+    #[test]
+    fn targeted_scan_matches_bundle_id_only() {
+        let (_dir, home) = make_fake_home(&[
+            "com.testtarget.cachedir",
+            "com.testtarget.helper",
+            "com.otherbigapp.cachedir",
+        ]);
+        let hits = scan_orphans_for(Some("com.testtarget"), "NoSuchName", &home);
+        assert!(hits.iter().any(|o| o.file_name == "com.testtarget.cachedir"));
+        assert!(hits.iter().any(|o| o.file_name == "com.testtarget.helper"));
+        // 非目标 app 的残留不得混入
+        assert!(!hits.iter().any(|o| o.file_name == "com.otherbigapp.cachedir"));
+    }
+
+    #[test]
+    fn targeted_scan_short_app_name_gated() {
+        let (_dir, home) = make_fake_home(&["ab-thing", "com.testtarget.cachedir"]);
+        // 短名（归一化后 < 3 字符）且无 bundleId → 一律不命中（防误报）
+        assert!(scan_orphans_for(None, "Ab", &home).is_empty());
+        // ≥3 字符时可走 appName 匹配（bundleId 缺失的兜底路径）
+        let hits = scan_orphans_for(None, "TestTarget", &home);
+        assert!(hits.iter().any(|o| o.file_name == "com.testtarget.cachedir"));
+    }
+
+    #[test]
+    fn targeted_scan_preserves_safety_policy() {
+        let (dir, home) = make_fake_home(&["com.testtarget.cachedir"]);
+        let prefs = dir.path().join("Library/Preferences");
+        std::fs::create_dir_all(&prefs).unwrap();
+        std::fs::write(prefs.join("com.testtarget.plist"), b"x").unwrap();
+
+        let hits = scan_orphans_for(Some("com.testtarget"), "TestTarget", &home);
+        let cache_hit = hits
+            .iter()
+            .find(|o| o.file_name == "com.testtarget.cachedir")
+            .expect("cache hit should be included");
+        let pref_hit = hits
+            .iter()
+            .find(|o| o.file_name == "com.testtarget.plist")
+            .expect("preference hit should be shown");
+        // 安全口径不因定向放宽：Caches 可删，Preferences 仅展示
+        assert!(cache_hit.deletable);
+        assert!(!pref_hit.deletable);
     }
 }

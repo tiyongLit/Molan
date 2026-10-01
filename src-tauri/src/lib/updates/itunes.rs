@@ -1,9 +1,9 @@
 //! Mac App Store（iTunes lookup）查询与解析。
-//! 对齐 Burrow `UpdateSources.parseITunesLookup(_:)` / `itunesLookupURL(bundleID:)`。
+//! 解析 `results` 数组第一项的 version / trackViewUrl / minimumOsVersion。
 
 use serde::{Deserialize, Serialize};
 
-/// 对齐 Burrow `UpdateSources.MASResult`。
+/// MAS lookup 结果。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MasLookup {
     pub version: String,
@@ -11,7 +11,7 @@ pub struct MasLookup {
     pub minimum_os_version: Option<String>,
 }
 
-/// 对齐 Burrow `itunesLookupURL(bundleID:)`（bundleID 原样拼接，不做 URL 编码）。
+/// iTunes lookup URL（bundleID 原样拼接，不做 URL 编码）。
 pub fn itunes_lookup_url(bundle_id: &str) -> String {
     format!("https://itunes.apple.com/lookup?bundleId={bundle_id}")
 }

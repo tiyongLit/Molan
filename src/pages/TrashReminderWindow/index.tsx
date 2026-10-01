@@ -153,7 +153,7 @@ export function TrashReminderWindow() {
     } finally { if (current()) { busy.current = false; setPending(false) } }
   }
 
-  const threshold = snapshot?.thresholdMB ?? 1024
+  const threshold = snapshot?.thresholdMB ?? 4096
   const label = threshold >= 1024 ? `${threshold / 1024} GB` : `${threshold} MB`
   const working = pending
   const error = localError || (snapshot?.errorCode ? trashReminderError(snapshot.errorCode) : '')

@@ -10,6 +10,9 @@ use serde_json::Value;
 use std::path::Path;
 use std::process::Command;
 
+#[cfg(target_os = "macos")]
+use super::macos_path_env;
+
 const RED: &str = "\x1b[0;31m";
 const GREEN: &str = "\x1b[0;32m";
 const BLUE: &str = "\x1b[1;34m";
@@ -63,7 +66,7 @@ pub fn collect_security_report() -> SecurityReport {
         let home = std::env::var_os("HOME")
             .filter(|h| !h.is_empty())
             .map(std::path::PathBuf::from)
-            .or_else(dirs::home_dir)
+            .or_else(crate::core::base::home_dir_opt)
             .unwrap_or_else(|| std::path::PathBuf::from("/"));
         let wl = whitelist_optimize::load_optimize_whitelist_patterns(&home);
         SecurityReport {
@@ -110,12 +113,6 @@ pub fn check_all_security_ansi() -> String {
         o.push_str(&render_sip(s));
     }
     o
-}
-
-#[cfg(target_os = "macos")]
-fn macos_path_env() -> String {
-    let tail = std::env::var("PATH").unwrap_or_default();
-    format!("/usr/bin:/bin:/usr/sbin:/sbin:{tail}")
 }
 
 #[cfg(target_os = "macos")]

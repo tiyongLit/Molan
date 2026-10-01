@@ -73,7 +73,7 @@ pub fn get_cache_dir() -> io::Result<PathBuf> {
         }
     }
     // Step 2: 默认 ~/.cache/mole（与 Go getCacheDir 一致）
-    let home = dirs::home_dir()
+    let home = crate::core::base::home_dir_opt()
         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "no home directory"))?;
     let d = home.join(".cache").join("mole");
     fs::create_dir_all(&d)?;

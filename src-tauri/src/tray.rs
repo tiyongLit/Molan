@@ -160,9 +160,10 @@ fn request_show<R: Runtime>(
         native_slide_in(dashboard, start_x, target_x, target_y, my_gen);
     } else {
         // 出场动画中途重开：从当前位置滑回目标位（窗口已可见，不重复 start_status_watch）。
-        let current = dashboard
-            .outer_position()
-            .unwrap_or(PhysicalPosition { x: target_x, y: target_y });
+        let current = dashboard.outer_position().unwrap_or(PhysicalPosition {
+            x: target_x,
+            y: target_y,
+        });
         let _ = dashboard.set_focus();
         native_slide_in(dashboard, current.x, target_x, target_y, my_gen);
     }

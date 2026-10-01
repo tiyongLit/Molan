@@ -3,10 +3,10 @@ import zhCN from './locales/zh-CN/translation.json'
 import enUS from './locales/en-US/translation.json'
 import zhTW from './locales/zh-TW/translation.json'
 
-/** 支持的语言：简体中文（key 口径基准）/ 英文 / 繁体中文 */
+/** 支持的语言：英文 / 简体中文 / 繁体中文；zh-CN 为 key 口径基准（缺 key 时回退） */
 export type AppLocale = 'zh-CN' | 'en-US' | 'zh-TW'
 
-export const SUPPORTED_LOCALES: AppLocale[] = ['zh-CN', 'en-US', 'zh-TW']
+export const SUPPORTED_LOCALES: AppLocale[] = ['en-US', 'zh-CN', 'zh-TW']
 
 /** 语言选项固定用母语名（endonym），不随界面语言翻译 */
 export const LOCALE_LABELS: Record<AppLocale, string> = {

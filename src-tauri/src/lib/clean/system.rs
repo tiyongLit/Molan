@@ -14,7 +14,7 @@ use crate::core::base::{
     MOLE_CRASH_REPORT_AGE_DAYS, MOLE_GPU_CACHE_AGE_DAYS, MOLE_LOG_AGE_DAYS,
     MOLE_TEMP_FILE_AGE_DAYS, MOLE_TM_BACKUP_SAFE_HOURS, STAT_BSD, begin_activity_probe,
     bytes_to_human_kb, command_available, current_spinner_app_handle, get_epoch_seconds,
-    get_file_mtime, get_path_size_kb, note_activity, run_cmd, start_section_spinner,
+    get_file_mtime, get_path_size_kb, note_activity, pgrep_f, run_cmd, start_section_spinner,
     stop_section_spinner,
 };
 use crate::core::dry_run_registry::dry_run_register_cleanup_target;
@@ -815,11 +815,7 @@ pub fn clean_macos_installer_files() -> (u64, u64) {
         if !Path::new(&installer).is_dir() {
             continue;
         }
-        let running = Command::new("pgrep")
-            .args(["-f", &installer])
-            .output()
-            .map(|o| o.status.success())
-            .unwrap_or(false);
+        let running = pgrep_f(&installer);
         if running {
             debug_log(&format!("Skipping {installer}: currently running"));
             continue;

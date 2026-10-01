@@ -333,7 +333,7 @@ pub fn emit_clean_apply_progress(app: &AppHandle, payload: &CleanApplyProgressPa
 
 // ── Updates（应用更新）brew 流式进度 ──
 
-/// Updates 模块：brew upgrade 流式进度短语（对齐 Burrow `UpdatesModel.brewPhrase`）。
+/// Updates 模块：brew upgrade 流式进度短语。
 pub const EVT_UPDATES_BREW_PROGRESS: &str = "updates::brew-progress";
 
 // ── Self-Update（自更新）进度 ──
@@ -393,20 +393,39 @@ pub const EVT_DOCK_QUIT_REQUESTED: &str = "dock-quit-requested";
 /// Payload: `ResidualDetectedPayload`。
 pub const EVT_RESIDUAL_DETECTED: &str = "uninstall::residual-detected";
 
-/// 卸载残留检测事件 payload。
+/// 用户点击"卸载残留"系统通知，请求跳转卸载页定向扫描。
+/// 数据仍以 `residual_watch::take_pending` 快照为准，事件仅作到达信号。
+/// Payload: `ResidualDetectedPayload`。
+pub const EVT_RESIDUAL_OPEN: &str = "uninstall::residual-open";
+
+/// 卸载残留检测/打开事件 payload。
 #[derive(Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ResidualDetectedPayload {
     /// 进入废纸篓的 .app 名称（不含 .app 后缀）。
     pub app_name: String,
+    /// 目标 .app 的 CFBundleIdentifier（读取失败时为 None）。
+    pub bundle_id: Option<String>,
 }
 
 /// 向所有 Webview 广播卸载残留检测结果。
-pub fn emit_residual_detected(app: &AppHandle, app_name: &str) {
+pub fn emit_residual_detected(app: &AppHandle, app_name: &str, bundle_id: Option<&str>) {
     let _ = app.emit(
         EVT_RESIDUAL_DETECTED,
         ResidualDetectedPayload {
             app_name: app_name.to_string(),
+            bundle_id: bundle_id.map(str::to_string),
+        },
+    );
+}
+
+/// 向所有 Webview 广播"点击残留通知、请求打开卸载页"。
+pub fn emit_residual_open(app: &AppHandle, app_name: &str, bundle_id: Option<&str>) {
+    let _ = app.emit(
+        EVT_RESIDUAL_OPEN,
+        ResidualDetectedPayload {
+            app_name: app_name.to_string(),
+            bundle_id: bundle_id.map(str::to_string),
         },
     );
 }

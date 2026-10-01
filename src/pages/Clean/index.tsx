@@ -2,19 +2,18 @@ import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { load, type Store } from '@tauri-apps/plugin-store'
 import CleanStatusBar, { type CleanStatus } from './components/CleanStatusBar'
-import CleanLayout, { type CleanActionConfig } from './components/CleanLayout'
 import { ScanningGroupRow } from './components/ScanningSkeletonList'
 import ScanResult from './components/ScanResult'
 import CategoryRow from './components/CategoryRow'
 import CleanFooter from './components/CleanFooter'
 import useTauri from '@/hooks/useTauri'
 import { moleNativeConfirm } from '@/hooks/useMoleConfirm'
-import { moleMessage } from '@/components/ui'
+import { moleMessage, ScanPageLayout, type ScanPageActionConfig } from '@/components/ui'
 import './Clean.scss'
 
 import type { MoleCleanResult, MoleCleanItem, CleanStatusInfo } from '@/types/mole'
 import { useI18n } from '@/i18n'
-import { CATEGORY_GROUPS, type CleanGroupData } from './clean.constants'
+import { CATEGORY_GROUPS, PRIMARY_CTA_STYLE, type CleanGroupData } from './clean.constants'
 import { isCountableCleanItem, selKey, computeGroupStatusBySection } from './scan-status'
 import { useScanEngine } from './hooks/useScanEngine'
 import { useCleanEngine } from './hooks/useCleanEngine'
@@ -427,7 +426,7 @@ export function Clean() {
   }
 
   // ============================
-  // 布局视图（idle / scanning / review / cleaning 共用 CleanLayout）
+  // 布局视图（idle / scanning / review / cleaning 共用 ScanPageLayout）
   // phase → 状态文案 / 主按钮 / 进度的映射集中在此（唯一 UI 决策点），
   // 布局壳与内容组件均不感知 phase，新增阶段只需在此追加分支
   // ============================
@@ -457,7 +456,7 @@ export function Clean() {
   )
 
   // ---- phase → 主操作按钮 ----
-  const action: CleanActionConfig = isScanning
+  const action: ScanPageActionConfig = isScanning
     ? { label: cancelling ? t('clean.action.cancelling') : t('clean.action.cancel'), onClick: cancelScan, disabled: cancelling }
     : isIdle
       ? { label: t('clean.action.scan'), onClick: startScan, primary: true }
@@ -466,10 +465,12 @@ export function Clean() {
         : { label: t('clean.action.clean'), onClick: handleClean, primary: true, disabled: !executionAllowed || totalSelectedSize === 0 }
 
   return (
-    <CleanLayout
+    <ScanPageLayout
       loading={isScanning || isCleaning}
       statusContent={statusContent}
       action={action}
+      actionClassName="clean-primary-btn"
+      actionStyle={PRIMARY_CTA_STYLE}
       progress={isScanning ? scanProgress : cleanProgress}
       progressAlwaysShow={isCleaning}
       footer={phase === 'review' ? <CleanFooter executionAllowed={executionAllowed} onResetToDefault={handleResetToDefault} permanentDelete={permanentDelete} onPermanentDeleteChange={handlePermanentDeleteChange} /> : undefined}
@@ -499,6 +500,6 @@ export function Clean() {
           />
         )
       })}
-    </CleanLayout>
+    </ScanPageLayout>
   )
 }

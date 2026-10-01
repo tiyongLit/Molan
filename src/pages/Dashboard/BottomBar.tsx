@@ -4,6 +4,7 @@ import type { MenuProps } from 'antd'
 import { ArrowDownCircle, Info, Power, Settings, Settings2 } from 'lucide-react'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { invoke } from '@tauri-apps/api/core'
+import { openUrl } from '@tauri-apps/plugin-opener'
 import { moleMessage } from '@/components/ui'
 import { useAppVersion } from '@/hooks/useAppVersion'
 import { CMD_MOLE_IS_BUSY, CMD_MOLE_CONFIRM_DOCK_QUIT, CMD_MOLE_SHOW_DOCK_ICON, CMD_MOLE_OPEN_SETTINGS_WINDOW, CMD_MOLE_DASHBOARD_HIDE } from '@/constants/tauri-commands'
@@ -12,6 +13,9 @@ import useTauri from '@/hooks/useTauri'
 import { EVT_DASHBOARD_HIDE_REQUESTED } from '@/constants/tauri-events'
 import { dashTheme } from './theme'
 import { useI18n, type TFunction } from '@/i18n'
+
+/** 项目 GitHub 仓库（「关于」菜单跳转目标；修改时需同步 capabilities/default.json 的 allow-open-url 白名单） */
+const PROJECT_GITHUB_URL = 'https://github.com/tiyongLit/MoleStudio'
 
 /**
  * 底部固定工具栏：左 logo · 中「打开 MoleStudio2」主入口 · 右设置下拉。
@@ -114,8 +118,11 @@ export function BottomBar() {
       await handleUpdateClick()
     } else if (key === 'settings') {
       invoke(CMD_MOLE_OPEN_SETTINGS_WINDOW).catch(() => {})
-    } else {
-      moleMessage.info(t('dashboard.menu.about'))
+    } else if (key === 'about') {
+      // 「关于」→ 打开项目 GitHub 仓库（浏览器接管；托盘气泡随失焦流程自动隐藏）
+      openUrl(PROJECT_GITHUB_URL).catch((err) =>
+        console.error('[BottomBar] open GitHub repo failed:', err)
+      )
     }
   }
 

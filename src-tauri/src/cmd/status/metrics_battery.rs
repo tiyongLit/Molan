@@ -7,7 +7,7 @@ pub struct ThermalStatus {
     pub fan_count: i32,
 }
 
-/// 风扇与 CPU die 温度：SMC 只读客户端（免 root，Burrow SMC.swift 同款）。
+/// 风扇与 CPU die 温度：SMC 只读客户端（免 root）。
 /// SMC 不可用时（虚拟机等）风扇/温度保持 0，前端诚实显示「无数据」。
 pub fn collect_thermal() -> ThermalStatus {
     let mut thermal = ThermalStatus {
@@ -20,7 +20,7 @@ pub fn collect_thermal() -> ThermalStatus {
     {
         let (count, rpm) = crate::platform::macos_smc::fans();
         thermal.fan_count = count;
-        // Burrow 同款：多风扇取最高 RPM（SnapshotPatcher: f.rpm.max()）
+        // 多风扇取最高 RPM（f.rpm.max()）
         thermal.fan_speed = rpm.iter().max().copied().unwrap_or(0);
         let cpu_t = crate::platform::macos_smc::temps();
         thermal.cpu_temp = cpu_t.unwrap_or(0.0);

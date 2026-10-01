@@ -11,7 +11,7 @@ use crate::core::app_protection::{
 };
 use crate::core::base::{
     MOLE_LOG_AGE_DAYS, bytes_to_human, command_available, get_file_mtime, get_path_size_kb,
-    home_dir, is_dry_run, note_activity, pgrep_x,
+    home_dir, is_dry_run, note_activity, pgrep_f, pgrep_x,
 };
 use crate::core::dry_run_registry::dry_run_register_cleanup_target;
 use crate::core::file_ops::{MOLE_OK, safe_clean, safe_find_delete, safe_remove, safe_sudo_remove};
@@ -2381,16 +2381,6 @@ fn count_versioned_agent_entries(dir: &str) -> usize {
 /// SH `claude_desktop_running`
 fn claude_desktop_running() -> bool {
     pgrep_x("Claude") || pgrep_f("/Claude.app/")
-}
-
-fn pgrep_f(pattern: &str) -> bool {
-    std::process::Command::new("pgrep")
-        .args(["-f", pattern])
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status()
-        .map(|s| s.success())
-        .unwrap_or(false)
 }
 
 /// SH `claude_desktop_sdk_version` — read active SDK version from .sdk-version file.

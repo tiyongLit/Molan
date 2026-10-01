@@ -1,9 +1,9 @@
 //! 平台安装形态检测：统一出口。
 //!
-//! 将分散的渠道判断（编译期 feature / 运行时沙盒检测 / MAS receipt）
+//! 将分散的渠道判断（运行时沙盒检测 / MAS receipt）
 //! 收敛为 `PlatformInfo` 单例。未来所有"官网版 vs MAS 版"的分支逻辑，
 //! **只准**查 `PlatformInfo::current().channel`，禁止再散落
-//! `cfg!(feature = "mas")` 或 `is_mas_build()` 的裸判断。
+//! `is_mas_build()` 之类的裸判断。
 
 use serde::Serialize;
 use std::env;
@@ -36,7 +36,6 @@ pub enum InstallKind {
 
 /// 运行时的平台安装信息（OnceLock 缓存，首次调用计算，之后零开销）。
 #[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct PlatformInfo {
     /// 分发渠道
     pub channel: DistributionChannel,
@@ -48,15 +47,13 @@ pub struct PlatformInfo {
     pub current_app_bundle: Option<String>,
     /// 是否运行在 App Sandbox 中
     pub sandboxed: bool,
-    /// 是否为 `full` feature 构建
-    pub full_build: bool,
 }
 
 static CACHE: OnceLock<PlatformInfo> = OnceLock::new();
 
 /// 全库统一出口：渠道分支只准查这里。
 ///
-/// ```rust
+/// ```text
 /// if platform_info::current().channel == DistributionChannel::Direct {
 ///     // 官网版特有逻辑
 /// }
@@ -84,7 +81,6 @@ fn compute() -> PlatformInfo {
         app_version,
         current_app_bundle: app_bundle.map(|p| p.to_string_lossy().into_owned()),
         sandboxed,
-        full_build: cfg!(feature = "full"),
     }
 }
 
@@ -104,22 +100,13 @@ fn is_sandboxed() -> bool {
 /// 检测分发渠道。
 ///
 /// 优先级：
-/// 1. 编译期 `mas` feature → 一定是 MAS
-/// 2. 运行时沙盒环境变量 → MAS
-/// 3. 其余 → Direct
+/// 1. 运行时沙盒环境变量 → MAS
+/// 2. 其余 → Direct
 fn detect_channel(sandboxed: bool) -> DistributionChannel {
-    #[cfg(feature = "mas")]
-    {
-        let _ = sandboxed;
-        return DistributionChannel::MacAppStore;
-    }
-    #[cfg(not(feature = "mas"))]
-    {
-        if sandboxed {
-            DistributionChannel::MacAppStore
-        } else {
-            DistributionChannel::Direct
-        }
+    if sandboxed {
+        DistributionChannel::MacAppStore
+    } else {
+        DistributionChannel::Direct
     }
 }
 

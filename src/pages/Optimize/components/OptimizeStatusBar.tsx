@@ -1,9 +1,7 @@
 import classnames from 'classnames'
-import { MoleButton } from '@/components/ui'
-import { SEMANTIC_COLORS } from '@/constants/theme'
+import { MoleButton, ScanEllipsis, ScanErrorPlaceholder } from '@/components/ui'
 import { useI18n } from '@/i18n'
 import type { MoleOptimizeSystemInfo } from '@/types/mole'
-import './OptimizeStatusBar.css'
 
 /**
  * 优化页左上角状态条（对齐 CleanStatusBar 模式）
@@ -33,14 +31,6 @@ export interface OptimizeStatusBarProps {
   className?: string
 }
 
-const ellipsis = (
-  <span className="optimize-status__ellipsis" aria-hidden>
-    <span>.</span>
-    <span>.</span>
-    <span>.</span>
-  </span>
-)
-
 export default function OptimizeStatusBar({
   status,
   error,
@@ -59,11 +49,7 @@ export default function OptimizeStatusBar({
         <h1 className="text-2xl font-semibold leading-tight text-white">{t('optimize.status.idle.title')}</h1>
         <p className="mt-2 text-sm text-white/60">{t('optimize.status.idle.subtitle')}</p>
         {/* 错误提示固定占位（min-h-[16px]），避免出现/消失时列表下移 */}
-        <div className="mt-2 min-h-[16px] flex items-center">
-          {error ? (
-            <p className="text-xs font-medium" style={{ color: SEMANTIC_COLORS.dangerRed }}>{error}</p>
-          ) : null}
-        </div>
+        <ScanErrorPlaceholder error={error} />
       </div>
     )
   }
@@ -72,7 +58,7 @@ export default function OptimizeStatusBar({
     return (
       <div className={classnames('pt-1', className)}>
         <h1 className="text-2xl font-semibold leading-tight text-white">
-          {t('optimize.status.analyzing.title')}{ellipsis}
+          {t('optimize.status.analyzing.title')}<ScanEllipsis />
         </h1>
         <div className="mt-2 flex items-center gap-2">
           <span className="text-sm text-white/60">{t('optimize.status.analyzing.subtitle')}</span>
@@ -85,7 +71,7 @@ export default function OptimizeStatusBar({
     return (
       <div className={classnames('pt-1', className)}>
         <h1 className="text-2xl font-semibold leading-tight text-white">
-          {t('optimize.status.executing.title')}{ellipsis}
+          {t('optimize.status.executing.title')}<ScanEllipsis />
         </h1>
         <div className="mt-2 flex items-center gap-2">
           <span className="text-sm text-white/60">

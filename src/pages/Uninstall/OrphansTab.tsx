@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useLayoutEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo, useLayoutEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { Trash2, RefreshCw, Loader2, ShieldAlert, CheckCircle2 } from 'lucide-react'
 import SimpleBar from 'simplebar-react'
@@ -6,9 +6,10 @@ import 'simplebar-react/dist/simplebar.min.css'
 import useTauri from '@/hooks/useTauri'
 import { moleMessage, MoleCheckbox } from '@/components/ui'
 import { moleNativeConfirm } from '@/hooks/useMoleConfirm'
+import { useResidual } from '@/layout/ResidualContext'
 import { useI18n } from '@/i18n'
 import { formatSize } from '@/utils/format'
-import type { OrphanEntry, OrphanCategory, OrphanDeleteResult } from '@/types/mole'
+import type { OrphanEntry, OrphanCategory, OrphanDeleteResult, ResidualTarget } from '@/types/mole'
 
 // ── 分类标签与配色（对齐 UninstallTab 的 GROUP_LABEL_MAP 风格）──
 
@@ -70,6 +71,7 @@ function CategoryBadge({ category }: { category: OrphanCategory }) {
 export function OrphansTab() {
   const tauri = useTauri()
   const { t } = useI18n()
+  const { residualTarget, clearResidualTarget } = useResidual()
   const [orphans, setOrphans] = useState<OrphanEntry[]>([])
   const [loading, setLoading] = useState(false)
   const [scanned, setScanned] = useState(false)
@@ -84,27 +86,56 @@ export function OrphansTab() {
   }, [])
 
   // ── 扫描 ──
-  const handleScan = useCallback(async () => {
-    setLoading(true)
-    setScanned(false)
-    setCheckedPaths(new Set())
-    try {
-      const result = await tauri.mole_orphan_scan() as OrphanEntry[]
-      setOrphans(result ?? [])
-      setScanned(true)
-      // 自动勾选所有可删除项
-      const autoChecked = new Set<string>()
-      for (const o of result ?? []) {
-        if (o.deletable) autoChecked.add(o.path)
-      }
-      setCheckedPaths(autoChecked)
-    } catch (err) {
-      console.error('[OrphansTab] scan failed', err)
-      moleMessage.error(t('uninstall.orphan.scanFailed', { error: String(err) }))
-    } finally {
-      setLoading(false)
+  // 全量（mole_orphan_scan）与定向（mole_orphan_scan_for）共用结果应用逻辑
+  const applyScanResult = useCallback((result: OrphanEntry[] | null | undefined) => {
+    const list = result ?? []
+    setOrphans(list)
+    setScanned(true)
+    // 自动勾选所有可删除项
+    const autoChecked = new Set<string>()
+    for (const o of list) {
+      if (o.deletable) autoChecked.add(o.path)
     }
-  }, [tauri, t])
+    setCheckedPaths(autoChecked)
+  }, [])
+
+  /** 执行扫描：target 非空 → 定向（仅目标 app 的残留）；null → 全量。 */
+  const runScan = useCallback(
+    async (target: ResidualTarget | null) => {
+      setLoading(true)
+      setScanned(false)
+      setCheckedPaths(new Set())
+      try {
+        const result = (target
+          ? await tauri.mole_orphan_scan_for({
+              bundle_id: target.bundleId,
+              app_name: target.appName,
+            })
+          : await tauri.mole_orphan_scan()) as OrphanEntry[]
+        applyScanResult(result)
+      } catch (err) {
+        console.error('[OrphansTab] scan failed', err)
+        moleMessage.error(t('uninstall.orphan.scanFailed', { error: String(err) }))
+      } finally {
+        setLoading(false)
+      }
+    },
+    [tauri, t, applyScanResult],
+  )
+
+  // 定向目标变化：非空 → 自动定向扫描；被清除（「查看全部残留」）→ 回全量扫描。
+  // 同一目标 + 依赖身份变化（runScan 重建）不重扫，仅响应目标本身的变化。
+  const prevTargetRef = useRef<ResidualTarget | null>(null)
+  useEffect(() => {
+    const prev = prevTargetRef.current
+    prevTargetRef.current = residualTarget
+    if (residualTarget === prev) return
+    if (residualTarget) {
+      void runScan(residualTarget)
+    } else if (prev) {
+      void runScan(null)
+    }
+  }, [residualTarget, runScan])
 
   // ── 删除 ──
   const handleDelete = useCallback(async () => {
@@ -214,6 +245,21 @@ export function OrphansTab() {
             )}
           </span>
         )}
+        {/* 定向模式：仅显示目标 app 的残留 + 查看全部入口 */}
+        {residualTarget && (
+          <span className="flex items-center gap-2 min-w-0">
+            <Trash2 size={12} className="shrink-0 text-emerald-300/80" />
+            <span className="text-[11px] text-emerald-200/85 truncate">
+              {t('uninstall.orphan.targetedBanner', { app: residualTarget.appName })}
+            </span>
+            <button
+              onClick={clearResidualTarget}
+              className="shrink-0 rounded px-2 py-0.5 text-[10px] font-medium text-emerald-300 bg-emerald-500/15 hover:bg-emerald-500/25 transition-colors"
+            >
+              {t('uninstall.orphan.showAll')}
+            </button>
+          </span>
+        )}
       </div>
 
       {/* 扫描完成后才出现：重新扫描 + 全选，Portal 到壳层顶行右上角（对齐卸载页工具栏） */}
@@ -222,7 +268,7 @@ export function OrphansTab() {
         createPortal(
           <div className="flex items-stretch h-7 rounded-[3px] bg-black/[0.3] border border-white/[0.14] overflow-hidden">
             <button
-              onClick={handleScan}
+              onClick={() => void runScan(residualTarget)}
               title={t('uninstall.rescan')}
               className="group flex items-center gap-1.5 px-2.5 text-xs text-white transition-colors hover:bg-white/[0.08]"
             >
@@ -259,9 +305,9 @@ export function OrphansTab() {
                 {t('uninstall.orphan.empty.desc')}
               </p>
             </div>
-            {/* 初始态唯一扫描入口；扫描完成后右上角 Portal 出「重新扫描」，二者共用 handleScan */}
+            {/* 初始态唯一扫描入口；扫描完成后右上角 Portal 出「重新扫描」，二者共用 runScan */}
             <button
-              onClick={handleScan}
+              onClick={() => void runScan(residualTarget)}
               className="apps-primary-btn text-xs px-4 py-1.5 rounded-md font-bold flex items-center gap-1.5"
             >
               <RefreshCw size={13} />
@@ -280,8 +326,25 @@ export function OrphansTab() {
         {scanned && !loading && orphans.length === 0 && (
           <div className="h-full flex flex-col items-center justify-center gap-3 text-white/40">
             <CheckCircle2 size={40} strokeWidth={1.2} className="text-emerald-400/60" />
-            <p className="text-sm">{t('uninstall.orphan.none')}</p>
-            <p className="text-xs text-white/25">{t('uninstall.orphan.clean')}</p>
+            {residualTarget ? (
+              <>
+                {/* 定向未命中：区别于全量干净的文案 + 查看全部入口 */}
+                <p className="text-sm">
+                  {t('uninstall.orphan.targetedEmpty', { app: residualTarget.appName })}
+                </p>
+                <button
+                  onClick={clearResidualTarget}
+                  className="apps-ghost-btn text-xs px-3 py-1.5 rounded-md transition-colors mt-1"
+                >
+                  {t('uninstall.orphan.showAll')}
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="text-sm">{t('uninstall.orphan.none')}</p>
+                <p className="text-xs text-white/25">{t('uninstall.orphan.clean')}</p>
+              </>
+            )}
           </div>
         )}
 

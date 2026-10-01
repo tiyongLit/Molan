@@ -1,0 +1,30 @@
+/* 扫描态：省略号循环动画（实时变化效果） */
+.scan-status__ellipsis span {
+  display: inline-block;
+  opacity: 0;
+  animation: scan-status-dots 1.2s steps(1, end) infinite;
+}
+
+.scan-status__ellipsis span:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.scan-status__ellipsis span:nth-child(2) {
+  animation-delay: 0.3s;
+}
+
+.scan-status__ellipsis span:nth-child(3) {
+  animation-delay: 0.6s;
+}
+
+@keyframes scan-status-dots {
+  0% {
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}

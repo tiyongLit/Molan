@@ -1,6 +1,5 @@
 //! Homebrew 更新（brew outdated 捕获 + brew upgrade 流式）。
-//! 对齐 Burrow `UpdatesModel.brewPath/brewOutdated/runBrew/runBrewStreaming/parseOutdated`
-//! 与 `BrewProgress.phrase`。
+//! 行为基线见 `controllers/updates.md` §2.2。
 //!
 //! 管道纪律（防死锁规范）：捕获走 stdout/stderr 双临时文件；流式走逐行 reader 线程，
 //! 等待期间并发排空，绝不 wait-then-read。
@@ -11,7 +10,7 @@ use std::os::unix::process::CommandExt;
 use std::process::{Command, Stdio};
 use wait_timeout::ChildExt;
 
-/// brew 行条目（对齐 Burrow `OutdatedItem`）。
+/// brew 行条目。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BrewOutdatedItem {
     pub name: String,
@@ -29,7 +28,7 @@ pub struct BrewUpgradeOutcome {
     pub error: Option<String>,
 }
 
-/// brew 可执行路径（对齐 Burrow `brewPath()`：isExecutableFile 检查，两个标准前缀）。
+/// brew 可执行路径（可执行位检查，两个标准前缀）。
 pub fn brew_path() -> Option<String> {
     for p in ["/opt/homebrew/bin/brew", "/usr/local/bin/brew"] {
         if is_executable(p) {
@@ -47,7 +46,7 @@ fn is_executable(p: &str) -> bool {
     }
 }
 
-/// 对齐 Burrow `runBrew` 的 PATH 注入：brew 目录前置，保证其内部 git/curl 可找到。
+/// PATH 注入：brew 目录前置，保证其内部 git/curl 可找到。
 fn brew_env(brew: &str) -> (String, String) {
     let dir = std::path::Path::new(brew)
         .parent()
@@ -61,7 +60,7 @@ fn brew_env(brew: &str) -> (String, String) {
 }
 
 /// `brew outdated --json=v2` → 行条目。brew 不存在 / 执行失败 / 超时 → 空。
-/// 超时 120s（对齐 Burrow `runBrew` 默认）。
+/// 超时 120s。
 pub fn brew_outdated() -> Vec<BrewOutdatedItem> {
     let Some(brew) = brew_path() else {
         return Vec::new();
@@ -115,9 +114,9 @@ fn brew_capture(brew: &str, args: &[&str], timeout_secs: f64) -> Option<String> 
     text
 }
 
-/// `brew upgrade [name]` 流式执行：stdout/stderr 逐行回调（对齐 Burrow
-/// `runBrewStreaming`：两流同管道逐行 onLine，噪声由调用侧过滤）。
-/// 单包 1800s / 全部 3600s 超时（对齐 Burrow `upgrade/upgradeAll`）。
+/// `brew upgrade [name]` 流式执行：stdout/stderr 逐行回调（两流逐行 onLine，
+/// 噪声由调用侧过滤）。
+/// 单包 1800s / 全部 3600s 超时。
 pub fn brew_upgrade_streaming<F>(
     name: Option<&str>,
     timeout_secs: f64,
@@ -239,7 +238,7 @@ fn spawn_line_reader<R: std::io::Read + Send + 'static>(
     });
 }
 
-/// 对齐 Burrow `BrewProgress.phrase`：`==> ` 前缀行 → 进度短语，其余为噪声。
+/// 进度短语提取：`==> ` 前缀行 → 进度短语，其余为噪声。
 pub fn brew_progress_phrase(line: &str) -> Option<String> {
     let t = line.trim();
     let rest = t.strip_prefix("==> ")?;
@@ -251,7 +250,7 @@ pub fn brew_progress_phrase(line: &str) -> Option<String> {
     }
 }
 
-/// 纯解析 `brew outdated --json=v2`（对齐 Burrow `parseOutdated`）：
+/// 纯解析 `brew outdated --json=v2`：
 /// formulae → kind "formula"，casks → kind "cask"；
 /// installed 取 `installed_versions` **第一项**（缺省 "?"），latest 取 `current_version`（缺省 "?"）。
 pub fn parse_outdated(json: &str) -> Vec<BrewOutdatedItem> {

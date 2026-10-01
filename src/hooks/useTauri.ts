@@ -2,7 +2,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 
 import { EVT_CONFIG_UPDATED } from '@/constants/tauri-events'
-import { TAURI_COMMANDS, CMD_MOLE_TRASH_EMPTY, CMD_MOLE_TRASH_REMINDER_GET_STATE, CMD_MOLE_TRASH_REMINDER_ACTION, CMD_MOLE_TRASH_REMINDER_UPDATE_SETTINGS, CMD_MOLE_DASHBOARD_HIDE } from '@/constants/tauri-commands'
+import { TAURI_COMMANDS, CMD_MOLE_TRASH_EMPTY, CMD_MOLE_TRASH_REMINDER_GET_STATE, CMD_MOLE_TRASH_REMINDER_ACTION, CMD_MOLE_TRASH_REMINDER_UPDATE_SETTINGS, CMD_MOLE_DASHBOARD_HIDE, CMD_MOLE_RESIDUAL_TAKE_PENDING } from '@/constants/tauri-commands'
 import { Batcher } from '@/utils/batcher'
 
 // Re-export 事件常量，业务从 useTauri 或本文件统一拿
@@ -60,7 +60,10 @@ const api = TAURI_COMMANDS.reduce(
       cmd === CMD_MOLE_TRASH_REMINDER_GET_STATE ||
       cmd === CMD_MOLE_TRASH_REMINDER_ACTION ||
       cmd === CMD_MOLE_TRASH_REMINDER_UPDATE_SETTINGS ||
-      cmd === CMD_MOLE_DASHBOARD_HIDE
+      cmd === CMD_MOLE_DASHBOARD_HIDE ||
+      // take 语义（消费即清空）：并发合并会让第二次调用拿到第一次的结果，
+      // 吞掉"点击通知"写入的新 pending，必须每次真实发起 IPC
+      cmd === CMD_MOLE_RESIDUAL_TAKE_PENDING
     res[cmd] = async (payload?: any) => {
       console.info(`[useTauri] ${cmd} called with`, payload)
       try {

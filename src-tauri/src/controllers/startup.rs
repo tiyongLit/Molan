@@ -132,15 +132,10 @@ fn build_app_index() -> AppIndex {
                 .map(|n| n.to_string_lossy().to_string())
                 .unwrap_or_default();
             let info_plist = format!("{app_path}/Contents/Info.plist");
-            let bundle_id = plist::Value::from_file(&info_plist)
-                .ok()
-                .and_then(|v| v.into_dictionary())
-                .and_then(|d| {
-                    d.get("CFBundleIdentifier")
-                        .and_then(|v| v.as_string())
-                        .map(String::from)
-                })
-                .unwrap_or_default();
+            let bundle_id = crate::core::bundle_id_anchor::read_bundle_id_from_plist(
+                std::path::Path::new(&info_plist),
+            )
+            .unwrap_or_default();
             if !bundle_id.is_empty() {
                 entries.push((bundle_id, name, app_path));
             }
@@ -182,14 +177,7 @@ fn scan_apps_in_dir(
             .map(|n| n.to_string_lossy().to_string())
             .unwrap_or_default();
         let info_plist = path.join("Contents/Info.plist");
-        let bundle_id = plist::Value::from_file(&info_plist)
-            .ok()
-            .and_then(|v| v.into_dictionary())
-            .and_then(|d| {
-                d.get("CFBundleIdentifier")
-                    .and_then(|v| v.as_string())
-                    .map(String::from)
-            })
+        let bundle_id = crate::core::bundle_id_anchor::read_bundle_id_from_plist(&info_plist)
             .unwrap_or_default();
         if !bundle_id.is_empty() {
             entries.push((bundle_id, name, path_str));

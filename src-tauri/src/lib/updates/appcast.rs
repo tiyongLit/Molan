@@ -1,11 +1,10 @@
 //! Sparkle appcast 解析。
-//! 对齐 Burrow `UpdateSources.parseAppcast(_:)`：收集所有 `<enclosure>` 的
+//! 收集所有 `<enclosure>` 的
 //! `sparkle:shortVersionString`（优先，人类可读版本，与 CFBundleShortVersionString 可比）
 //! / `sparkle:version`（回退），返回 `is_version_newer` 意义下的最大版本。
 
 /// 解析 appcast XML，返回其中声明的最高版本。
-/// 解析失败但已收集到版本时仍返回已有最大值（对齐 Burrow
-/// `parser.parse() || !delegate.versions.isEmpty` 的宽容语义）。
+/// 解析失败但已收集到版本时仍返回已有最大值（宽容语义）。
 pub fn parse_appcast(xml: &str) -> Option<String> {
     let mut reader = quick_xml::Reader::from_str(xml);
     let mut buf = Vec::new();
@@ -43,7 +42,7 @@ fn enclosure_version(e: &quick_xml::events::BytesStart) -> Option<String> {
     short.or(raw)
 }
 
-/// isNewer 意义下的最大版本（相等不偏置，取先出现的）。
+/// 版本比较意义下的最大版本（相等不偏置，取先出现的）。
 fn max_version(versions: Vec<String>) -> Option<String> {
     versions.into_iter().max_by(|a, b| {
         if super::version::is_version_newer(a, b) {

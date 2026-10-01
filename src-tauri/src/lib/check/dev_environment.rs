@@ -71,7 +71,7 @@ pub fn collect_dev_environment_report_with_options(
 ) -> Result<DevEnvironmentReport, String> {
     #[cfg(target_os = "macos")]
     {
-        let home = dirs::home_dir().ok_or_else(|| "无法解析主目录".to_string())?;
+        let home = crate::core::base::home_dir_opt().ok_or_else(|| "无法解析主目录".to_string())?;
         let whitelist = if opt.apply_optimize_whitelist {
             whitelist_optimize::load_optimize_whitelist_patterns(&home)
         } else {
@@ -231,7 +231,7 @@ fn plist_buddy_print(plist: &Path, query: &str) -> Option<String> {
 }
 
 fn check_launch_agents() -> LaunchAgentsSection {
-    let agents_dir = dirs::home_dir()
+    let agents_dir = crate::core::base::home_dir_opt()
         .unwrap_or_else(|| PathBuf::from("/"))
         .join("Library/LaunchAgents");
     if !agents_dir.is_dir() {

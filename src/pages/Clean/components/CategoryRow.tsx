@@ -1,24 +1,13 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { DatabaseOutlined } from '@ant-design/icons'
 import { formatSize } from '@/utils/format'
-import { MoleCheckbox } from '@/components/ui'
+import { ExpandChevron, MoleCheckbox } from '@/components/ui'
 import { SEMANTIC_COLORS } from '@/constants/theme'
 import { useI18n } from '@/i18n'
 import { categoryIconMap, type CleanGroupData } from '../clean.constants'
 import { selKey } from '../scan-status'
 import CleanItemRow from './CleanItemRow'
 import type { MoleCleanItem } from '@/types/mole'
-
-function ChevronIcon({ expanded }: { expanded: boolean }) {
-  return (
-    <svg
-      className={`w-4 h-4 text-white/40 transition-transform ${expanded ? 'rotate-90' : ''}`}
-      fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
-    >
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-    </svg>
-  )
-}
 
 interface CategoryRowProps {
   group: CleanGroupData
@@ -104,7 +93,7 @@ export default function CategoryRow({
           </span>
         )}
 
-        {!isIdle && <ChevronIcon expanded={isExpanded} />}
+        {!isIdle && <ExpandChevron expanded={isExpanded} />}
       </div>
 
       {/* ── 展开的子项（CSS grid 过渡，避免 layout 测量） ── */}

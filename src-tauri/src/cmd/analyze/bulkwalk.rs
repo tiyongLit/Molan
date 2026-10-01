@@ -203,7 +203,7 @@ fn cpus() -> usize {
 /// - `finish` 在 worker 退出前调用一次（调用侧 flush 最后一批 stage 聚合）。
 pub fn parallel_walk<W, FM, FV, FF>(
     root: &str,
-    gen: i64,
+    generation: i64,
     progress: Option<Progress<'_>>,
     make_worker: FM,
     visit: FV,
@@ -233,7 +233,7 @@ where
     });
 
     let results: Arc<Mutex<Vec<W>>> = Arc::new(Mutex::new(Vec::with_capacity(n)));
-    let is_stale = move || super::scanner::is_scan_stale(gen);
+    let is_stale = move || super::scanner::is_scan_stale(generation);
     // Option<&Progress> 是 Copy，可被多个 spawn 闭包共享（Option<Progress> 本身非 Copy）
     let progress_ref = progress.as_ref();
     // 诊断开关：MOLE_SCAN_TIMING=1 时打印每 worker 任务数/窃取数/自旋数

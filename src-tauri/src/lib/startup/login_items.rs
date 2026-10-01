@@ -1,5 +1,5 @@
 //! `sfltool dumpbtm` 输出解析：现代 Login/Background Items（BTM 层）。
-//! 对齐 Burrow `LoginItemsReader.parse`——纯函数，sfltool spawn 在 controllers 层。
+//! 纯函数解析，sfltool spawn 在 controllers 层。
 
 /// 一条 BTM 记录（内部结构；merge 后折叠为 `StartupItem`）。
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -16,7 +16,7 @@ pub fn parse(dump: &str) -> Vec<LoginItem> {
     for block in blocks(dump) {
         let f = fields(&block);
         let id = f.get("Identifier").cloned().unwrap_or_default();
-        // Name 缺失或 "(null)" 都回落到 id（对齐 Burrow `name ?? id`）。
+        // Name 缺失或 "(null)" 都回落到 id。
         let name_raw = f
             .get("Name")
             .map(|n| {
@@ -62,7 +62,7 @@ pub fn parse(dump: &str) -> Vec<LoginItem> {
     items
 }
 
-/// 每条记录以 trim 后恰为 `#<n>:` 的行开始（对齐 Burrow `blocks`）。
+/// 每条记录以 trim 后恰为 `#<n>:` 的行开始。
 fn blocks(s: &str) -> Vec<String> {
     let mut out = Vec::new();
     let mut cur: Vec<String> = Vec::new();
@@ -85,14 +85,14 @@ fn blocks(s: &str) -> Vec<String> {
     out
 }
 
-/// `^#\d+:$`（Swift 正则直译，无 regex 依赖）。
+/// `^#\d+:$`（无 regex 依赖的手写匹配）。
 fn is_block_header(t: &str) -> bool {
     let body = t.strip_prefix('#').unwrap_or_default();
     let body = body.strip_suffix(':').unwrap_or_default();
     !body.is_empty() && body.bytes().all(|b| b.is_ascii_digit())
 }
 
-/// `"        Key: Value"` → `[Key: Value]`，首个出现的 key 胜出（对齐 Burrow `fields`）。
+/// `"        Key: Value"` → `[Key: Value]`，首个出现的 key 胜出。
 fn fields(block: &str) -> std::collections::HashMap<String, String> {
     let mut out = std::collections::HashMap::new();
     for line in block.lines() {

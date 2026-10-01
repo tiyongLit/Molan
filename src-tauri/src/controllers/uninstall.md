@@ -10,14 +10,12 @@
 - **MoleStudio2** 是一款 macOS 清理/优化 GUI 软件。
 - 技术栈：Tauri 2 + Rust（后端） + React 19 + TypeScript（前端）。
 - 定位：**GUI 版的 Mole**（Mole = `tw93/mole`，一个 macOS 清理 CLI，Go + Bash 实现）。
-- 卸载功能的目标：**界面数据与 Burrow 完全一致**。
+- 卸载功能的目标：**界面数据与 Mole `mo uninstall --dry-run` 完全一致**。
 
-> Burrow 是 Mole 的 Swift GUI 封装，它自己不扫描残留，而是调用 `mo uninstall --dry-run` 拿数据。
-> 我们的后端是**用 Rust 重写了 Mole 的卸载逻辑**（不调用 `mo` 二进制），前端参考 Burrow 的交互。
+> 界面数据以 `mo uninstall --dry-run` 的输出口径为准；我们的后端是**用 Rust 重写了 Mole 的卸载逻辑**（不调用 `mo` 二进制），交互为独立设计。
 
 参考项目路径：
 - Mole（算法权威）：`/Users/liuy/mole_desktop/mvp/Mole`
-- Burrow（GUI 封装，数据来源）：`/Users/liuy/mole_desktop/mvp/Burrow`
 - MoleStudio2（本项目）：`/Users/liuy/mole_desktop/mvp/MoleStudio2`
 
 ---
@@ -88,7 +86,7 @@
 - 卸载 tab 列表接入真实后端（`mole_list_apps`）
 - 原生应用图标（iconService 预加载 + 色块兜底）
 - 搜索 / 排序
-- 展开残留异步填充（对齐 Burrow previewLoading）
+- 展开残留异步填充（先展示 App Bundle，再填充残留列表）
 - 卸载执行（`mole_uninstall_batch` + 确认弹窗 + 结果对话框）
 - 底部操作栏（选中计数 + 大小统计）
 
@@ -102,13 +100,13 @@
 
 - 列表能正确显示 DBX（`mole_list_apps` 正常返回）。
 - 但**展开 DBX 时，前端残留只显示 "auto selected 1/1 app bundle"**，即只有 App Bundle 一项，没有任何残留文件。
-- 而 Burrow 展开同一个 DBX，会显示多条残留，例如：
+- 而按 Mole dry-run 口径展开同一个 DBX，应显示多条残留，例如：
   - `support/com.dbx.app`
   - `cache/com.dbx.app`
   - `logs/com.dbx.app`
   - `webkit/com.dbx.app`
 
-**期望**：展开 DBX 后，前端应该和 Burrow 一样列出这些残留文件。
+**期望**：展开 DBX 后，前端应该列出这些残留文件。
 
 ---
 
@@ -261,7 +259,7 @@ macOS 管道缓冲约 64KB，子进程输出超过该值就会写阻塞，父进
    日志，折叠再展开会重试（之前缓存 preview:null 永不重试）。
 4. 探针结果：`guard=none discovery="DBX" bundle_after=com.dbx.app`，
    `find_app_files result_count=4`（Application Support / Caches / Logs / WebKit 的
-   com.dbx.app），与 Burrow 完全一致；单次耗时 22s → 1.1s。
+   com.dbx.app），与预期完全一致；单次耗时 22s → 1.1s。
 5. **不要急着改**的次要分歧：`find_app_bundles` 不把 root 自身当候选，/Volumes 顶层
    `.app`（如本机挂载的 `/Volumes/DBX/DBX.app`，同 bundle id 真兄弟）永远漏检；
    但 SH 靠 `find <root>` 会吐出 root 自身 + 另有 same-basename mirror 去重兜底。
@@ -288,7 +286,7 @@ macOS 管道缓冲约 64KB，子进程输出超过该值就会写阻塞，父进
    Scripts、Group Containers 等）同病。
 2. **`size == 0` 过滤吞掉空目录**（吞掉 Logs）：`~/Library/Logs/com.dbx.app`
    只有一个 0 字节 DBX.log，`du -skP` 报 0 → `run_dry_run` 的
-   `if size == 0 { continue; }` 直接跳过。Burrow（mo dry-run）不按 size 过滤。
+   `if size == 0 { continue; }` 直接跳过。Mole（mo dry-run）不按 size 过滤。
 
 ### 10.2 修复
 
@@ -299,7 +297,7 @@ macOS 管道缓冲约 64KB，子进程输出超过该值就会写阻塞，父进
 3. 新增端到端探针 `probe_dbx_dry_run_related_files`（tests/dbx_probe.rs）：直接调
    `mole_uninstall(dry_run=true)` 断言 4 条残留全部返回（含空格路径与 0 字节 Logs）。
    实测：Application Support=176128B、Caches=8192B、Logs=0B、WebKit=851968B，
-   与 Burrow 完全一致。
+   与预期完全一致。
 
 ## 11. 第三轮修复（2026-08-16）：find_app_files 与 SH 的对齐缺口（bundle_leaf 等 9 组）
 

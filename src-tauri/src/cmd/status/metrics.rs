@@ -735,7 +735,7 @@ struct PureCollect {
 }
 
 fn collect_trash_size() -> (u64, bool) {
-    let home = dirs::home_dir().unwrap_or_default();
+    let home = crate::core::base::home_dir_opt().unwrap_or_default();
     let trash = home.join(".Trash");
     match trash.read_dir() {
         Ok(rd) => {

@@ -21,8 +21,8 @@ use crate::core::app_protection::{
 };
 use crate::core::base::{
     MOLE_MAIL_AGE_DAYS, MOLE_MAIL_DOWNLOADS_MIN_KB, bytes_to_human, end_section, get_epoch_seconds,
-    get_file_mtime, get_path_size_kb, home_dir, is_dry_run, note_activity, pgrep_x, start_section,
-    start_section_spinner, stop_section_spinner, update_progress_if_needed,
+    get_file_mtime, get_path_size_kb, home_dir, is_dry_run, note_activity, pgrep_f, pgrep_x,
+    start_section, start_section_spinner, stop_section_spinner, update_progress_if_needed,
 };
 use crate::core::dry_run_registry::dry_run_register_cleanup_target;
 use crate::core::file_ops::{
@@ -510,12 +510,7 @@ pub fn clean_recent_items() -> (u64, u64) {
 /// 对齐 SH `_clean_mail_downloads()` 第 112-171 行。
 fn clean_mail_downloads() -> (u64, u64) {
     // 对齐 SH: pgrep -x "Mail" —— Mail 运行时跳过清理，避免损坏附件
-    if Command::new("pgrep")
-        .args(["-x", "Mail"])
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false)
-    {
+    if pgrep_x("Mail") {
         debug_log("Mail is running, skipping Mail Downloads cleanup");
         return (0, 0);
     }
@@ -781,17 +776,7 @@ fn find_newest_version_dir(versions_dir: &str, current_version: &str) -> Option<
 }
 
 fn is_google_chrome_running() -> bool {
-    pgrep_x("Google Chrome")
-        || Command::new("pgrep")
-            .args(["-x", "Google Chrome Helper"])
-            .output()
-            .map(|o| o.status.success())
-            .unwrap_or(false)
-        || Command::new("pgrep")
-            .args(["-f", "/Google Chrome.app/"])
-            .output()
-            .map(|o| o.status.success())
-            .unwrap_or(false)
+    pgrep_x("Google Chrome") || pgrep_x("Google Chrome Helper") || pgrep_f("/Google Chrome.app/")
 }
 
 pub fn clean_chrome_old_versions() -> (u64, u64) {

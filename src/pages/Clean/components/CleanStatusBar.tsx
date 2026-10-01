@@ -1,7 +1,6 @@
 import classnames from 'classnames'
 import { formatSize } from '@/utils/format'
-import { SEMANTIC_COLORS } from '@/constants/theme'
-import { MoleButton } from '@/components/ui'
+import { MoleButton, ScanEllipsis, ScanErrorPlaceholder } from '@/components/ui'
 import { useI18n } from '@/i18n'
 import type { TranslationKey } from '@/i18n'
 import './CleanStatusBar.css'
@@ -107,11 +106,7 @@ export default function CleanStatusBar({
           </h1>
           <p className="mt-2 text-sm text-white/60">{config.subtitleKey ? t(config.subtitleKey) : null}</p>
           {/* 错误提示固定占位（min-h-[16px]），避免出现/消失时列表下移 */}
-          <div className="mt-2 min-h-[16px] flex items-center">
-            {error ? (
-              <p className="text-xs font-medium" style={{ color: SEMANTIC_COLORS.dangerRed }}>{error}</p>
-            ) : null}
-          </div>
+          <ScanErrorPlaceholder error={error} />
         </div>
       ) : status === 'scanning' ? (
         <>
@@ -121,18 +116,14 @@ export default function CleanStatusBar({
           <div className="mt-2 flex items-center gap-2">
             <span className="text-sm text-white/60">
               {scanningText ?? (scanTarget ? t('clean.status.scanningTarget', { target: scanTarget }) : t('clean.status.scanning'))}
-              <span className="clean-status__ellipsis" aria-hidden>
-                <span>.</span>
-                <span>.</span>
-                <span>.</span>
-              </span>
+              <ScanEllipsis />
             </span>
           </div>
         </>
       ) : status === 'cleaning' ? (
         <>
           <h1 className="text-2xl font-semibold leading-tight" style={{ color: config.titleColor }}>
-            {t(config.titleKey)}<span className="clean-status__ellipsis" aria-hidden><span>.</span><span>.</span><span>.</span></span>
+            {t(config.titleKey)}<ScanEllipsis />
           </h1>
           <div className="mt-2 flex items-center gap-2">
             <span className="text-sm text-white/60">

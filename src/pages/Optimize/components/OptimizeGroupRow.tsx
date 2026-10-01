@@ -1,20 +1,9 @@
-import { MoleCheckbox } from '@/components/ui'
+import { ExpandChevron, MoleCheckbox } from '@/components/ui'
 import { SEMANTIC_COLORS } from '@/constants/theme'
 import { useI18n } from '@/i18n'
 import type { MoleOptimizeTask } from '@/types/mole'
 import { groupIconMap, type OptimizeGroupDef, type TaskRuntime } from '../optimize.constants'
 import OptimizeTaskRow from './OptimizeTaskRow'
-
-function ChevronIcon({ expanded }: { expanded: boolean }) {
-  return (
-    <svg
-      className={`w-4 h-4 text-white/40 transition-transform ${expanded ? 'rotate-90' : ''}`}
-      fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
-    >
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-    </svg>
-  )
-}
 
 export interface OptimizeGroupRowProps {
   group: OptimizeGroupDef
@@ -80,7 +69,7 @@ export default function OptimizeGroupRow({
           {t('optimize.group.selectedPost', { total: tasks.length })}
         </span>
         <div className="flex-1" />
-        {!disabled && <ChevronIcon expanded={isExpanded} />}
+        {!disabled && <ExpandChevron expanded={isExpanded} />}
       </div>
 
       {/* ── 展开的任务行（CSS grid 过渡） ── */}

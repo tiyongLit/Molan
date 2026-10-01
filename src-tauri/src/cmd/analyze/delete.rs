@@ -194,7 +194,7 @@ fn is_protected_analyze_delete_path(path: &str) -> bool {
         return true;
     }
 
-    let home = match dirs::home_dir() {
+    let home = match crate::core::base::home_dir_opt() {
         Some(h) => h,
         None => return false,
     };

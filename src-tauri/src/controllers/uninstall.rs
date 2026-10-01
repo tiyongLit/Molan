@@ -22,7 +22,7 @@ pub struct AppListEntry {
     pub last_used_relative: String,
     pub version: String,
     pub running: bool,
-    /// 更新机制来源（对齐 Burrow `UpdateSources.detect`，零网络）：
+    /// 更新机制来源（本地零网络检测）：
     /// "sparkle" | "app_store" | "electron" | null（不可检测）。
     pub update_source: Option<crate::updates::detect::UpdateSource>,
 }
@@ -406,25 +406,14 @@ fn read_bundle_executable(app_path: &str) -> String {
         return String::new();
     }
     // 原 CLI：`defaults read <plist> CFBundleExecutable`
-    plist_string_key(&plist, "CFBundleExecutable").unwrap_or_default()
+    crate::core::bundle_id_anchor::plist_string_key(Path::new(&plist), "CFBundleExecutable")
+        .unwrap_or_default()
 }
 
 fn same_file(a: &str, b: &str) -> bool {
     match (std::fs::canonicalize(a), std::fs::canonicalize(b)) {
         (Ok(ca), Ok(cb)) => ca == cb,
         _ => false,
-    }
-}
-
-/// 读 Info.plist 字符串键（原 `defaults read` / `plutil -extract ... raw` 的原生替代）。
-fn plist_string_key(plist_path: &str, key: &str) -> Option<String> {
-    match plist::Value::from_file(plist_path)
-        .ok()
-        .and_then(|v| v.into_dictionary())
-        .and_then(|mut d| d.remove(key))
-    {
-        Some(plist::Value::String(s)) => Some(s),
-        _ => None,
     }
 }
 
@@ -600,12 +589,9 @@ fn resolve_symlink(link_path: &str, target: &Path) -> String {
 }
 
 fn read_bundle_id(app_path: &str) -> String {
-    let plist = format!("{}/Contents/Info.plist", app_path);
-    if !Path::new(&plist).is_file() {
-        return "unknown".to_string();
-    }
     // CLI L612: `defaults read <plist> CFBundleIdentifier` 的原生替代
-    plist_string_key(&plist, "CFBundleIdentifier").unwrap_or_else(|| "unknown".to_string())
+    crate::core::bundle_id_anchor::read_bundle_id_of_app(Path::new(app_path))
+        .unwrap_or_else(|| "unknown".to_string())
 }
 
 #[tauri::command(rename_all = "snake_case")]
@@ -707,7 +693,7 @@ fn run_dry_run(app_path: &str, data_only: bool) -> Result<Value, String> {
         }
 
         // 空目录（du 报 0KB，如只有 0 字节日志的 Logs 目录）也照常列出，
-        // 对齐 Burrow（mo dry-run 不按 size 过滤）；前端对 size=0 显示 "—"。
+        // mole dry-run 不按 size 过滤；前端对 size=0 显示 "—"。
         let size = match all_size_map.get(path) {
             Some(s) => *s,
             None => continue, // path missing/inaccessible
@@ -874,7 +860,8 @@ fn read_short_version(app_path: &str) -> String {
         return String::new();
     }
     // 原 `plutil -extract CFBundleShortVersionString raw -o -`
-    plist_string_key(&plist, "CFBundleShortVersionString").unwrap_or_default()
+    crate::core::bundle_id_anchor::plist_string_key(Path::new(&plist), "CFBundleShortVersionString")
+        .unwrap_or_default()
 }
 
 fn resolve_display_name(app_path: &str, app_name: &str) -> String {
@@ -895,8 +882,12 @@ fn resolve_display_name(app_path: &str, app_name: &str) -> String {
         crate::platform::macos_mditem::spotlight_display_name(app_path).unwrap_or_default();
 
     // Info.plist 显示名（原 `plutil -extract CFBundleDisplayName / CFBundleName raw`）
-    let bundle_display_name = plist_string_key(&plist, "CFBundleDisplayName").unwrap_or_default();
-    let bundle_name = plist_string_key(&plist, "CFBundleName").unwrap_or_default();
+    let bundle_display_name =
+        crate::core::bundle_id_anchor::plist_string_key(Path::new(&plist), "CFBundleDisplayName")
+            .unwrap_or_default();
+    let bundle_name =
+        crate::core::bundle_id_anchor::plist_string_key(Path::new(&plist), "CFBundleName")
+            .unwrap_or_default();
 
     let md_display_name = if md_display_name.starts_with('/') {
         String::new()
@@ -1284,7 +1275,7 @@ pub fn mole_clear_uninstall_history() -> Result<(), String> {
 
 #[tauri::command(rename_all = "snake_case")]
 pub fn mole_reveal_in_trash() -> Result<(), String> {
-    let home = dirs::home_dir().ok_or("无法获取用户目录")?;
+    let home = crate::core::base::home_dir_opt().ok_or("无法获取用户目录")?;
     let trash_path = home.join(".Trash");
 
     // 使用 open 命令打开废纸篓
@@ -1300,7 +1291,9 @@ pub fn mole_reveal_in_trash() -> Result<(), String> {
 // 孤儿残留扫描（对齐 PureMac AppState.findOrphans + ReversePathsFetch）
 // ============================================================================
 
-use crate::uninstall::orphan_safety::{OrphanEntry, is_safe_orphan_candidate, scan_orphans};
+use crate::uninstall::orphan_safety::{
+    OrphanEntry, is_safe_orphan_candidate, scan_orphans, scan_orphans_for,
+};
 
 /// 孤儿残留扫描：反向扫描已安装 app 列表之外的残留文件。
 ///
@@ -1381,6 +1374,36 @@ pub async fn mole_orphan_delete(
         "failed_count": failed_count,
         "total_freed_bytes": total_freed
     }))
+}
+
+/// 定向孤儿扫描：只返回指定 app 的残留（通知点击 → 卸载页定向清理链路）。
+///
+/// 与 `mole_orphan_scan` 共用同一安全策略与候选管线；命中口径按 bundleId 优先、
+/// appName（≥3 字符）兜底，详见 `orphan_safety::scan_orphans_for`。
+#[tauri::command(rename_all = "snake_case")]
+pub async fn mole_orphan_scan_for(
+    _app: tauri::AppHandle,
+    bundle_id: Option<String>,
+    app_name: String,
+) -> Result<Vec<OrphanEntry>, String> {
+    let home = crate::core::base::home_dir();
+
+    let orphans = tauri::async_runtime::spawn_blocking(move || {
+        scan_orphans_for(bundle_id.as_deref(), &app_name, &home)
+    })
+    .await
+    .map_err(|e| format!("定向残留扫描任务失败: {}", e))?;
+
+    Ok(orphans)
+}
+
+/// 消费"卸载残留"通知点击写入的 pending 快照。
+///
+/// 前端（layout）在收到 `uninstall::residual-open` 事件或冷启动时调用；
+/// take 语义——消费即清空，避免重复跳转（对齐 trash_watch 快照事实源原则）。
+#[tauri::command(rename_all = "snake_case")]
+pub fn mole_residual_take_pending() -> Option<crate::residual_watch::ResidualTarget> {
+    crate::residual_watch::take_pending()
 }
 
 // ── tests ───────────────────────────────────────────────────────────────────
@@ -1474,7 +1497,11 @@ mod tests {
         }
         let plist = format!("{terminal}/Contents/Info.plist");
         assert_eq!(
-            plist_string_key(&plist, "CFBundleIdentifier").as_deref(),
+            crate::core::bundle_id_anchor::plist_string_key(
+                Path::new(&plist),
+                "CFBundleIdentifier"
+            )
+            .as_deref(),
             Some("com.apple.Terminal")
         );
         assert_eq!(read_bundle_id(terminal), "com.apple.Terminal");

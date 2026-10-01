@@ -29,8 +29,8 @@ export const SETTINGS_DEFAULTS = {
   },
   trashReminder: {
     enabled: true,
-    /** 废纸篓达到此大小（MB）时在右上角提醒 */
-    threshold: 1024,
+    /** 废纸篓达到此大小（MB）时在右上角提醒；默认 4 GB */
+    threshold: 4096,
   },
   dashboard: {
     /** Dashboard 内存列表 hover 时是否显示关闭进程按钮 */

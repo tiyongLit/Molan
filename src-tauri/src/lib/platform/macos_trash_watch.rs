@@ -106,7 +106,7 @@ pub fn start(service: Arc<Service>) {
     std::thread::Builder::new()
         .name("trash-vnode".into())
         .spawn(move || {
-            let Some(path) = dirs::home_dir().map(|p| p.join(".Trash")) else {
+            let Some(path) = crate::core::base::home_dir_opt().map(|p| p.join(".Trash")) else {
                 return;
             };
             let thread = std::thread::current();
