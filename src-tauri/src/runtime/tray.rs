@@ -245,7 +245,7 @@ pub fn create_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
                 } else {
                     // 空闲状态：置标志 + 退出（ExitRequested 闸门会放行）
                     log::info!("[tray] idle, exiting via tray menu");
-                    crate::macos_dock_quit::confirm_tray_exit();
+                    crate::runtime::macos_dock_quit::confirm_tray_exit();
                     app_for_quit.exit(0);
                 }
             }

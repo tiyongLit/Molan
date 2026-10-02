@@ -1,5 +1,5 @@
 //! 当前用户废纸篓顶层原生监听。kqueue 仅发 dirty，统计交给唯一调度线程。
-use crate::trash_watch::Service;
+use crate::runtime::trash_watch::Service;
 use std::ffi::CString;
 use std::io;
 use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};

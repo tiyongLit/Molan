@@ -394,7 +394,7 @@ pub const EVT_DOCK_QUIT_REQUESTED: &str = "dock-quit-requested";
 pub const EVT_RESIDUAL_DETECTED: &str = "uninstall::residual-detected";
 
 /// 用户点击"卸载残留"系统通知，请求跳转卸载页定向扫描。
-/// 数据仍以 `residual_watch::take_pending` 快照为准，事件仅作到达信号。
+/// 数据仍以 `runtime::residual_watch::take_pending` 快照为准，事件仅作到达信号。
 /// Payload: `ResidualDetectedPayload`。
 pub const EVT_RESIDUAL_OPEN: &str = "uninstall::residual-open";
 
@@ -433,7 +433,7 @@ pub fn emit_residual_open(app: &AppHandle, app_name: &str, bundle_id: Option<&st
 // ── 废纸篓超阈值提醒 ──
 
 /// 废纸篓体积超过用户设定阈值，通知前端弹出右上角提醒浮窗（参照柠檬
-/// LMTrashSizeCheckWindowController）。Payload: `trash_watch::Snapshot`。
+/// LMTrashSizeCheckWindowController）。Payload: `runtime::trash_watch::Snapshot`。
 pub const EVT_TRASH_REMINDER_STATE: &str = "trash::reminder-state";
 
 // ── 托盘仪表盘气泡显隐 ──

@@ -31,7 +31,7 @@ use objc2_user_notifications::{
 use tauri::AppHandle;
 
 use crate::events;
-use crate::residual_watch::{self, ResidualTarget};
+use crate::runtime::residual_watch::{self, ResidualTarget};
 
 /// 通知 userInfo 的键（点击回调据此还原目标 app）。
 const USER_INFO_KEY_APP_NAME: &str = "appName";
@@ -211,7 +211,7 @@ fn handle_notification_click(response: &UNNotificationResponse) {
     // 唤起主窗：delegate 回调线程无保证，统一回主线程执行（已在主线程时为直通）。
     let app_for_restore = app.clone();
     let _ = app.run_on_main_thread(move || {
-        crate::macos_dock_quit::restore_main_window(&app_for_restore);
+        crate::runtime::macos_dock_quit::restore_main_window(&app_for_restore);
     });
 
     // 事件仅作"到达信号"；数据仍以 pending 为准（前端 take 失败时才用 payload 兜底）。

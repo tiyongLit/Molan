@@ -15,7 +15,7 @@ use tauri::{AppHandle, Runtime};
 use tauri::menu::{MenuItem, MenuItemKind};
 
 use crate::core::busy_state;
-use crate::macos_dock_quit::confirm_tray_exit;
+use crate::runtime::macos_dock_quit::confirm_tray_exit;
 
 /// 自定义退出菜单项 id（`lib.rs` 的 `on_menu_event` 中匹配）。
 pub const MENU_QUIT_ID: &str = "app_quit";

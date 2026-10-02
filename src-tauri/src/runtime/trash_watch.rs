@@ -576,7 +576,7 @@ pub fn start_trash_watch(app: AppHandle) {
         let handle = app.clone();
         window.on_window_event(move |event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                if crate::macos_dock_quit::is_tray_exit_confirmed() {
+                if crate::runtime::macos_dock_quit::is_tray_exit_confirmed() {
                     return;
                 }
                 api.prevent_close();

@@ -300,6 +300,6 @@ pub async fn mole_orphan_scan_for(
 /// 前端（layout）在收到 `uninstall::residual-open` 事件或冷启动时调用；
 /// take 语义——消费即清空，避免重复跳转（对齐 trash_watch 快照事实源原则）。
 #[tauri::command(rename_all = "snake_case")]
-pub fn mole_residual_take_pending() -> Option<crate::residual_watch::ResidualTarget> {
-    crate::residual_watch::take_pending()
+pub fn mole_residual_take_pending() -> Option<crate::runtime::residual_watch::ResidualTarget> {
+    crate::runtime::residual_watch::take_pending()
 }

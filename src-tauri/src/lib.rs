@@ -3,15 +3,11 @@ pub mod constants;
 pub mod controllers;
 pub mod embedded_rules;
 pub mod events;
-pub mod tray;
 pub mod vendor;
 pub mod whitelist_optimize;
 
-pub mod app_menu;
-pub mod macos_dock_quit;
-pub mod residual_watch;
+pub mod runtime;
 pub mod trash_empty;
-pub mod trash_watch;
 
 #[path = "lib/check/mod.rs"]
 pub mod check;
@@ -68,7 +64,7 @@ pub fn run() {
         // 裸二进制、macOS 12 Launch Agent 等不经 LaunchServices 的去重旁路。
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             log::info!("[single_instance] duplicate launch blocked; restoring main window");
-            crate::macos_dock_quit::restore_main_window(app);
+            crate::runtime::macos_dock_quit::restore_main_window(app);
         }))
         .plugin(
             tauri_plugin_log::Builder::new()
@@ -86,10 +82,10 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         // 应用菜单接管：Cmd+Q / 菜单栏「退出」走应用内退出流程（真退出），
         // 与 Dock 右键退出（隐藏到托盘）区分；实现见 app_menu.rs。
-        .menu(|app| crate::app_menu::build_menu(app))
+        .menu(|app| crate::runtime::app_menu::build_menu(app))
         .on_menu_event(|app, event| {
-            if event.id.as_ref() == crate::app_menu::MENU_QUIT_ID {
-                crate::app_menu::request_quit(app);
+            if event.id.as_ref() == crate::runtime::app_menu::MENU_QUIT_ID {
+                crate::runtime::app_menu::request_quit(app);
             }
         })
         .invoke_handler(tauri::generate_handler![
@@ -186,11 +182,11 @@ pub fn run() {
             // UI 时序埋点 — 前端日志转发（卡顿分析用，纯信息记录）
             controllers::ui_log::mole_ui_log,
             // Dock 退出拦截 + 忙碌状态查询
-            macos_dock_quit::mole_confirm_dock_quit,
-            macos_dock_quit::mole_is_busy,
-            macos_dock_quit::mole_show_dock_icon,
+            runtime::macos_dock_quit::mole_confirm_dock_quit,
+            runtime::macos_dock_quit::mole_is_busy,
+            runtime::macos_dock_quit::mole_show_dock_icon,
             // 托盘气泡出场动画隐藏（BottomBar「打开主窗口」路径经此严格配对 stop_status_watch）
-            tray::mole_dashboard_hide,
+            runtime::tray::mole_dashboard_hide,
             // Platform info
             controllers::platform::mole_get_platform_info
         ])
@@ -202,7 +198,7 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             crate::platform::macos_notifications::bind_app(handle.clone());
 
-            crate::tray::create_tray(app.handle())?;
+            crate::runtime::tray::create_tray(app.handle())?;
 
             // 注：登录项不再强制注册。
             // 早期为保 sudo 会话生命周期曾在此处强制 enable；现在由用户在设置页显式
@@ -270,13 +266,13 @@ pub fn run() {
 
             // Dock 退出拦截：有长任务在跑时拦截 Dock 右键退出
             #[cfg(target_os = "macos")]
-            crate::macos_dock_quit::install(&handle);
+            crate::runtime::macos_dock_quit::install(&handle);
 
             // 卸载残留自动检测：后台轮询废纸篓，检测新 .app 并通知前端
-            crate::residual_watch::start_residual_watch(handle.clone());
+            crate::runtime::residual_watch::start_residual_watch(handle.clone());
 
             // 废纸篓超阈值提醒：后台低频轮询 ~/.Trash 体积，超阈值时通知前端弹右上角浮窗
-            crate::trash_watch::start_trash_watch(handle.clone());
+            crate::runtime::trash_watch::start_trash_watch(handle.clone());
 
             if let Some(analyze_window) = handle.get_webview_window("analyze") {
                 let w = analyze_window.clone();
@@ -294,13 +290,13 @@ pub fn run() {
         .expect("error while building tauri application")
         .run(|app_handle: &tauri::AppHandle, event| {
             if matches!(event, tauri::RunEvent::Exit) {
-                crate::trash_watch::service(app_handle).stop();
+                crate::runtime::trash_watch::service(app_handle).stop();
             }
             // Dock 图标点击 / 已运行时再次双击 .app：统一唤起主窗口（含 accessory
             // 驻留态的 Dock 图标还原），与 single-instance 回调共用 restore_main_window。
             if let tauri::RunEvent::Reopen { .. } = event {
                 log::info!("[reopen] restoring main window");
-                macos_dock_quit::restore_main_window(app_handle);
+                runtime::macos_dock_quit::restore_main_window(app_handle);
             }
 
             // ── 退出终极闸门 ───────────────────────────────────
@@ -309,7 +305,7 @@ pub fn run() {
             // 经 confirm_tray_exit() 置位后才放行。
             // 这是 ObjC 注入失败时的第二道防线。
             if let tauri::RunEvent::ExitRequested { api, .. } = event {
-                if !macos_dock_quit::is_tray_exit_confirmed() {
+                if !runtime::macos_dock_quit::is_tray_exit_confirmed() {
                     log::warn!("[exit_gate] exit blocked — no confirmed exit request");
                     api.prevent_exit();
                 } else {

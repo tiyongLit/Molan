@@ -192,7 +192,7 @@ pub async fn mole_trash_empty(
         .await
         .map_err(|e| e.to_string())??;
     // 清空成功后立即让当前提醒失效隐藏（废纸篓已空必低于阈值）。
-    crate::trash_watch::service(&app).on_trash_emptied(&app);
+    crate::runtime::trash_watch::service(&app).on_trash_emptied(&app);
     Ok(result)
 }
 
@@ -208,7 +208,7 @@ fn require_window(label: &str, allowed: &[&str]) -> Result<(), String> {
 pub async fn mole_trash_reminder_get_state(
     app: tauri::AppHandle,
     window: tauri::WebviewWindow,
-) -> Result<crate::trash_watch::Snapshot, String> {
+) -> Result<crate::runtime::trash_watch::Snapshot, String> {
     require_window(
         window.label(),
         &["trash-reminder", "MoleStudio", "settings"],
@@ -216,7 +216,7 @@ pub async fn mole_trash_reminder_get_state(
     let refresh = window.label() == "settings";
     let ready = window.label() == "trash-reminder";
     tauri::async_runtime::spawn_blocking(move || {
-        let service = crate::trash_watch::service(&app);
+        let service = crate::runtime::trash_watch::service(&app);
         // 设置窗加载 Store 前先确认磁盘配置健康，不能把损坏文件当成首次运行。
         if refresh {
             service.refresh(&app);
@@ -231,9 +231,9 @@ pub async fn mole_trash_reminder_get_state(
 pub async fn mole_trash_reminder_action(
     app: tauri::AppHandle,
     window: tauri::WebviewWindow,
-    args: crate::trash_watch::ActionArgs,
-) -> Result<crate::trash_watch::Snapshot, String> {
-    use crate::trash_watch::{self, Action};
+    args: crate::runtime::trash_watch::ActionArgs,
+) -> Result<crate::runtime::trash_watch::Snapshot, String> {
+    use crate::runtime::trash_watch::{self, Action};
     require_window(window.label(), &["trash-reminder"])?;
     if matches!(args.action, Action::Show | Action::Hide) {
         return trash_watch::window_action(app, args).await;
@@ -247,11 +247,11 @@ pub async fn mole_trash_reminder_action(
 pub async fn mole_trash_reminder_update_settings(
     app: tauri::AppHandle,
     window: tauri::WebviewWindow,
-    args: crate::trash_watch::Config,
-) -> Result<crate::trash_watch::Snapshot, String> {
+    args: crate::runtime::trash_watch::Config,
+) -> Result<crate::runtime::trash_watch::Snapshot, String> {
     require_window(window.label(), &["settings"])?;
     tauri::async_runtime::spawn_blocking(move || {
-        crate::trash_watch::service(&app).update_settings(&app, args)
+        crate::runtime::trash_watch::service(&app).update_settings(&app, args)
     })
     .await
     .map_err(|e| e.to_string())?
