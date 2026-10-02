@@ -1,3 +1,8 @@
+//! MoleStudio 后端 crate root。
+//!
+//! 模块布局决策：crate root 为 `lib.rs`（Tauri 约定），与 `src/lib/` 目录同名，
+//! 各域以 `#[path = ...]` 显式桥接（命名冲突的既定代价，改造决策见 git 历史）。
+
 pub mod constants;
 pub mod controllers;
 pub mod embedded_rules;
@@ -28,24 +33,6 @@ pub mod status;
 pub mod uninstall;
 #[path = "lib/updates/mod.rs"]
 pub mod updates;
-
-/// macOS Quick Look 预览指定路径的文件/目录
-#[tauri::command]
-fn mole_quick_look(path: String) -> Result<(), String> {
-    #[cfg(target_os = "macos")]
-    {
-        std::process::Command::new("qlmanage")
-            .args(["-p", &path])
-            .spawn()
-            .map(|_| ())
-            .map_err(|e| format!("启动快速查看失败: {}", e))
-    }
-    #[cfg(not(target_os = "macos"))]
-    {
-        let _ = path;
-        Err("快速查看仅支持 macOS".to_string())
-    }
-}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -177,7 +164,7 @@ pub fn run() {
             controllers::analyze::mole_analyze_trash,
             controllers::analyze::mole_get_protected_analyze_paths,
             // quick look
-            mole_quick_look,
+            controllers::platform::mole_quick_look,
             // dialog — 原生 NSAlert 确认/提示（唯一确认通道，垂直三行流；Lemon 形态）
             controllers::dialog::mole_dialog,
             // UI 时序埋点 — 前端日志转发（卡顿分析用，纯信息记录）

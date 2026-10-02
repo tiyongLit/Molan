@@ -34,3 +34,23 @@ pub async fn mole_native_icons_resolve(
     .await
     .map_err(|e| format!("native_icons_resolve task panicked: {e}"))?)
 }
+
+// ── Quick Look ──
+
+/// macOS Quick Look 预览指定路径的文件/目录（自 `lib.rs` 迁入，命令契约不变）。
+#[tauri::command]
+pub fn mole_quick_look(path: String) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("qlmanage")
+            .args(["-p", &path])
+            .spawn()
+            .map(|_| ())
+            .map_err(|e| format!("启动快速查看失败: {}", e))
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = path;
+        Err("快速查看仅支持 macOS".to_string())
+    }
+}

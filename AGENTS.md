@@ -48,11 +48,11 @@ MoleStudio 是一款 **macOS 清理 / 优化 GUI 软件**，面向最终用户�
 
 - Tauri 2 + Rust
 - 命令入口：`src-tauri/src/controllers/`
-- 底层能力：`src-tauri/src/lib/`（按 Mole CLI 的 `lib/*` 一一对应：`clean`、`core`、`manage`、`optimize`、`uninstall`、`check`、`platform`）
+- 底层能力：`src-tauri/src/lib/`（域模块：`clean`、`core`、`manage`、`optimize`、`uninstall`、`check`、`platform`、`startup`、`updates`）
 - 磁盘分析与系统监控：`src-tauri/src/lib/analyze/`、`src-tauri/src/lib/status/`（自 CLI `cmd/` 迁移归位）
 - 内嵌规则：`src-tauri/src/embedded_rules.rs`（编译期 const/静态表）
 - 事件：`src-tauri/src/events.rs`
-- 托盘：`src-tauri/src/tray.rs`
+- 运行时接线：`src-tauri/src/runtime/`（托盘 `tray`、应用菜单 `app_menu`、Dock 生命周期 `macos_dock_quit`、后台 watcher `residual_watch` / `trash_watch`）
 
 ### 前后端契约
 
@@ -179,7 +179,9 @@ MoleStudio 不是从零开始，有四个参考项目。每个项目角色清晰
 | `src-tauri/src/lib/platform/` | macOS 平台能力（原生图标注册表 `native_icon_registry` + 编码管线 `macos_file_icon`、原生通知 `macos_notifications`、特权路由） |
 | `src-tauri/src/lib/analyze/` | 磁盘透视引擎（原 cmd/analyze 迁移） |
 | `src-tauri/src/lib/status/` | 实时状态采集引擎（原 cmd/status 迁移） |
+| `src-tauri/src/runtime/` | GUI 运行时接线（tray、app_menu、macos_dock_quit、residual_watch、trash_watch） |
 | `src-tauri/src/controllers/` | Tauri command 入口，薄层，只做参数解析与分发 |
+| `src-tauri/src/events.rs` / `src-tauri/src/constants.rs` | 事件契约与共享常量（root 级） |
 | `src-tauri/src/embedded_rules.rs` | 编译期内嵌清理规则 |
 
 ### 命令设计
