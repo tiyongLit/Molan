@@ -204,6 +204,56 @@ fn require_window(label: &str, allowed: &[&str]) -> Result<(), String> {
     }
 }
 
+// ── 权限引导：打开「完全磁盘访问权限」系统设置面板 ──
+
+/// 打开「系统设置 → 隐私与安全性 → 完全磁盘访问权限」面板（macOS 12 / 13+ 均可达）。
+/// 经 tauri-plugin-opener 调系统 API（非外部脚本，守红线1）；供设置页在检测到
+/// 废纸篓权限失败（TRASH_PERMISSION_DENIED）时一键引导用户授权。
+#[tauri::command(rename_all = "snake_case")]
+pub fn mole_open_privacy_settings(app: tauri::AppHandle) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        use tauri_plugin_opener::OpenerExt;
+        app.opener()
+            .open_url(
+                "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles",
+                None::<&str>,
+            )
+            .map_err(|e| e.to_string())
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = app;
+        Ok(())
+    }
+}
+
+// ── FDA 引导：状态查询 / 横幅处理 / 引导窗 ──
+
+/// 查询完全磁盘访问权限状态与 Home 软提示横幅是否应显示。
+#[tauri::command(rename_all = "snake_case")]
+pub fn mole_fda_status(app: tauri::AppHandle) -> crate::runtime::fda_guide::FdaStatus {
+    crate::runtime::fda_guide::status(&app)
+}
+
+/// 一键退出并重新打开应用（FDA 授权变更后的生效兜底；对标 Burrow Quit & Reopen）。
+#[tauri::command(rename_all = "snake_case")]
+pub fn mole_fda_relaunch(app: tauri::AppHandle) {
+    crate::runtime::fda_guide::relaunch_app(&app);
+}
+
+/// 打开（或聚焦）完全磁盘访问权限引导窗。
+#[tauri::command(rename_all = "snake_case")]
+pub fn mole_open_fda_guide_window(app: tauri::AppHandle) -> Result<(), String> {
+    crate::runtime::fda_guide::open_guide_window(&app)
+}
+
+/// 重新探测授权状态（引导窗获焦重检用）；已授权时触发废纸篓状态机重测。
+#[tauri::command(rename_all = "snake_case")]
+pub fn mole_fda_guide_check(app: tauri::AppHandle) -> bool {
+    crate::runtime::fda_guide::check_and_refresh(&app)
+}
+
 #[tauri::command]
 pub async fn mole_trash_reminder_get_state(
     app: tauri::AppHandle,

@@ -22,7 +22,7 @@ static LOGGER: StderrLogger = StderrLogger;
 fn probe_indeterminate_sources() {
     // 1) pkg receipts 完整性
     let (paths, complete) =
-        mole_lib::core::pkg_receipts::pkg_receipt_nonstandard_app_paths_complete();
+        molestudio_lib::core::pkg_receipts::pkg_receipt_nonstandard_app_paths_complete();
     eprintln!("[probe] pkg complete={complete} paths={paths:?}");
 
     // 2) /Volumes 每个卷的 read_dir（find_volume_app_roots 同款逻辑）
@@ -91,7 +91,7 @@ fn probe_indeterminate_sources() {
 #[test]
 fn probe_pipe_deadlock() {
     let t0 = std::time::Instant::now();
-    let r = mole_lib::core::timeout::run_with_timeout_capture(
+    let r = molestudio_lib::core::timeout::run_with_timeout_capture(
         5.0,
         "pkgutil",
         &["--files", "org.golang.go"],
@@ -105,7 +105,7 @@ fn probe_pipe_deadlock() {
     );
 
     let t1 = std::time::Instant::now();
-    let r2 = mole_lib::core::timeout::run_with_timeout_capture(5.0, "pkgutil", &["--pkgs"]);
+    let r2 = molestudio_lib::core::timeout::run_with_timeout_capture(5.0, "pkgutil", &["--pkgs"]);
     eprintln!(
         "[probe] pkgutil --pkgs => is_some={} elapsed={:.1?}",
         r2.is_some(),
@@ -119,7 +119,7 @@ fn probe_dbx_collect_app_details() {
     log::set_max_level(log::LevelFilter::Debug);
 
     let result =
-        mole_lib::uninstall::batch::collect_app_details(&["/Applications/DBX.app".to_string()]);
+        molestudio_lib::uninstall::batch::collect_app_details(&["/Applications/DBX.app".to_string()]);
     match result {
         Ok(apps) => {
             eprintln!("[probe] ===== details count = {} =====", apps.len());
@@ -141,11 +141,9 @@ fn probe_dbx_collect_app_details() {
 /// （size==0 过滤移除）。
 #[test]
 fn probe_dbx_dry_run_related_files() {
-    let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
-    let value = rt.block_on(mole_lib::controllers::uninstall::mole_uninstall(
-        "/Applications/DBX.app".to_string(),
-        true,
-    ));
+    // 原经 controllers 层 mole_uninstall(dry_run=true) 转发；AppHandle 在集成测试中不可构造，
+    // 直接调其 dry_run 分支的底层实现（run_dry_run，语义等价）。
+    let value = molestudio_lib::uninstall::app_ops::run_dry_run("/Applications/DBX.app", false);
     let value = match value {
         Ok(v) => v,
         Err(e) => panic!("[probe] mole_uninstall dry_run Err: {e}"),
@@ -200,7 +198,7 @@ fn probe_vscode_find_app_files() {
         eprintln!("[probe] VSCode 未安装,跳过");
         return;
     }
-    let files = mole_lib::core::app_protection::find_app_files(
+    let files = molestudio_lib::core::app_protection::find_app_files(
         "com.microsoft.VSCode",
         "Visual Studio Code",
         app,
@@ -239,20 +237,20 @@ fn probe_mutable_ancestor_matches_sh() {
 
     // 真实 /Applications 下的 app:SH 判 MUTABLE(775 group-write)
     assert!(
-        mole_lib::core::file_ops::_mole_privileged_path_has_mutable_ancestor(
+        molestudio_lib::core::file_ops::_mole_privileged_path_has_mutable_ancestor(
             "/Applications/Safari.app"
         ),
         "[probe] /Applications 应与 SH 一致判 mutable"
     );
     // 不存在的路径:stat 失败 → fail-closed mutable
     assert!(
-        mole_lib::core::file_ops::_mole_privileged_path_has_mutable_ancestor(
+        molestudio_lib::core::file_ops::_mole_privileged_path_has_mutable_ancestor(
             "/Applications/Definitely-Not-Real.app"
         ),
         "[probe] 不存在的路径应 fail-closed 判 mutable"
     );
     // identity 格式:dev:ino:mode 三段,末段八进制
-    let id = mole_lib::core::file_ops::stat_path_identity("/").expect("stat / 应成功");
+    let id = molestudio_lib::core::file_ops::stat_path_identity("/").expect("stat / 应成功");
     let parts: Vec<&str> = id.split(':').collect();
     assert_eq!(parts.len(), 3, "[probe] identity 应为 dev:ino:mode: {id}");
     assert!(

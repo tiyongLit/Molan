@@ -118,6 +118,8 @@ export function useSettings() {
   const [loading, setLoading] = useState(true)
   const [trashSaving, setTrashSaving] = useState(false)
   const [trashError, setTrashError] = useState('')
+  /** 废纸篓错误是否为权限类（需引导用户授权「完全磁盘访问权限」） */
+  const [trashNeedsPermission, setTrashNeedsPermission] = useState(false)
   const trashWriting = useRef(false)
   const trashRevision = useRef(-1)
   const settingsRef = useRef(settings)
@@ -135,6 +137,7 @@ export function useSettings() {
         trashRevision.current = snap.revision
         setSettings(prev => ({ ...prev, trashReminder: { enabled: snap.enabled, threshold: snap.thresholdMB } }))
         setTrashError(snap.errorCode ? trashReminderError(snap.errorCode) : '')
+        setTrashNeedsPermission(snap.errorCode?.includes('PERMISSION_DENIED') ?? false)
         if (snap.errorCode?.includes('CONFIG')) {
           // 不触发 Store 默认值及 autoLaunch 的初始化写回，保留损坏文件供恢复。
           setLoading(false)
@@ -231,6 +234,7 @@ export function useSettings() {
         if (!cancelled) {
           setSettings(prev => ({ ...prev, trashReminder: { ...prev.trashReminder, enabled: false } }))
           setTrashError(trashReminderError('TRASH_CONFIG_UNAVAILABLE'))
+          setTrashNeedsPermission(false)
           setLoading(false)
         }
       }
@@ -249,6 +253,7 @@ export function useSettings() {
         trashRevision.current = snap.revision
         setSettings(prev => ({ ...prev, trashReminder: { enabled: snap.enabled, threshold: snap.thresholdMB } }))
         setTrashError(snap.errorCode ? trashReminderError(snap.errorCode) : '')
+        setTrashNeedsPermission(snap.errorCode?.includes('PERMISSION_DENIED') ?? false)
       }).catch(() => { if (!disposed) setTrashError(trashReminderError('TRASH_CONFIG_UNAVAILABLE')) })
     }
     window.addEventListener('focus', reconcile)
@@ -358,6 +363,7 @@ export function useSettings() {
     loading,
     trashSaving,
     trashError,
+    trashNeedsPermission,
     updateSetting,
     toggleAutoLaunch,
     changeLanguage,

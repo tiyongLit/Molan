@@ -126,6 +126,8 @@ export const CMD_MOLE_IS_BUSY = 'mole_is_busy' as const
 export const CMD_MOLE_SHOW_DOCK_ICON = 'mole_show_dock_icon' as const
 /** 隐藏托盘气泡：走出场动画 + 严格配对 stop_status_watch（与 Rust `mole_dashboard_hide` 一致） */
 export const CMD_MOLE_DASHBOARD_HIDE = 'mole_dashboard_hide' as const
+/** 托盘右键菜单语言同步：推送 locale，Rust 按语言包重建菜单文案（与 Rust `mole_tray_set_locale` 一致） */
+export const CMD_MOLE_TRAY_SET_LOCALE = 'mole_tray_set_locale' as const
 /** 平台信息：获取安装形态/分发渠道（与 Rust `mole_get_platform_info` 一致） */
 export const CMD_MOLE_GET_PLATFORM_INFO = 'mole_get_platform_info' as const
 
@@ -139,6 +141,15 @@ export const CMD_MOLE_TRASH_EMPTY = 'mole_trash_empty' as const
 export const CMD_MOLE_TRASH_REMINDER_GET_STATE = 'mole_trash_reminder_get_state' as const
 export const CMD_MOLE_TRASH_REMINDER_ACTION = 'mole_trash_reminder_action' as const
 export const CMD_MOLE_TRASH_REMINDER_UPDATE_SETTINGS = 'mole_trash_reminder_update_settings' as const
+
+/** 权限引导：打开「完全磁盘访问权限」系统设置面板（废纸篓权限失败时引导用户授权） */
+export const CMD_MOLE_OPEN_PRIVACY_SETTINGS = 'mole_open_privacy_settings' as const
+
+/** FDA 引导：状态查询 / 一键重启 / 引导窗（Home 软提示 + 事件性引导窗闭环） */
+export const CMD_MOLE_FDA_STATUS = 'mole_fda_status' as const
+export const CMD_MOLE_FDA_RELAUNCH = 'mole_fda_relaunch' as const
+export const CMD_MOLE_OPEN_FDA_GUIDE_WINDOW = 'mole_open_fda_guide_window' as const
+export const CMD_MOLE_FDA_GUIDE_CHECK = 'mole_fda_guide_check' as const
 
 /** Purge Paths: 产物清理路径配置 */
 export const CMD_MOLE_PURGE_PATHS_READ = 'mole_purge_paths_read' as const
@@ -220,11 +231,17 @@ export const TAURI_COMMANDS = [
   CMD_MOLE_CONFIRM_DOCK_QUIT,
   CMD_MOLE_IS_BUSY,
   CMD_MOLE_DASHBOARD_HIDE,
+  CMD_MOLE_TRAY_SET_LOCALE,
   CMD_MOLE_GET_PLATFORM_INFO,
   CMD_MOLE_OPEN_SETTINGS_WINDOW,
   CMD_MOLE_AUTO_LAUNCH_STATUS,
   CMD_MOLE_AUTO_LAUNCH_TOGGLE,
   CMD_MOLE_TRASH_EMPTY,
+  CMD_MOLE_OPEN_PRIVACY_SETTINGS,
+  CMD_MOLE_FDA_STATUS,
+  CMD_MOLE_FDA_RELAUNCH,
+  CMD_MOLE_OPEN_FDA_GUIDE_WINDOW,
+  CMD_MOLE_FDA_GUIDE_CHECK,
   CMD_MOLE_TRASH_REMINDER_GET_STATE,
   CMD_MOLE_TRASH_REMINDER_ACTION,
   CMD_MOLE_TRASH_REMINDER_UPDATE_SETTINGS,

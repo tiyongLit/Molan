@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, type CSSProperties } from 'react'
 import { Select } from 'antd'
-import { DownOutlined } from '@ant-design/icons'
+import { ChevronDown } from 'lucide-react'
 import { homeDir } from '@tauri-apps/api/path'
 import { DiskProgressBar } from './DiskProgressBar'
 import { useNativeIcon } from '@/hooks/useNativeIcon'
@@ -48,6 +48,8 @@ function renderOptionIcon(src: string | null, emoji: string, size: number) {
 export function LocationSelector({ value, onChange, disk }: LocationSelectorProps) {
   const [homePath, setHomePath] = useState<string>('')
   const [username, setUsername] = useState<string>('')
+  // 下拉开关（受控）：驱动右侧箭头开合旋转 —— antd 6 无内置箭头旋转动画
+  const [open, setOpen] = useState(false)
   const { locale, t } = useI18n()
 
   useEffect(() => {
@@ -59,8 +61,8 @@ export function LocationSelector({ value, onChange, disk }: LocationSelectorProp
   }, [])
 
   const handlePicker = useCallback(async () => {
-    const { open } = await import('@tauri-apps/plugin-dialog')
-    const result = await open({ directory: true, multiple: false })
+    const { open: openDialog } = await import('@tauri-apps/plugin-dialog')
+    const result = await openDialog({ directory: true, multiple: false })
     if (result !== null) {
       onChange(result)
     }
@@ -216,7 +218,14 @@ export function LocationSelector({ value, onChange, disk }: LocationSelectorProp
         value={value}
         onChange={handleChange}
         options={options}
-        suffixIcon={<DownOutlined className="text-white/45 text-[11px]" />}
+        open={open}
+        onOpenChange={setOpen}
+        suffixIcon={
+          <ChevronDown
+            size={16}
+            className={`text-white/45 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+          />
+        }
         optionRender={optionRender}
         labelRender={labelRender}
         classNames={{

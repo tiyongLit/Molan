@@ -4,18 +4,13 @@ import type { MenuProps } from 'antd'
 import { ArrowDownCircle, Info, Power, Settings, Settings2 } from 'lucide-react'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { invoke } from '@tauri-apps/api/core'
-import { openUrl } from '@tauri-apps/plugin-opener'
-import { moleMessage } from '@/components/ui'
 import { useAppVersion } from '@/hooks/useAppVersion'
-import { CMD_MOLE_IS_BUSY, CMD_MOLE_CONFIRM_DOCK_QUIT, CMD_MOLE_SHOW_DOCK_ICON, CMD_MOLE_OPEN_SETTINGS_WINDOW, CMD_MOLE_DASHBOARD_HIDE } from '@/constants/tauri-commands'
-import { moleNativeConfirm } from '@/hooks/useMoleConfirm'
+import { CMD_MOLE_SHOW_DOCK_ICON, CMD_MOLE_DASHBOARD_HIDE } from '@/constants/tauri-commands'
 import useTauri from '@/hooks/useTauri'
 import { EVT_DASHBOARD_HIDE_REQUESTED } from '@/constants/tauri-events'
 import { dashTheme } from './theme'
-import { useI18n, type TFunction } from '@/i18n'
-
-/** 项目 GitHub 仓库（「关于」菜单跳转目标；修改时需同步 capabilities/default.json 的 allow-open-url 白名单） */
-const PROJECT_GITHUB_URL = 'https://github.com/tiyongLit/MoleStudio'
+import { useI18n } from '@/i18n'
+import { useDashboardMenuActions } from './useDashboardMenuActions'
 
 /**
  * 底部固定工具栏：左 logo · 中「打开 MoleStudio2」主入口 · 右设置下拉。
@@ -41,36 +36,12 @@ async function openMainWindow() {
   }
 }
 
-/** 退出应用：直接走 Rust 侧 app.exit(0)。
- * 不能用 destroy()/close()——主窗口注册了 preventClose→hide，
- * destroy() 也会触发 CloseRequested 被拦截，窗口只会被隐藏不会退出。 */
-async function quitApp(t: TFunction) {
-  try {
-    // 检查是否有长任务在跑
-    const busy = await invoke<boolean>(CMD_MOLE_IS_BUSY).catch(() => false)
-    if (busy) {
-      const ok = await moleNativeConfirm(
-        t('dashboard.quit.confirm'),
-        {
-          kind: 'warning',
-          okLabel: t('dashboard.quit.force'),
-          cancelLabel: t('common.cancel'),
-        }
-      )
-      if (!ok) return
-    }
-    // 直接走 Rust 侧 app.exit(0)，绕过 CloseRequested 拦截
-    await invoke(CMD_MOLE_CONFIRM_DOCK_QUIT).catch(() => {})
-  } catch (e: unknown) {
-    console.error('[BottomBar] quit failed:', e)
-  }
-}
-
-/** 红点徽标：有新版本时显示在菜单项右侧（macOS 系统红 #ff3b30） */
+/** 红点徽标：有新版本时悬浮在齿轮按钮右上角（6px，对齐 Lemon 齿轮红点；macOS 系统红 #ff3b30）。
+ *  pointer-events-none：纯指示层，不遮挡齿轮点击与 hover 背景。 */
 function UpdateBadge() {
   return (
     <span
-      className="ml-auto inline-block shrink-0 rounded-full"
+      className="pointer-events-none absolute right-[2px] top-[2px] rounded-full"
       style={{ width: 6, height: 6, background: '#ff3b30' }}
     />
   )
@@ -80,6 +51,8 @@ export function BottomBar() {
   const { state, hasUpdate, checkForUpdate, installUpdate } = useAppVersion()
   const { t, locale } = useI18n()
   const tauri = useTauri()
+  // 菜单动作统一入口：齿轮下拉与托盘原生右键菜单共用（含托盘菜单 locale 同步推送）
+  const { handleMenu } = useDashboardMenuActions({ state, checkForUpdate, installUpdate })
 
   // 齿轮下拉改为受控：托盘气泡是常驻隐藏窗——Rust hide() 不销毁 webview、组件永不卸载
   //（useEffect cleanup 不会在"离开"时触发），且隐藏动作（点托盘图标 / 失焦）都发生在
@@ -93,67 +66,22 @@ export function BottomBar() {
     return () => ac.abort()
   }, [tauri])
 
-  const menuItems: MenuProps['items'] = useMemo(() => [
-    {
-      key: 'update',
-      label: (
-        <span className="flex w-full items-center gap-1">
-          {state.checking ? t('dashboard.update.checking') : t('dashboard.update.check')}
-          {hasUpdate && <UpdateBadge />}
-        </span>
-      ),
-      icon: <ArrowDownCircle size={13} />,
-      disabled: state.checking,
-    },
-    { key: 'settings', label: t('dashboard.menu.settings'), icon: <Settings2 size={13} /> },
-    { key: 'about', label: t('dashboard.menu.about'), icon: <Info size={13} /> },
-    { type: 'divider' },
-    { key: 'quit', label: t('dashboard.menu.quit'), icon: <Power size={13} />, danger: true }
-  ], [state.checking, hasUpdate, t, locale])
-
-  const handleMenu: MenuProps['onClick'] = async ({ key }) => {
-    if (key === 'quit') {
-      quitApp(t)
-    } else if (key === 'update') {
-      await handleUpdateClick()
-    } else if (key === 'settings') {
-      invoke(CMD_MOLE_OPEN_SETTINGS_WINDOW).catch(() => {})
-    } else if (key === 'about') {
-      // 「关于」→ 打开项目 GitHub 仓库（浏览器接管；托盘气泡随失焦流程自动隐藏）
-      openUrl(PROJECT_GITHUB_URL).catch((err) =>
-        console.error('[BottomBar] open GitHub repo failed:', err)
-      )
-    }
-  }
-
-  const handleUpdateClick = async () => {
-    // 已有结果且有新版本 → 直接安装
-    if (state.result?.available) {
-      const v = state.result.latest_version ?? ''
-      const isMas = state.result.source === 'app_store'
-      if (isMas) {
-        moleMessage.info(t('dashboard.update.masHint', { version: v }))
-      } else {
-        moleMessage.success(t('dashboard.update.found', { version: v }))
-      }
-      await installUpdate()
-      return
-    }
-
-    // 触发检查
-    await checkForUpdate(true)
-
-    // checkForUpdate 异步完成后 state 更新，此处用短延迟读取最新结果做提示
-    // （React 批处理会在 await 后同步 state，但为安全起见给一帧缓冲）
-    setTimeout(() => {
-      if (state.error) {
-        moleMessage.error(t('dashboard.update.checkFailed'))
-      } else if (!state.result?.available) {
-        moleMessage.success(t('dashboard.update.upToDate'))
-      }
-      // available=true 时红点已出现，用户再次点击即触发安装
-    }, 200)
-  }
+  const menuItems: MenuProps['items'] = useMemo(
+    () => [
+      {
+        key: 'update',
+        // 恒显示「检查更新」：检查节奏由后台静默调度负责（useAppVersion），
+        // 菜单项不随后台 checking 状态变文案/置灰；重复触发由入口守卫拦截。
+        label: t('dashboard.update.check'),
+        icon: <ArrowDownCircle size={13} />
+      },
+      { key: 'settings', label: t('dashboard.menu.settings'), icon: <Settings2 size={13} /> },
+      { key: 'about', label: t('dashboard.menu.about'), icon: <Info size={13} /> },
+      { type: 'divider' },
+      { key: 'quit', label: t('dashboard.menu.quit'), icon: <Power size={13} />, danger: true }
+    ],
+    [t, locale]
+  )
 
   return (
     <div className="flex h-10 shrink-0 items-center gap-2 border-t border-[rgba(255,255,255,0.06)] bg-[rgba(0,0,0,0.18)] px-3">
@@ -188,10 +116,11 @@ export function BottomBar() {
           trigger={['click']}
         >
           <button
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-[rgba(255,255,255,0.08)] hover:text-white"
+            className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-[rgba(255,255,255,0.08)] hover:text-white"
             style={{ color: dashTheme.textTertiary }}
           >
             <Settings size={15} />
+            {hasUpdate && <UpdateBadge />}
           </button>
         </Dropdown>
       </ConfigProvider>

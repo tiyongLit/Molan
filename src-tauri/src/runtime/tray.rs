@@ -1,13 +1,13 @@
 // src-tauri/src/tray.rs
+use std::sync::OnceLock;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use tauri::{
     AppHandle, Emitter, Manager, PhysicalPosition, Position, Runtime, WebviewWindow, WindowEvent,
-    menu::{Menu, MenuItem},
+    menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
 };
 
 use crate::controllers::status::{start_status_watch, stop_status_watch};
-use crate::core::busy_state;
 use crate::events;
 
 /// 显隐代际号：每次 request_show / request_hide 递增。动画线程与延迟隐藏线程捕获自身 gen，
@@ -221,34 +221,160 @@ pub fn mole_dashboard_hide(app: AppHandle, window: WebviewWindow) {
     request_hide(&app, &window, true);
 }
 
-pub fn create_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
-    // 托盘右键菜单：退出
-    let quit_item = MenuItem::with_id(app, "tray_quit", "退出 MoleStudio", true, None::<&str>)?;
-    let tray_menu = Menu::with_items(app, &[&quit_item])?;
+// ── 托盘右键菜单（语言包驱动 + 事件转发） ──────────────────────────────
+//
+// 菜单文案来自前端同一份语言包（include_str! 编译期内嵌，口径零漂移）；
+// 点击不写业务逻辑：id→action 映射后 emit 给 dashboard 常驻窗，
+// 由前端复用 BottomBar 同一套菜单动作（quitApp / handleUpdateClick / …）。
 
-    let app_for_quit = app.clone();
-    let _tray = TrayIconBuilder::with_id("main-tray")
+/// 托盘 id（create_tray 与 mole_tray_set_locale 共用）。
+const TRAY_ID: &str = "main-tray";
+
+/// 内嵌语言包：与 `src/i18n/locales/*/translation.json` 为同一份文件
+/// （编译期固化；文件变更由 Cargo 依赖追踪自动触发重编译）。
+const LOCALE_ZH_CN: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../src/i18n/locales/zh-CN/translation.json"
+));
+const LOCALE_EN_US: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../src/i18n/locales/en-US/translation.json"
+));
+const LOCALE_ZH_TW: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../src/i18n/locales/zh-TW/translation.json"
+));
+
+/// 菜单文案 key（与前端 `t()` 同 key；缺 key 回退 zh-CN，同前端口径）。
+const KEY_TRAY_UPDATE: &str = "dashboard.update.check";
+const KEY_TRAY_SETTINGS: &str = "dashboard.menu.settings";
+const KEY_TRAY_ABOUT: &str = "dashboard.menu.about";
+const KEY_TRAY_QUIT: &str = "dashboard.menu.quit";
+
+/// 菜单项 id：on_menu_event 按 id 映射 action 后定向投递给 dashboard 窗。
+const TRAY_ITEM_UPDATE: &str = "tray_update";
+const TRAY_ITEM_SETTINGS: &str = "tray_settings";
+const TRAY_ITEM_ABOUT: &str = "tray_about";
+const TRAY_ITEM_QUIT: &str = "tray_quit";
+
+/// 支持的 locale 白名单（与前端 AppLocale 一致）。
+fn is_supported_locale(locale: &str) -> bool {
+    matches!(locale, "zh-CN" | "en-US" | "zh-TW")
+}
+
+/// 按 locale 解析内嵌语言包为字典（OnceLock 缓存，只解析一次；解析失败给空字典）。
+fn locale_dict(locale: &str) -> &'static serde_json::Map<String, serde_json::Value> {
+    static ZH_CN: OnceLock<serde_json::Map<String, serde_json::Value>> = OnceLock::new();
+    static EN_US: OnceLock<serde_json::Map<String, serde_json::Value>> = OnceLock::new();
+    static ZH_TW: OnceLock<serde_json::Map<String, serde_json::Value>> = OnceLock::new();
+    let (cell, raw) = match locale {
+        "en-US" => (&EN_US, LOCALE_EN_US),
+        "zh-TW" => (&ZH_TW, LOCALE_ZH_TW),
+        _ => (&ZH_CN, LOCALE_ZH_CN),
+    };
+    cell.get_or_init(|| match serde_json::from_str(raw) {
+        Ok(serde_json::Value::Object(map)) => map,
+        _ => serde_json::Map::new(),
+    })
+}
+
+/// 取菜单文案：目标语言缺 key 时回退 zh-CN（与前端 `t()` 同口径）。
+fn tray_label(locale: &str, key: &str) -> String {
+    let pick = |l: &str| {
+        locale_dict(l)
+            .get(key)
+            .and_then(|v| v.as_str())
+            .map(str::to_string)
+    };
+    pick(locale)
+        .or_else(|| pick("zh-CN"))
+        .unwrap_or_else(|| key.to_string())
+}
+
+/// 读 settings.json 的 language 字段作为启动初始语言（同 trash_watch 的路径先例）；
+/// 缺失/非法时 None（调用方回退 zh-CN，dashboard 窗挂载后会被前端推送校正）。
+fn read_stored_locale<R: Runtime>(app: &AppHandle<R>) -> Option<String> {
+    let path = app.path().app_data_dir().ok()?.join("settings.json");
+    let data = std::fs::read(path).ok()?;
+    let value: serde_json::Value = serde_json::from_slice(&data).ok()?;
+    let locale = value.get("language")?.as_str()?;
+    is_supported_locale(locale).then(|| locale.to_string())
+}
+
+/// 构建托盘右键菜单：四项 + 分隔线（顺序与 BottomBar 齿轮下拉一致）。
+fn build_tray_menu<R: Runtime>(app: &AppHandle<R>, locale: &str) -> tauri::Result<Menu<R>> {
+    let update = MenuItem::with_id(
+        app,
+        TRAY_ITEM_UPDATE,
+        tray_label(locale, KEY_TRAY_UPDATE),
+        true,
+        None::<&str>,
+    )?;
+    let settings = MenuItem::with_id(
+        app,
+        TRAY_ITEM_SETTINGS,
+        tray_label(locale, KEY_TRAY_SETTINGS),
+        true,
+        None::<&str>,
+    )?;
+    let about = MenuItem::with_id(
+        app,
+        TRAY_ITEM_ABOUT,
+        tray_label(locale, KEY_TRAY_ABOUT),
+        true,
+        None::<&str>,
+    )?;
+    let separator = PredefinedMenuItem::separator(app)?;
+    let quit = MenuItem::with_id(
+        app,
+        TRAY_ITEM_QUIT,
+        tray_label(locale, KEY_TRAY_QUIT),
+        true,
+        None::<&str>,
+    )?;
+    Menu::with_items(app, &[&update, &settings, &about, &separator, &quit])
+}
+
+/// 托盘菜单语言同步：前端（dashboard 常驻窗）在挂载与 locale 变化时推送，
+/// Rust 按新语言重建菜单并整体替换。菜单事件挂在 app 级全局监听、按 id 分发，
+/// 替换菜单后点击照常生效（无需重注册 handler）。
+#[tauri::command]
+pub fn mole_tray_set_locale(app: AppHandle, locale: String) -> Result<(), String> {
+    if !is_supported_locale(&locale) {
+        return Err(format!("unsupported locale: {locale}"));
+    }
+    let tray_id = tauri::tray::TrayIconId::new(TRAY_ID);
+    let tray = app
+        .tray_by_id(&tray_id)
+        .ok_or_else(|| "tray not found".to_string())?;
+    let menu = build_tray_menu(&app, &locale).map_err(|e| e.to_string())?;
+    tray.set_menu(Some(menu)).map_err(|e| e.to_string())?;
+    log::info!("[tray] menu locale switched to {locale}");
+    Ok(())
+}
+
+pub fn create_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
+    // 初始语言：settings.json 的 language（缺失时回退 zh-CN 占位，
+    // dashboard 常驻窗挂载后经 mole_tray_set_locale 推送校正）。
+    let locale = read_stored_locale(app).unwrap_or_else(|| "zh-CN".to_string());
+    let tray_menu = build_tray_menu(app, &locale)?;
+
+    let _tray = TrayIconBuilder::with_id(TRAY_ID)
         .icon(app.default_window_icon().unwrap().clone())
         .show_menu_on_left_click(false)
         .menu(&tray_menu)
-        .on_menu_event(move |_app, event| {
-            if event.id.as_ref() == "tray_quit" {
-                log::info!("[tray] quit requested from tray menu");
-                stop_status_watch();
-                if busy_state::is_busy() {
-                    // 有任务在跑：通知前端弹确认框
-                    log::warn!(
-                        "[tray] exit blocked: {} task(s) running",
-                        busy_state::busy_count()
-                    );
-                    let _ = app_for_quit.emit(events::EVT_DOCK_QUIT_REQUESTED, ());
-                } else {
-                    // 空闲状态：置标志 + 退出（ExitRequested 闸门会放行）
-                    log::info!("[tray] idle, exiting via tray menu");
-                    crate::runtime::macos_dock_quit::confirm_tray_exit();
-                    app_for_quit.exit(0);
-                }
-            }
+        .on_menu_event(|app, event| {
+            // 托盘不做业务：id→action 映射后定向投递 dashboard 常驻窗，
+            // 由前端复用 BottomBar 同一套菜单动作（事件通路见 events.rs）。
+            let action = match event.id.as_ref() {
+                TRAY_ITEM_UPDATE => "update",
+                TRAY_ITEM_SETTINGS => "settings",
+                TRAY_ITEM_ABOUT => "about",
+                TRAY_ITEM_QUIT => "quit",
+                _ => return,
+            };
+            log::info!("[tray] menu action: {action}");
+            let _ = app.emit_to("dashboard", events::EVT_TRAY_MENU_ACTION, action);
         })
         .on_tray_icon_event(|tray, event| {
             if let TrayIconEvent::Click {
@@ -321,4 +447,34 @@ pub fn create_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// 托盘菜单文案契约：三语均取到语言包真实译文（非回退、非 key 名）。
+    #[test]
+    fn tray_labels_follow_language_pack() {
+        assert_eq!(tray_label("zh-CN", KEY_TRAY_UPDATE), "检查更新");
+        assert_eq!(tray_label("en-US", KEY_TRAY_UPDATE), "Check for Updates");
+        assert_eq!(tray_label("zh-TW", KEY_TRAY_UPDATE), "檢查更新");
+        assert_eq!(tray_label("zh-CN", KEY_TRAY_SETTINGS), "设置");
+        assert_eq!(tray_label("en-US", KEY_TRAY_SETTINGS), "Settings");
+        assert_eq!(tray_label("zh-TW", KEY_TRAY_SETTINGS), "設定");
+        assert_eq!(tray_label("zh-CN", KEY_TRAY_ABOUT), "关于我们");
+        assert_eq!(tray_label("en-US", KEY_TRAY_ABOUT), "About Us");
+        assert_eq!(tray_label("zh-TW", KEY_TRAY_ABOUT), "關於我們");
+        assert_eq!(tray_label("zh-CN", KEY_TRAY_QUIT), "退出应用");
+        assert_eq!(tray_label("en-US", KEY_TRAY_QUIT), "Quit App");
+        assert_eq!(tray_label("zh-TW", KEY_TRAY_QUIT), "結束應用程式");
+    }
+
+    /// 缺 key 回退：目标语言无此 key → 回退 zh-CN；两册都无 → key 名（便于排查）。
+    #[test]
+    fn tray_label_falls_back() {
+        assert_eq!(tray_label("en-US", "no_such_key"), "no_such_key");
+        // 未知 locale 视作 zh-CN 字典（与前端非白名单回退一致）
+        assert_eq!(tray_label("xx-XX", KEY_TRAY_QUIT), "退出应用");
+    }
 }

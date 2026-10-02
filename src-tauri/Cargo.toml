@@ -1,20 +1,20 @@
 [package]
-name = "mole"
-version = "0.1.0"
+name = "molestudio"
+version = "1.0.0-alpha.1"
 description = "A Tauri App"
 authors = ["tiyongliu"]
 license = "MIT"
 edition = "2021"
 # src/bin/ 下的探针/工具二进制（如 probe_icon）会让 cargo run 无法确定默认目标；
-# 显式指定 mole 为默认运行二进制。
-default-run = "mole"
+# 显式指定 molestudio 为默认运行二进制。
+default-run = "molestudio"
 
 # See more keys and their documentation at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
 # ── 改动 ── 纯 macOS 桌面端只需 rlib；staticlib/cdylib 是给 iOS/Android 用的，去掉可省两次链接和磁盘占用。
 # 如果将来要做移动端，再改回 ["staticlib", "cdylib", "rlib"]。
-name = "mole_lib"
+name = "molestudio_lib"
 crate-type = ["rlib"]
 
 [build-dependencies]

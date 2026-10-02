@@ -1,7 +1,8 @@
 import type { CSSProperties, ReactNode } from 'react'
 import SimpleBar from 'simplebar-react'
 import 'simplebar-react/dist/simplebar.min.css'
-import { MoleButton, NineGridLoading } from '@/components/ui'
+import { MoleButton } from './MoleButton'
+import { NineGridLoading } from './NineGridLoading'
 import { PAGE_THEME_VARS } from '@/constants/theme'
 import { ProgressLine } from './ProgressLine'
 

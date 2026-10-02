@@ -7,7 +7,7 @@
 //!
 //! 扫描代际/取消标志是进程级全局状态：本文件内多个扫描测试用互斥锁串行化。
 
-use mole_lib::analyze::{cache, json, scanner};
+use molestudio_lib::analyze::{cache, json, scanner};
 use std::sync::Mutex;
 use std::sync::atomic::AtomicI64;
 

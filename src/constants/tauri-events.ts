@@ -57,7 +57,16 @@ export const EVT_CLEAN_JOB_STATE = 'clean::job-state' as const
 /** 提醒快照更新，只定向 trash-reminder；事件不是唯一事实源。 */
 export const EVT_TRASH_REMINDER_STATE = 'trash::reminder-state' as const
 
+/** FDA 引导窗已弹出（全局广播）：Home 软提示横幅收到后立即让位（与 Rust `fda::guide-shown` 一致） */
+export const EVT_FDA_GUIDE_SHOWN = 'fda::guide-shown' as const
+
+/** FDA 引导窗已关闭（全局广播）：Home 软提示横幅重新查询，未授权时恢复显示（与 Rust `fda::guide-closed` 一致） */
+export const EVT_FDA_GUIDE_CLOSED = 'fda::guide-closed' as const
+
 /** 托盘气泡：即将离场（滑出动画前 emit，此刻窗口仍可见），前端据此立即复位瞬态 UI（如齿轮下拉） */
 export const EVT_DASHBOARD_HIDE_REQUESTED = 'dashboard::hide-requested' as const
+
+/** 托盘右键菜单项点击：Rust 按 id→action 映射后定向投递 dashboard 常驻窗，前端复用 BottomBar 动作（与 Rust `tray::menu-action` 一致） */
+export const EVT_TRAY_MENU_ACTION = 'tray::menu-action' as const
 
 /** 卸载：单个 app 清理进度（与 Rust `uninstall::progress` 一致） */

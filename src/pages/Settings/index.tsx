@@ -16,7 +16,7 @@ const pageBg = `linear-gradient(160deg, rgb(${br},${bg},${bb}) 0%, rgb(${dr},${d
 // ── 主组件（扁平布局：无分组标题，父子项合并为视觉块，间距对齐柠檬 20px 节奏） ──
 
 export function Settings() {
-  const { settings, loading, trashSaving, trashError, updateSetting, toggleAutoLaunch, changeLanguage } = useSettings()
+  const { settings, loading, trashSaving, trashError, trashNeedsPermission, updateSetting, toggleAutoLaunch, changeLanguage } = useSettings()
   const { t } = useI18n()
 
   // 透明窗口需要 body / #root 背景透明（对齐 Dashboard / MainLayout）
@@ -63,6 +63,7 @@ export function Settings() {
               settings={settings}
               trashSaving={trashSaving}
               trashError={trashError}
+              trashNeedsPermission={trashNeedsPermission}
               onToggleAutoLaunch={toggleAutoLaunch}
               onChangeLanguage={changeLanguage}
               onUpdateSetting={updateSetting}

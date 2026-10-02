@@ -137,6 +137,7 @@ export function useI18n(): { locale: AppLocale; t: TFunction } {
 export function trashReminderError(code: string): string {
   if (code.includes('SAVE_FAILED')) return t('trashReminder.saveFailed')
   if (code.includes('BUSY')) return t('trashReminder.busy')
+  if (code.includes('PERMISSION_DENIED')) return t('trashReminder.permissionDenied')
   if (code.includes('UNREADABLE')) return t('trashReminder.readFailed')
   if (code.includes('CONFIG')) return t('trashReminder.configFailed')
   return t('trashReminder.emptyFailed')

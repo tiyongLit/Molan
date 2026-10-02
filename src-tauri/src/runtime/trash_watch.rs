@@ -308,6 +308,16 @@ impl Service {
         if !g.snapshot.enabled || g.snapshot.snoozed_until > Local::now().timestamp_millis() {
             return;
         }
+        // 失败态错误码：权限类失败（通常为 TCC 未授权完全磁盘访问权限）与普通
+        // 不可读区分，前端据此展示授权引导。
+        let error_code = match &result {
+            Measurement::Unknown { permission, .. } => Some(if *permission {
+                "TRASH_PERMISSION_DENIED"
+            } else {
+                "TRASH_UNREADABLE"
+            }),
+            _ => None,
+        };
         match result {
             Measurement::Over => {
                 if g.snapshot.state == Phase::Hidden {
@@ -321,10 +331,11 @@ impl Service {
                     g.snapshot.revision += 1;
                 }
             }
-            Measurement::Below | Measurement::Unknown => {
-                let error = (result == Measurement::Unknown).then(|| "TRASH_UNREADABLE".into());
+            Measurement::Below | Measurement::Unknown { .. } => {
+                let error = error_code.map(str::to_string);
                 if error != g.snapshot.error_code {
-                    log::info!("[trash-reminder] measurement={result:?}");
+                    // 状态变化才记录（含首个失败细节），持续故障不刷屏。
+                    log::warn!("[trash-reminder] measurement={result:?}");
                 }
                 g.snapshot.state = Phase::Hidden;
                 g.snapshot.reminder_id = None;
@@ -490,16 +501,29 @@ fn effective_snooze<T: TimeZone>(now: &DateTime<T>, until: i64) -> i64 {
 enum Measurement {
     Over,
     Below,
-    Unknown,
+    /// 无法完成测量（fail-closed）。`permission` 标记权限类失败（EPERM/EACCES，
+    /// 通常为 TCC 拦截未授权），错误码据此区分，前端可引导授权完全磁盘访问权限；
+    /// `detail` 为首个失败细节，仅用于日志排查。
+    Unknown { permission: bool, detail: Option<String> },
     Cancelled,
 }
+
+/// TCC / 权限类错误判定：EPERM 为 TCC 拦截的典型值，EACCES 作 POSIX 权限兜底。
+fn is_permission_error(error: &std::io::Error) -> bool {
+    matches!(error.raw_os_error(), Some(libc::EPERM) | Some(libc::EACCES))
+}
+
 fn measure(path: &Path, threshold: u64, cancelled: impl Fn() -> bool) -> Measurement {
     if threshold == 0 {
-        return Measurement::Unknown;
+        return Measurement::Unknown { permission: false, detail: None };
     }
     let mut stack = vec![path.to_owned()];
     let mut total = 0u64;
     let mut incomplete = false;
+    // 任一失败即 fail-closed（Unknown）；权限类失败标记 permission 供错误码区分；
+    // detail 仅取首个失败细节供日志排查。
+    let mut permission_denied = false;
+    let mut first_failure: Option<String> = None;
     while let Some(path) = stack.pop() {
         if cancelled() {
             return Measurement::Cancelled;
@@ -507,15 +531,34 @@ fn measure(path: &Path, threshold: u64, cancelled: impl Fn() -> bool) -> Measure
         // 根/中途目录被换为 symlink 时同样不跟随。
         match std::fs::symlink_metadata(&path) {
             Ok(meta) if meta.is_dir() => {}
-            _ => {
+            Ok(_) => {
                 incomplete = true;
+                if first_failure.is_none() {
+                    first_failure = Some(format!("not a directory: {path:?}"));
+                }
+                continue;
+            }
+            Err(e) => {
+                incomplete = true;
+                if is_permission_error(&e) {
+                    permission_denied = true;
+                }
+                if first_failure.is_none() {
+                    first_failure = Some(format!("stat {path:?}: {e}"));
+                }
                 continue;
             }
         }
         let entries = match std::fs::read_dir(&path) {
             Ok(v) => v,
-            Err(_) => {
+            Err(e) => {
                 incomplete = true;
+                if is_permission_error(&e) {
+                    permission_denied = true;
+                }
+                if first_failure.is_none() {
+                    first_failure = Some(format!("read_dir {path:?}: {e}"));
+                }
                 continue;
             }
         };
@@ -532,12 +575,23 @@ fn measure(path: &Path, threshold: u64, cancelled: impl Fn() -> bool) -> Measure
                         return Measurement::Over;
                     }
                 }
-                Err(_) => incomplete = true,
+                Err(e) => {
+                    incomplete = true;
+                    if is_permission_error(&e) {
+                        permission_denied = true;
+                    }
+                    if first_failure.is_none() {
+                        first_failure = Some(format!("metadata under {path:?}: {e}"));
+                    }
+                }
             }
         }
     }
     if incomplete {
-        Measurement::Unknown
+        Measurement::Unknown {
+            permission: permission_denied,
+            detail: first_failure,
+        }
     } else {
         Measurement::Below
     }
@@ -656,7 +710,7 @@ fn schedule(app: AppHandle, svc: Arc<Service>, rx: Receiver<()>) {
                     svc.is_stopped() || svc.epoch.load(Ordering::SeqCst) != epoch
                 });
                 last_scan = Some(Instant::now());
-                last_gate = if result == Measurement::Unknown {
+                last_gate = if matches!(&result, Measurement::Unknown { .. }) {
                     None
                 } else {
                     current_gate
@@ -664,6 +718,9 @@ fn schedule(app: AppHandle, svc: Arc<Service>, rx: Receiver<()>) {
                 last_epoch = epoch;
                 svc.commit_measurement(epoch, result, busy());
                 svc.publish(&app);
+                // 权限引导决策：测量后检查一次（权限被拒的即时发现路径；频率控制
+                // 内聚在 fda_guide，重复调用安全，不再依赖错误码参数）。
+                crate::runtime::fda_guide::check_and_prompt(&app);
             }
         }
         let wait = {
@@ -718,10 +775,30 @@ mod tests {
     #[test]
     fn unknown_is_not_below_and_recovery_creates_new_candidate() {
         let svc = test_service();
-        svc.commit_measurement(0, Measurement::Unknown, false);
+        svc.commit_measurement(
+            0,
+            Measurement::Unknown {
+                permission: false,
+                detail: None,
+            },
+            false,
+        );
         assert_eq!(
             svc.snapshot(false).error_code.as_deref(),
             Some("TRASH_UNREADABLE")
+        );
+        // 权限类失败给出可引导的错误码（前端据此提示授权完全磁盘访问权限）。
+        svc.commit_measurement(
+            0,
+            Measurement::Unknown {
+                permission: true,
+                detail: None,
+            },
+            false,
+        );
+        assert_eq!(
+            svc.snapshot(false).error_code.as_deref(),
+            Some("TRASH_PERMISSION_DENIED")
         );
         svc.commit_measurement(0, Measurement::Below, false);
         assert!(svc.snapshot(false).error_code.is_none());
@@ -873,10 +950,10 @@ mod tests {
             measure(dir.path(), 1024 * 1024 + 1, || false),
             Measurement::Below
         );
-        assert_eq!(
+        assert!(matches!(
             measure(&dir.path().join("missing"), 1, || false),
-            Measurement::Unknown
-        );
+            Measurement::Unknown { .. }
+        ));
         assert_eq!(measure(dir.path(), 1, || true), Measurement::Cancelled);
     }
     #[cfg(unix)]

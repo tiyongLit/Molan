@@ -132,14 +132,22 @@ pnpm tauri:dev          # launch in dev mode (data dir isolated to the repo)
 Build the production app:
 
 ```bash
-pnpm tauri build              # website build (.app / .dmg / .zip)
+pnpm build:mac                # both DMGs (Apple Silicon + Intel) → release/
+pnpm build:mac:arm            # Apple Silicon (aarch64) only
+pnpm build:mac:intel          # Intel (x86_64) only
+pnpm tauri build              # plain Tauri build for the host architecture
 ```
+
+`pnpm build:mac` produces versioned DMGs for both architectures and collects them into `release/`. The version is read from `package.json` (single source of truth) and synced to `tauri.conf.json` and `Cargo.toml` before building. Every build is **ad-hoc code-signed** (Tauri's `signingIdentity: "-"`) and verified by the build script before artifacts are collected.
+
+**macOS permissions.** macOS identifies apps for privacy (TCC) permissions by code signature — an unsigned app cannot read protected resources like the Trash, no matter what permissions the user grants. The Trash-size reminder therefore requires **Full Disk Access** (System Settings → Privacy & Security → Full Disk Access): grant it once, and re-grant after each upgrade (remove the old entry, re-add it, then restart the app). Web-downloaded DMGs are not notarized: on first launch, use right-click → Open.
 
 Contributors: run `pnpm format` before committing (prettier + rustfmt; also enforced by a pre-commit hook).
 
 ## Roadmap
 
 - [ ] Mac App Store release (sandbox + security-scoped bookmarks)
+- [ ] Developer ID signing & notarization (replacing ad-hoc signing, for stable permissions across upgrades and warning-free distribution)
 - [ ] Security-scoped bookmark onboarding for expanded scan ranges
 - [ ] Purge (project build artifacts) & Installer cleanup GUI
 - [ ] Custom rule import (strictly validated, user-authorized paths only)

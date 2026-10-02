@@ -436,9 +436,27 @@ pub fn emit_residual_open(app: &AppHandle, app_name: &str, bundle_id: Option<&st
 /// LMTrashSizeCheckWindowController）。Payload: `runtime::trash_watch::Snapshot`。
 pub const EVT_TRASH_REMINDER_STATE: &str = "trash::reminder-state";
 
+// ── FDA 权限引导 ──
+
+/// FDA 引导窗已弹出（广播给所有 Webview）：Home 软提示横幅收到后立即让位，
+/// 避免同一屏出现"横幅 + 引导窗"双层提示。Payload: 无。
+pub const EVT_FDA_GUIDE_SHOWN: &str = "fda::guide-shown";
+
+/// FDA 引导窗已关闭/隐藏（广播给所有 Webview）：Home 软提示横幅据此重新查询
+/// 授权状态——未授权且用户未处理时恢复显示（与 SHOWN 的让位成对）。Payload: 无。
+pub const EVT_FDA_GUIDE_CLOSED: &str = "fda::guide-closed";
+
 // ── 托盘仪表盘气泡显隐 ──
 
 /// 气泡即将离场：由 tray.rs 在滑出动画开始前 emit（此刻窗口仍可见、webview 活跃，
 /// 事件立即投递；DASHBOARD_HIDE_DELAY_MS 后 hide() 时状态已复位完毕）。
 /// 前端据此立即复位瞬态 UI 状态（如齿轮下拉菜单），复位时机 = 离开时。
 pub const EVT_DASHBOARD_HIDE_REQUESTED: &str = "dashboard::hide-requested";
+
+// ── 托盘右键菜单 ──
+
+/// 托盘右键菜单项点击：tray.rs 只做 id→action 映射（不写业务逻辑），
+/// 定向投递到 dashboard 常驻窗（webview 常驻、监听器永活），
+/// 由前端复用 BottomBar 同一套菜单动作（检查更新 / 设置 / 关于 / 退出）。
+/// Payload: `&str`（"update" | "settings" | "about" | "quit"）。
+pub const EVT_TRAY_MENU_ACTION: &str = "tray::menu-action";

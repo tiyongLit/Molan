@@ -10,6 +10,12 @@
 use serde::Serialize;
 use std::path::Path;
 
+/// TCC / 权限类错误判定：EPERM 为 TCC 拦截的典型值，EACCES 作 POSIX 权限兜底。
+/// 与 runtime::trash_watch 的同名判定口径一致（权限失败给出可引导的错误码）。
+fn is_permission_denied(error: &std::io::Error) -> bool {
+    matches!(error.raw_os_error(), Some(libc::EPERM) | Some(libc::EACCES))
+}
+
 /// 清空结果统计。`reclaimedBytes` 为成功删除条目的逻辑大小累加。
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -27,11 +33,23 @@ pub fn empty_trash() -> Result<EmptyTrashResult, String> {
     let home = crate::core::base::home_dir_opt().ok_or("TRASH_HOME_UNAVAILABLE")?;
     let trash = home.join(".Trash");
     // 二次校验：必须是当前用户 ~/.Trash 的真实目录（非符号链接），杜绝被诱导删到别处。
-    let meta = std::fs::symlink_metadata(&trash).map_err(|_| "TRASH_UNAVAILABLE")?;
+    let meta = std::fs::symlink_metadata(&trash).map_err(|e| {
+        if is_permission_denied(&e) {
+            "TRASH_PERMISSION_DENIED"
+        } else {
+            "TRASH_UNAVAILABLE"
+        }
+    })?;
     if !meta.is_dir() || meta.file_type().is_symlink() {
         return Err("TRASH_UNAVAILABLE".into());
     }
-    let entries = std::fs::read_dir(&trash).map_err(|_| "TRASH_UNREADABLE")?;
+    let entries = std::fs::read_dir(&trash).map_err(|e| {
+        if is_permission_denied(&e) {
+            "TRASH_PERMISSION_DENIED"
+        } else {
+            "TRASH_UNREADABLE"
+        }
+    })?;
 
     let mut deleted = 0usize;
     let mut failed = 0usize;

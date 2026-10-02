@@ -36,6 +36,9 @@ pub mod updates;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // 主线程标记：窗口操作线程校验（fda_guide 的引导窗链路依赖它区分主/后台线程）。
+    crate::runtime::fda_guide::mark_main_thread();
+
     // 原生通知 delegate 必须最早注册（Builder 构建前），覆盖"应用未运行 →
     // 点击通知冷启动"场景；失败（dev 裸二进制无合法 bundle）不影响启动，
     // 由 residual_watch 降级为事件兜底。
@@ -154,6 +157,11 @@ pub fn run() {
             controllers::settings::mole_auto_launch_status,
             controllers::settings::mole_auto_launch_toggle,
             controllers::settings::mole_trash_empty,
+            controllers::settings::mole_open_privacy_settings,
+            controllers::settings::mole_fda_status,
+            controllers::settings::mole_fda_relaunch,
+            controllers::settings::mole_open_fda_guide_window,
+            controllers::settings::mole_fda_guide_check,
             controllers::settings::mole_trash_reminder_get_state,
             controllers::settings::mole_trash_reminder_action,
             controllers::settings::mole_trash_reminder_update_settings,
@@ -175,6 +183,8 @@ pub fn run() {
             runtime::macos_dock_quit::mole_show_dock_icon,
             // 托盘气泡出场动画隐藏（BottomBar「打开主窗口」路径经此严格配对 stop_status_watch）
             runtime::tray::mole_dashboard_hide,
+            // 托盘右键菜单语言同步（dashboard 常驻窗推送 locale → Rust 重建菜单文案）
+            runtime::tray::mole_tray_set_locale,
             // Platform info
             controllers::platform::mole_get_platform_info
         ])
@@ -220,9 +230,17 @@ pub fn run() {
                 // 不需要重新输入密码。真正退出走托盘右键菜单或 Dock→Quit。
                 let w = main_window.clone();
                 main_window.on_window_event(move |event| {
-                    if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                        api.prevent_close();
-                        let _ = w.hide();
+                    match event {
+                        tauri::WindowEvent::CloseRequested { api, .. } => {
+                            api.prevent_close();
+                            let _ = w.hide();
+                        }
+                        // 主窗聚焦（用户切回应用）：补一次权限引导检查——若此前因
+                        // "应用不在焦点"错过弹窗时机，切回后快速补弹（频率控制内）。
+                        tauri::WindowEvent::Focused(true) => {
+                            crate::runtime::fda_guide::check_and_prompt(&w.app_handle().clone());
+                        }
+                        _ => {}
                     }
                 });
 
@@ -262,6 +280,10 @@ pub fn run() {
             // 废纸篓超阈值提醒：后台低频轮询 ~/.Trash 体积，超阈值时通知前端弹右上角浮窗
             crate::runtime::trash_watch::start_trash_watch(handle.clone());
 
+            // FDA 权限引导：启动后固定延迟做一次引导检查（弹窗时机可预期，
+            // 不依赖后台测量时序；细节见 fda_guide::start_startup_check）
+            crate::runtime::fda_guide::start_startup_check(&handle);
+
             if let Some(analyze_window) = handle.get_webview_window("analyze") {
                 let w = analyze_window.clone();
                 analyze_window.on_window_event(move |event| {
@@ -289,8 +311,9 @@ pub fn run() {
 
             // ── 退出终极闸门 ───────────────────────────────────
             // 拦截所有退出路径（Dock 右键 / app.exit() 等），
-            // 只有显式确认退出的入口（托盘菜单 / BottomBar / Cmd+Q 菜单项）
-            // 经 confirm_tray_exit() 置位后才放行。
+            // 只有显式确认退出的入口（托盘菜单 / BottomBar / Cmd+Q 菜单项）或
+            // applicationShouldTerminate: 放行的系统来源请求（系统重开/关机，
+            // 见 macos_dock_quit.rs）经 confirm_tray_exit()/同步置位后才放行。
             // 这是 ObjC 注入失败时的第二道防线。
             if let tauri::RunEvent::ExitRequested { api, .. } = event {
                 if !runtime::macos_dock_quit::is_tray_exit_confirmed() {

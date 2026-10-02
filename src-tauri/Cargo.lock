@@ -2264,8 +2264,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "mole"
-version = "0.1.0"
+name = "molestudio"
+version = "1.0.0-alpha.1"
 dependencies = [
  "auto-launch",
  "base64 0.22.1",

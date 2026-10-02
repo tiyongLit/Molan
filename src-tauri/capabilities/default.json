@@ -2,11 +2,12 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Capability for the main window",
-  "windows": ["MoleStudio", "dashboard", "analyze", "uninstall", "shell", "settings", "trash-reminder"],
+  "windows": ["MoleStudio", "dashboard", "analyze", "uninstall", "shell", "settings", "trash-reminder", "fda-guide"],
   "permissions": [
     "core:default",
     "core:tray:default",
     "core:event:allow-listen",
+    "core:event:allow-emit",
     "core:window:allow-minimize",
     "core:window:allow-maximize",
     "core:window:allow-close",

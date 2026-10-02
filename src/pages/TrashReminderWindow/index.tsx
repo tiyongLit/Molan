@@ -3,7 +3,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { EVT_TRASH_REMINDER_STATE } from '@/constants/tauri-events'
-import { CMD_MOLE_TRASH_EMPTY, CMD_MOLE_TRASH_REMINDER_ACTION, CMD_MOLE_TRASH_REMINDER_GET_STATE } from '@/constants/tauri-commands'
+import { CMD_MOLE_OPEN_PRIVACY_SETTINGS, CMD_MOLE_TRASH_EMPTY, CMD_MOLE_TRASH_REMINDER_ACTION, CMD_MOLE_TRASH_REMINDER_GET_STATE } from '@/constants/tauri-commands'
 import type { TrashEmptyResult, TrashReminderAction, TrashReminderSnapshot } from '@/types/mole'
 import { t, trashReminderError } from '@/i18n'
 import { moleNativeConfirm } from '@/hooks/useMoleConfirm'
@@ -15,6 +15,8 @@ export function TrashReminderWindow() {
   const [visible, setVisible] = useState(false)
   const [pending, setPending] = useState(false)
   const [localError, setLocalError] = useState('')
+  /** 权限类错误（本地清空失败或快照上报）：主按钮切换为「去设置」引导授权 */
+  const [needsPerm, setNeedsPerm] = useState(false)
   const latest = useRef<TrashReminderSnapshot | null>(null)
   const busy = useRef(false)
   const mounted = useRef(false)
@@ -27,6 +29,7 @@ export function TrashReminderWindow() {
       busy.current = false
       setPending(false)
       setLocalError('')
+      setNeedsPerm(false)
     }
     latest.current = next
     setSnapshot(next)
@@ -149,7 +152,10 @@ export function TrashReminderWindow() {
       const result = await invoke<TrashEmptyResult>(CMD_MOLE_TRASH_EMPTY)
       if (current() && result.failed > 0) setLocalError(t('trashReminder.emptyPartialFailed'))
     } catch (error) {
-      if (current()) setLocalError(trashReminderError(String(error)))
+      if (current()) {
+        setLocalError(trashReminderError(String(error)))
+        if (String(error).includes('PERMISSION_DENIED')) setNeedsPerm(true)
+      }
     } finally { if (current()) { busy.current = false; setPending(false) } }
   }
 
@@ -157,6 +163,7 @@ export function TrashReminderWindow() {
   const label = threshold >= 1024 ? `${threshold / 1024} GB` : `${threshold} MB`
   const working = pending
   const error = localError || (snapshot?.errorCode ? trashReminderError(snapshot.errorCode) : '')
+  const permDenied = needsPerm || !!snapshot?.errorCode?.includes('PERMISSION_DENIED')
   return (
     <div className={styles.shell}>
       <section className={`${styles.card} ${visible ? styles.visible : ''}`} aria-label={t('trashReminder.title')}
@@ -170,9 +177,17 @@ export function TrashReminderWindow() {
         </div>
         <div className={styles.actions}>
           <button className={styles.secondary} disabled={working || !visible} onClick={() => void snooze()}>{t('trashReminder.snooze')}</button>
-          <button className={styles.primary} disabled={working || !visible} onClick={() => void emptyTrash()}>
-            {t(working ? 'trashReminder.emptying' : error ? 'trashReminder.retry' : 'trashReminder.empty')}
-          </button>
+          {permDenied ? (
+            // 权限缺失时重试永远失败：按钮切换为「去设置」直通授权引导（小白路径）。
+            <button className={styles.primary} disabled={working || !visible}
+              onClick={() => void invoke(CMD_MOLE_OPEN_PRIVACY_SETTINGS).catch(() => {})}>
+              {t('fdaGuide.openSettings')}
+            </button>
+          ) : (
+            <button className={styles.primary} disabled={working || !visible} onClick={() => void emptyTrash()}>
+              {t(working ? 'trashReminder.emptying' : error ? 'trashReminder.retry' : 'trashReminder.empty')}
+            </button>
+          )}
         </div>
       </section>
     </div>

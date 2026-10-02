@@ -1,6 +1,8 @@
 import { Switch, Divider } from 'antd'
+import { invoke } from '@tauri-apps/api/core'
 import type { AppSettings } from '../useSettings'
 import { MolePopSelect } from '@/components/ui'
+import { CMD_MOLE_FDA_RELAUNCH, CMD_MOLE_OPEN_PRIVACY_SETTINGS } from '@/constants/tauri-commands'
 import { useI18n, LOCALE_LABELS, SUPPORTED_LOCALES } from '@/i18n'
 import type { AppLocale } from '@/i18n'
 
@@ -8,6 +10,8 @@ interface Props {
   settings: AppSettings
   trashSaving: boolean
   trashError: string
+  /** 废纸篓错误是否为权限类（显示「打开系统设置」授权引导） */
+  trashNeedsPermission: boolean
   onToggleAutoLaunch: (enable: boolean) => void
   onChangeLanguage: (locale: AppLocale) => void
   onUpdateSetting: <K extends keyof AppSettings>(
@@ -23,7 +27,7 @@ interface Props {
  * - 子项标签 12px 白（柠檬 createLabelForItem），与标题同一左边距、距上方 12px
  * - Divider 只在块与块之间（14px 上下），父子项之间不加
  */
-export function GeneralSection({ settings, trashSaving, trashError, onToggleAutoLaunch, onChangeLanguage, onUpdateSetting }: Props) {
+export function GeneralSection({ settings, trashSaving, trashError, trashNeedsPermission, onToggleAutoLaunch, onChangeLanguage, onUpdateSetting }: Props) {
   const { t } = useI18n()
   return (
     <div className="flex flex-col">
@@ -97,7 +101,33 @@ export function GeneralSection({ settings, trashSaving, trashError, onToggleAuto
           />
         }
       />
-      {trashError && <p role="alert" className="mt-2 text-[12px] text-[#f87171]">{trashError}</p>}
+      {trashError && (
+        <div role="alert" className="mt-2">
+          <p className="text-[12px] text-[#f87171]">{trashError}</p>
+          {trashNeedsPermission && (
+            // 权限引导：TCC 按代码签名身份记录授权，程序无法代授，只能引导用户到
+            // 「完全磁盘访问权限」面板手动勾选；勾选后若未生效，「退出并重新打开」
+            // 是可靠路径（FDA 绑定进程启动时刻）。
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+              <button
+                type="button"
+                onClick={() => void invoke(CMD_MOLE_OPEN_PRIVACY_SETTINGS).catch(() => {})}
+                className="shrink-0 text-[12px] text-[#73a6e0] hover:text-[#9dc2ee] underline underline-offset-2 transition-colors"
+              >
+                {t('trashReminder.permissionFix')}
+              </button>
+              <button
+                type="button"
+                onClick={() => void invoke(CMD_MOLE_FDA_RELAUNCH).catch(() => {})}
+                className="shrink-0 text-[12px] text-[#73a6e0] hover:text-[#9dc2ee] underline underline-offset-2 transition-colors"
+              >
+                {t('fdaGuide.relaunch')}
+              </button>
+              <span className="text-[12px] text-[#B0BCCC] leading-snug">{t('trashReminder.permissionRestart')}</span>
+            </div>
+          )}
+        </div>
+      )}
       {settings.trashReminder.enabled && (
         <SettingSubRow
           title={t('trashReminder.threshold')}

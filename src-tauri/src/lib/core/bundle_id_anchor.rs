@@ -47,7 +47,7 @@ pub fn read_bundle_id_of_app(app_path: &Path) -> Option<String> {
 ///
 /// # Examples
 /// ```
-/// use mole_lib::core::bundle_id_anchor::bundle_id_matches_anchor;
+/// use molestudio_lib::core::bundle_id_anchor::bundle_id_matches_anchor;
 /// assert!(bundle_id_matches_anchor("com.jetbrains.intellij", "com.jetbrains"));
 /// assert!(bundle_id_matches_anchor("com.apple.dt.Xcode", "com.apple.dt.Xcode"));
 /// assert!(!bundle_id_matches_anchor("com.evil.jetbrainsapp", "jetbrains"));
@@ -114,7 +114,7 @@ pub fn bundle_id_in_family(app_bundle_id: &str, condition_bundle_id: &str) -> bo
 ///
 /// # Examples
 /// ```
-/// use mole_lib::core::bundle_id_anchor::bundle_company_name;
+/// use molestudio_lib::core::bundle_id_anchor::bundle_company_name;
 /// assert_eq!(bundle_company_name("com.jetbrains.intellij"), Some("jetbrains".to_string()));
 /// assert_eq!(bundle_company_name("com.apple.Safari"), Some("apple".to_string()));
 /// assert_eq!(bundle_company_name("com.foo"), None); // 只有 2 段

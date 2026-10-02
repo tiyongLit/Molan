@@ -253,6 +253,14 @@ export interface TrashReminderSnapshot {
 
 export type TrashReminderAction = 'show' | 'shown' | 'hide' | 'snooze'
 
+/** FDA 授权状态与 Home 软提示横幅显隐（Rust `runtime::fda_guide::FdaStatus`，camelCase） */
+export interface FdaStatus {
+  /** 当前是否已授权（~/.Trash 可打开） */
+  authorized: boolean
+  /** 是否应显示 Home 软提示横幅（未授权即显示；dismiss 为会话级由前端管理） */
+  showBanner: boolean
+}
+
 /** 清空废纸篓结果（Rust `trash_empty::EmptyTrashResult`，camelCase） */
 export interface TrashEmptyResult {
   /** 成功删除的顶层条目数 */

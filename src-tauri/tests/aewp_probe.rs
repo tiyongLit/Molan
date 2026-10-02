@@ -23,7 +23,7 @@
 //!   [10] kill -HUP $(pgrep …)      修复候选 B：按 pid 直发（含 pgrep 枚举诊断）
 //!   [11] launchctl kill 1 system/… 修复候选 C：直达 launchd（不经进程枚举）
 
-use mole_lib::core::sudo::{ensure_admin_session, is_admin_authorized, sudo_output};
+use molestudio_lib::core::sudo::{ensure_admin_session, is_admin_authorized, sudo_output};
 
 fn show(label: &str, out: &std::process::Output) {
     println!("--- {label} ---");

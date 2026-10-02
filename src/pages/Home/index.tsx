@@ -7,6 +7,7 @@ import { ShinyText } from '@/components/reactbits'
 import { ScanButton } from '@/components/ui/ScanButton'
 import { useScanButton } from '@/layout/ScanButtonContext'
 import HeroIllustration from './HeroIllustration'
+import { FdaBanner } from './FdaBanner'
 import { uiTrace } from '@/utils/uiTrace'
 import { useI18n } from '@/i18n'
 
@@ -44,6 +45,11 @@ export function Home() {
       {/* ── 背景装饰：Hero 插图左下错位 ── */}
       <div className="absolute bottom-0 left-4 opacity-12 pointer-events-none">
         <HeroIllustration className="h-60 w-70" />
+      </div>
+
+      {/* ── FDA 权限软提示横幅：绝对定位于内容区顶部（不进居中列，出现/让位零位移） ── */}
+      <div className="absolute top-24 left-1/2 z-20 w-full max-w-[440px] -translate-x-1/2">
+        <FdaBanner />
       </div>
 
       {/* ── 居中：标题 + 磁盘卡片 ── */}

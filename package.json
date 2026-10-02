@@ -1,12 +1,15 @@
 {
   "name": "molestudio",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0-alpha.1",
   "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:mac": "bash scripts/build-dmg.sh",
+    "build:mac:arm": "bash scripts/build-dmg.sh --arch=arm",
+    "build:mac:intel": "bash scripts/build-dmg.sh --arch=intel",
     "preview": "vite preview",
     "tauri": "tauri",
     "tauri:dev": "TAURI_DEV_DATA_DIR=./src-tauri/tauri_dev_data pnpm tauri dev",

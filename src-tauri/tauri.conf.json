@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "mole",
-  "version": "0.1.0",
+  "productName": "MoleStudio",
+  "version": "1.0.0-alpha.1",
   "identifier": "com.tiyong.molestudio",
   "build": {
     "beforeDevCommand": "pnpm dev",
@@ -73,6 +73,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "createUpdaterArtifacts": true,
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -84,7 +85,7 @@
       "frameworks": [],
       "minimumSystemVersion": "10.15",
       "exceptionDomain": "",
-      "signingIdentity": null,
+      "signingIdentity": "-",
       "entitlements": null,
       "providerShortName": null
     }
@@ -95,7 +96,7 @@
         "https://gitee.com/tiyong/molestudio/raw/master/update/latest.json",
         "https://github.com/tiyong/molestudio/raw/main/update/latest.json"
       ],
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IHBsYWNlaG9sZGVyIGtleSAtIHJlcGxhY2Ugd2l0aCByZWFsIGVkMjU1MTkgcHVibGljIGtleQp3aGVuIHlvdSBydW46IHRhdXJpIHNpZ25lciBnZW5lcmF0ZSAtdyAqLnRleHQK"
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDJCMzk0RUIwMUEwQzg5NDIKUldSQ2lRd2FzRTQ1Szh1Rk90WjdPRGtaYmVEenB3MnVTS3lkSHkrU29aZFBQZEFuM1BjZlM5ZUwK"
     }
   }
 }

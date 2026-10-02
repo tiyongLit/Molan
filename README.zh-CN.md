@@ -132,14 +132,22 @@ pnpm tauri:dev          # 开发模式启动（数据目录隔离在仓库内）
 构建生产包：
 
 ```bash
-pnpm tauri build              # 官网发行版（.app / .dmg / .zip）
+pnpm build:mac                # 双架构（M 芯片 + Intel）两个 dmg → release/
+pnpm build:mac:arm            # 仅 M 芯片（aarch64）
+pnpm build:mac:intel          # 仅 Intel（x86_64）
+pnpm tauri build              # 原生 Tauri 构建（仅当前主机架构）
 ```
+
+`pnpm build:mac` 为两个架构分别产出带版本号的 dmg 并收集到 `release/` 目录。版本号以 `package.json` 为唯一事实源，构建前自动同步到 `tauri.conf.json` 与 `Cargo.toml`。所有构建产物统一做 **ad-hoc 代码签名**（Tauri 的 `signingIdentity: "-"`），并在收集产物前由构建脚本强制校验。
+
+**macOS 权限说明。** macOS 按代码签名身份识别应用并记录隐私（TCC）授权 —— 没有有效签名的 app 无法读取废纸篓等受保护资源，给什么权限都不生效。因此「废纸篓体积提醒」需要在 **完全磁盘访问权限**（系统设置 → 隐私与安全性）中授权：首次授权一次，每次升级后需重做一次（移除旧条目后重新添加，并重启应用）。从网络下载的 dmg 未经公证：首次打开请用**右键 → 打开**。
 
 参与贡献：提交前运行 `pnpm format`（prettier + rustfmt，pre-commit 钩子也会自动执行）。
 
 ## 路线图
 
 - [ ] Mac App Store 上架（沙箱 + Security-Scoped Bookmark）
+- [ ] Developer ID 签名与公证（替代 ad-hoc 签名，实现跨版本稳定授权与无拦截分发）
 - [ ] 通过 Security-Scoped Bookmark 引导授权扩大扫描范围
 - [ ] Purge（项目构建产物清理）与 Installer（安装包清理）的 GUI
 - [ ] 自定义规则导入（严格校验，仅影响用户显式授权路径）

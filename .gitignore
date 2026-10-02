@@ -24,5 +24,6 @@ dist-ssr
 *.sw?
 pnpm-lock.yaml
 /target/
+/release/
 .trae
 .qoder

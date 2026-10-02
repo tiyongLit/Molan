@@ -18,6 +18,14 @@ export default defineConfig(async () => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  // 桌面端（Tauri）前端资源本地加载，无网络下载成本；Vite 默认 500kB 警告
+  // 阈值面向 Web 联网场景，按项目现实放宽到 1000kB —— 入口 chunk ≈755kB 为
+  // React 系 + antd Popover 子树（Dock 静态链）+ 三语 i18n + 布局壳，
+  // 页面均已路由级懒加载，重库（three/gsap 等）未进入口。
+  // 入口若再显著增长（>1000kB），应重新评估拆分策略而非继续调高。
+  build: {
+    chunkSizeWarningLimit: 1000,
+  },
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //
   // 1. prevent Vite from obscuring rust errors

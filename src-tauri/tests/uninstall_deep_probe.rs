@@ -3,7 +3,7 @@
 //! Library depth-2），验证深度扫描在真实机器上的命中情况。
 //! 跑法：cargo test --test uninstall_deep_probe -- --nocapture
 
-use mole_lib::uninstall::leftovers::scan_deep_leftovers;
+use molestudio_lib::uninstall::leftovers::scan_deep_leftovers;
 
 /// 读 Info.plist 的 CFBundleIdentifier。
 fn read_bundle_id(app_path: &str) -> String {
