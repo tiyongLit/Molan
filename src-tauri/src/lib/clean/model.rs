@@ -1,7 +1,7 @@
 //! Clean 域数据模型 — 扫描/清理结果契约类型。
 //! 自 `controllers/clean.rs` 纯搬迁（行为不变）；serde 派生决定前端 JSON 形状。
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize)]
 pub struct CleanOutput {
@@ -134,4 +134,12 @@ pub struct CleanStatusInfo {
     /// 最近一次扫描完成时间（ISO8601）；进程重启后为 None。
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_scan_at: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct MoleCleanPathItem {
+    pub item_id: String,
+    pub category_id: String,
+    pub path: String,
+    pub size: u64,
 }

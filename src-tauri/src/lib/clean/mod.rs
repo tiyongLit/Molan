@@ -1,4 +1,5 @@
 pub mod app_caches;
+pub mod apply;
 pub mod apps;
 pub mod brew;
 pub mod caches;
@@ -11,6 +12,7 @@ pub mod model;
 pub mod orchestrator;
 pub mod project;
 pub mod purge_shared;
+pub mod scan_job;
 pub mod scan_registry;
 pub mod selection;
 pub mod system;

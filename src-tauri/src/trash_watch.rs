@@ -545,7 +545,7 @@ fn measure(path: &Path, threshold: u64, cancelled: impl Fn() -> bool) -> Measure
 fn busy() -> bool {
     crate::core::busy_state::is_busy()
         || crate::clean::job_state::is_active()
-        || crate::controllers::clean::legacy_clean_busy()
+        || crate::clean::scan_job::is_legacy_busy()
 }
 fn gate(path: &Path) -> std::io::Result<(std::time::SystemTime, usize)> {
     let meta = std::fs::symlink_metadata(path)?;
