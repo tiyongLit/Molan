@@ -13,7 +13,7 @@ pub const EVT_CLEANUP_SPINNER_UPDATE: &str = "cleanup::spinner-update";
 pub const EVT_CLEANUP_PHASE_RESULT: &str = "cleanup::phase-result";
 /// 清理分类结果（渐进式扫描）：每个 section 扫描完成即推送该分类的完整条目（含 items 与 size）。
 /// 前端据此在扫描过程中逐段渲染真实列表，而非等 `clean_scan` 整体返回后才一次性出列表。
-/// Payload 直接序列化 `controllers::clean::CleanCategory`（snake_case，与 `MoleCleanResult.categories` 同构）。
+/// Payload 直接序列化 `crate::clean::model::CleanCategory`（snake_case，与 `MoleCleanResult.categories` 同构）。
 pub const EVT_CLEANUP_CATEGORY_RESULT: &str = "cleanup::category-result";
 /// 清理线索通知（扫描发现，非清理统计）。
 /// Payload 携带结构化线索列表，前端可展示"系统数据线索"、"大文件候选"等面板。

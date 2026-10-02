@@ -7,8 +7,12 @@ pub mod hints;
 pub mod job_state;
 pub mod launch_services;
 pub mod maven;
+pub mod model;
+pub mod orchestrator;
 pub mod project;
 pub mod purge_shared;
+pub mod scan_registry;
+pub mod selection;
 pub mod system;
 pub mod user;
 
