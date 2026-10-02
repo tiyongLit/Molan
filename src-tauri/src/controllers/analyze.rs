@@ -10,11 +10,11 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicI64, Ordering};
 use tauri::Manager;
 
-use crate::cmd::analyze::cache;
-use crate::cmd::analyze::delete::trash_path_with_progress;
-use crate::cmd::analyze::json::try_perform_scan_for_json_impl;
-use crate::cmd::analyze::scanner;
-use crate::cmd::analyze::session;
+use crate::analyze::cache;
+use crate::analyze::delete::trash_path_with_progress;
+use crate::analyze::json::try_perform_scan_for_json_impl;
+use crate::analyze::scanner;
+use crate::analyze::session;
 use crate::core::base::set_analyze_app_handle;
 use crate::events::{TrashProgressPayload, emit_analyze_trash_progress};
 
@@ -234,7 +234,7 @@ fn resolve_target(path: &str, overview: bool) -> Result<(String, bool), String> 
 /// 遵守全应用 `DiskStatus.free` 单一事实来源规范。
 #[cfg(target_os = "macos")]
 fn get_disk_free_bytes(path: &str) -> Option<i64> {
-    crate::cmd::status::metrics_disk::available_capacity_for_path(path).map(|v| v as i64)
+    crate::status::metrics_disk::available_capacity_for_path(path).map(|v| v as i64)
 }
 
 #[cfg(not(target_os = "macos"))]
@@ -266,8 +266,8 @@ pub async fn mole_analyze_navigate(path: String) -> Result<Value, String> {
         match session::navigate(&path) {
             Some(result) => {
                 let json_entries =
-                    crate::cmd::analyze::json::json_entries_from_dir_entries(&result.entries);
-                let output = crate::cmd::analyze::json::JsonOutput {
+                    crate::analyze::json::json_entries_from_dir_entries(&result.entries);
+                let output = crate::analyze::json::JsonOutput {
                     path: path.clone(),
                     overview: false,
                     entries: json_entries,
@@ -338,7 +338,7 @@ pub async fn mole_analyze(
                 bytes_target = hit.snapshot.nodes.get(&target).map(|n| n.size).unwrap_or(0);
             }
         }
-        let (used, total) = crate::cmd::analyze::json::root_disk_usage().unwrap_or((0, 0));
+        let (used, total) = crate::analyze::json::root_disk_usage().unwrap_or((0, 0));
         if bytes_target <= 0 {
             bytes_target = used;
         }
@@ -441,7 +441,7 @@ pub fn mole_analyze_trash(app: tauri::AppHandle, args: AnalyzeTrashArgs) -> Resu
     let mut allowed: Vec<String> = Vec::new();
     let mut protected_names: Vec<String> = Vec::new();
     for path in &args.paths {
-        if crate::cmd::analyze::protected::is_protected_entry_path(path) {
+        if crate::analyze::protected::is_protected_entry_path(path) {
             if let Some(name) = Path::new(path).file_name().and_then(|n| n.to_str()) {
                 protected_names.push(name.to_string());
             } else {
@@ -533,5 +533,5 @@ pub fn mole_analyze_trash(app: tauri::AppHandle, args: AnalyzeTrashArgs) -> Resu
 
 #[tauri::command(rename_all = "snake_case")]
 pub fn mole_get_protected_analyze_paths() -> Vec<String> {
-    crate::cmd::analyze::protected::get_protected_dir_names()
+    crate::analyze::protected::get_protected_dir_names()
 }

@@ -548,7 +548,7 @@ pub fn try_perform_scan_for_json_impl(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cmd::analyze::scanner::DirNode;
+    use crate::analyze::scanner::DirNode;
 
     fn snapshot_with_bundle_node(leaf: bool, root: &str) -> cache::DirSnapshot {
         let mut nodes = std::collections::HashMap::new();

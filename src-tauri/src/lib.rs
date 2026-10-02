@@ -1,4 +1,3 @@
-pub mod cmd;
 pub mod constants;
 pub mod controllers;
 pub mod embedded_rules;
@@ -7,6 +6,8 @@ pub mod vendor;
 
 pub mod runtime;
 
+#[path = "lib/analyze/mod.rs"]
+pub mod analyze;
 #[path = "lib/check/mod.rs"]
 pub mod check;
 #[path = "lib/clean/mod.rs"]
@@ -21,6 +22,8 @@ pub mod optimize;
 pub mod platform;
 #[path = "lib/startup/mod.rs"]
 pub mod startup;
+#[path = "lib/status/mod.rs"]
+pub mod status;
 #[path = "lib/uninstall/mod.rs"]
 pub mod uninstall;
 #[path = "lib/updates/mod.rs"]

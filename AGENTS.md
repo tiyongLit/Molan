@@ -27,7 +27,7 @@ MoleStudio 是一款 **macOS 清理 / 优化 GUI 软件**，面向最终用户�
 
 ### 与 v1 的关系
 
-- **后端继承**：v2 的 `src-tauri/` 基本沿用 v1 的 Rust 实现（`cmd/`、`controllers/`、`lib/`、`embedded_rules.rs`），并持续迭代。
+- **后端继承**：v2 的 `src-tauri/` 基本沿用 v1 的 Rust 实现（`controllers/`、`lib/`、`embedded_rules.rs`），并持续迭代。
 - **前端重构**：v2 引入新的外壳布局（`Shell*` 组件）与视觉体系，替换 v1 的页面组织方式。
 - **架构约束延续**：v1 `docs/架构约束.md` 的核心红线在 v2 仍然适用，但部分细节待人工修订。
 
@@ -49,7 +49,7 @@ MoleStudio 是一款 **macOS 清理 / 优化 GUI 软件**，面向最终用户�
 - Tauri 2 + Rust
 - 命令入口：`src-tauri/src/controllers/`
 - 底层能力：`src-tauri/src/lib/`（按 Mole CLI 的 `lib/*` 一一对应：`clean`、`core`、`manage`、`optimize`、`uninstall`、`check`、`platform`）
-- 命令行能力迁移：`src-tauri/src/cmd/`（`analyze`、`status`）
+- 磁盘分析与系统监控：`src-tauri/src/lib/analyze/`、`src-tauri/src/lib/status/`（自 CLI `cmd/` 迁移归位）
 - 内嵌规则：`src-tauri/src/embedded_rules.rs`（编译期 const/静态表）
 - 事件：`src-tauri/src/events.rs`
 - 托盘：`src-tauri/src/tray.rs`
@@ -177,7 +177,8 @@ MoleStudio 不是从零开始，有四个参考项目。每个项目角色清晰
 | `src-tauri/src/lib/uninstall/` | 智能卸载（batch、brew） |
 | `src-tauri/src/lib/check/` | 健康检查、安全检查、开发环境检查 |
 | `src-tauri/src/lib/platform/` | macOS 平台能力（原生图标注册表 `native_icon_registry` + 编码管线 `macos_file_icon`、原生通知 `macos_notifications`、特权路由） |
-| `src-tauri/src/cmd/` | 命令行能力迁移（analyze、status） |
+| `src-tauri/src/lib/analyze/` | 磁盘透视引擎（原 cmd/analyze 迁移） |
+| `src-tauri/src/lib/status/` | 实时状态采集引擎（原 cmd/status 迁移） |
 | `src-tauri/src/controllers/` | Tauri command 入口，薄层，只做参数解析与分发 |
 | `src-tauri/src/embedded_rules.rs` | 编译期内嵌清理规则 |
 

@@ -250,7 +250,7 @@ fn file_name(path: &str) -> &str {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cmd::analyze::scanner::DirNode;
+    use crate::analyze::scanner::DirNode;
 
     fn make_test_tree() -> SessionTree {
         let mut nodes = HashMap::new();
