@@ -3,7 +3,7 @@
 //!
 //! GUI 不渲染 ANSI,但保留 `render_configuration_ansi` 以便 `mo check` 风格的纯文本输出。
 
-use crate::whitelist_optimize;
+use crate::manage::whitelist_optimize;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::path::Path;

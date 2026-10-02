@@ -4,7 +4,7 @@
 //! 同步 export 三个 env(`FILEVAULT_DISABLED` / `FIREWALL_DISABLED` / `GATEKEEPER_DISABLED`),
 //! 供 `manage/autofix.rs` 读取用于决策。
 
-use crate::whitelist_optimize;
+use crate::manage::whitelist_optimize;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::path::Path;

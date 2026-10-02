@@ -1,6 +1,6 @@
 //! 与 `src/lib/check/all.sh` 中 `check_system_health` 及子检查对齐。
 
-use crate::whitelist_optimize;
+use crate::manage::whitelist_optimize;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashSet;

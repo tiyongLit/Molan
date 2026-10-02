@@ -4,10 +4,8 @@ pub mod controllers;
 pub mod embedded_rules;
 pub mod events;
 pub mod vendor;
-pub mod whitelist_optimize;
 
 pub mod runtime;
-pub mod trash_empty;
 
 #[path = "lib/check/mod.rs"]
 pub mod check;

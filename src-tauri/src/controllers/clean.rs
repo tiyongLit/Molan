@@ -383,7 +383,7 @@ pub fn mole_whitelist_predefined(args: MoleWhitelistArgs) -> Result<Value, Strin
     use std::path::Path;
     let home = crate::core::base::home_dir_opt().unwrap_or_else(|| Path::new("/").to_path_buf());
     let items = if args.mode == "optimize" {
-        crate::whitelist_optimize::load_optimize_whitelist_patterns(&home)
+        crate::manage::whitelist_optimize::load_optimize_whitelist_patterns(&home)
             .into_iter()
             .map(|p| {
                 serde_json::json!({

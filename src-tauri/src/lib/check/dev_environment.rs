@@ -1,6 +1,6 @@
 //! 与 `src/lib/check/dev_environment.sh` 对齐（JSON 事实层 + ANSI 文本层）。
 
-use crate::whitelist_optimize;
+use crate::manage::whitelist_optimize;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fs;

@@ -186,9 +186,9 @@ pub fn mole_auto_launch_toggle(enable: bool) -> Result<(), String> {
 pub async fn mole_trash_empty(
     app: tauri::AppHandle,
     window: tauri::WebviewWindow,
-) -> Result<crate::trash_empty::EmptyTrashResult, String> {
+) -> Result<crate::platform::macos_trash_empty::EmptyTrashResult, String> {
     require_window(window.label(), &["trash-reminder"])?;
-    let result = tauri::async_runtime::spawn_blocking(crate::trash_empty::empty_trash)
+    let result = tauri::async_runtime::spawn_blocking(crate::platform::macos_trash_empty::empty_trash)
         .await
         .map_err(|e| e.to_string())??;
     // 清空成功后立即让当前提醒失效隐藏（废纸篓已空必低于阈值）。

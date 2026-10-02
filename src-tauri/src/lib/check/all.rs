@@ -101,9 +101,9 @@ pub fn check_mole_update() -> Option<MoleUpdateStatus> {
     // 后续命中 update available 才覆盖为 true。
     std::env::set_var("MOLE_UPDATE_AVAILABLE", "false");
 
-    if crate::whitelist_optimize::is_whitelisted_optimize(
+    if crate::manage::whitelist_optimize::is_whitelisted_optimize(
         "check_mole_update",
-        &crate::whitelist_optimize::load_optimize_whitelist_patterns(&std::path::PathBuf::from(
+        &crate::manage::whitelist_optimize::load_optimize_whitelist_patterns(&std::path::PathBuf::from(
             &home,
         )),
         &std::path::PathBuf::from(&home),

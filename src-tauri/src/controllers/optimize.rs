@@ -10,7 +10,7 @@ use crate::optimize::diagnostics;
 use crate::optimize::outcome::OptimizeOutcome;
 use crate::optimize::tasks::execute_optimization;
 use crate::optimize::{clear_failure, take_failure};
-use crate::whitelist_optimize;
+use crate::manage::whitelist_optimize;
 
 /// 与前端 `EVT_OPTIMIZE_PROGRESS` 字符串保持一致。
 const EVT_OPTIMIZE_PROGRESS: &str = "optimize::progress";

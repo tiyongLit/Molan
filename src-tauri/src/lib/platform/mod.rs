@@ -22,5 +22,7 @@ pub mod macos_running_apps;
 #[cfg(target_os = "macos")]
 pub mod macos_smc;
 #[cfg(target_os = "macos")]
+pub mod macos_trash_empty;
+#[cfg(target_os = "macos")]
 pub mod macos_trash_watch;
 pub mod native_icon_registry;
