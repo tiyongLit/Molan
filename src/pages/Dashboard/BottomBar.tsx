@@ -13,7 +13,7 @@ import { useI18n } from '@/i18n'
 import { useDashboardMenuActions } from './useDashboardMenuActions'
 
 /**
- * 底部固定工具栏：左 logo · 中「打开 MoleStudio2」主入口 · 右设置下拉。
+ * 底部固定工具栏：左 logo · 中「打开 Molan」主入口 · 右设置下拉。
  * 下拉菜单（antd Dropdown，局部 dark algorithm 适配暗色气泡）。
  */
 
@@ -22,7 +22,7 @@ async function openMainWindow() {
   try {
     // 恢复 Dock 图标（可能被 Dock 退出隐藏了）
     await invoke(CMD_MOLE_SHOW_DOCK_ICON).catch(() => {})
-    const main = await WebviewWindow.getByLabel('MoleStudio')
+    const main = await WebviewWindow.getByLabel('Molan')
     if (main) {
       await main.unminimize()
       await main.show()

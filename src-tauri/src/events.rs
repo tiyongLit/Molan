@@ -338,7 +338,7 @@ pub const EVT_UPDATES_BREW_PROGRESS: &str = "updates::brew-progress";
 
 // ── Self-Update（自更新）进度 ──
 
-/// MoleStudio 自身更新下载/安装进度。
+/// Molan 自身更新下载/安装进度。
 /// payload: `{ phase: "downloading" | "verifying" | "installing", progress: f64 (0-100) }`
 pub const EVT_APP_VERSION_PROGRESS: &str = "app-version::progress";
 

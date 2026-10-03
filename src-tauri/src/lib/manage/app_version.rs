@@ -1,4 +1,4 @@
-//! MoleStudio 应用版本检查（App Version）业务逻辑层。
+//! Molan 应用版本检查（App Version）业务逻辑层。
 //!
 //! 与 `controllers/app_version.rs`（薄层 Tauri command 入口）分离：
 //! - 本模块包含所有业务逻辑：版本检查、下载安装、MAS 检测、App Store 引导。
@@ -76,7 +76,7 @@ pub fn is_mas_build() -> bool {
 
 // ──────────────────────────── 版本检查 ────────────────────────────
 
-/// 检查 MoleStudio 自身是否有新版本。
+/// 检查 Molan 自身是否有新版本。
 ///
 /// - 官网版：使用 tauri-plugin-updater 查询配置好的 endpoints (Gitee → GitHub)。
 ///   插件自动按数组顺序 fallback。
@@ -353,7 +353,7 @@ pub fn ask_for_updates() -> bool {
 
 /// 对齐 `update.sh:134-169` 中的 `perform_updates`(Mole CLI 版)。
 ///
-/// GUI 版的 MoleStudio 自更新已迁移到 `check_for_update` + `perform_update`
+/// GUI 版的 Molan 自更新已迁移到 `check_for_update` + `perform_update`
 /// (基于 tauri-plugin-updater)。本函数保留用于 Mole CLI 兼容性检测场景。
 /// 返回 true 表示存在更新且全部成功;无更新或失败均返回 false。
 pub fn perform_cli_updates() -> bool {

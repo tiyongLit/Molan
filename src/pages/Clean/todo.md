@@ -3,7 +3,7 @@ toolName: view_files
 status: success
 
 
-filePath: /Users/liuy/mole_desktop/mvp/MoleStudio2/src/pages/Clean/index.tsx
+filePath: /Users/liuy/mole_desktop/mvp/Molan2/src/pages/Clean/index.tsx
 
 分析结果很直接：
 
@@ -57,7 +57,7 @@ interface CleanItem {
 
 ### 前端代码位置
 
-[Clean/index.tsx#L276-L289](file:///Users/liuy/mole_desktop/mvp/MoleStudio2/src/pages/Clean/index.tsx#L276-L289)
+[Clean/index.tsx#L276-L289](file:///Users/liuy/mole_desktop/mvp/Molan2/src/pages/Clean/index.tsx#L276-L289)
 
 ```typescript
 // 改动点：预加载图标时优先取 appBundlePath，其次取 path
@@ -79,7 +79,7 @@ iconService.preloadIconsIdle(paths)  // paths 应包括 appBundlePath
 
 ### 前端代码位置
 
-[Clean/index.tsx#L155-L168](file:///Users/liuy/mole_desktop/mvp/MoleStudio2/src/pages/Clean/index.tsx#L155-L168)
+[Clean/index.tsx#L155-L168](file:///Users/liuy/mole_desktop/mvp/Molan2/src/pages/Clean/index.tsx#L155-L168)
 
 ---
 
@@ -96,7 +96,7 @@ iconService.preloadIconsIdle(paths)  // paths 应包括 appBundlePath
 
 - `recommend` 和 `cautious` 不应同时为 true
 - size 为 0 时应无条件显示"很干净"，禁用 checkbox
-- 前端代码位置：[Clean/index.tsx#L647-L658](file:///Users/liuy/mole_desktop/mvp/MoleStudio2/src/pages/Clean/index.tsx#L647-L658)
+- 前端代码位置：[Clean/index.tsx#L647-L658](file:///Users/liuy/mole_desktop/mvp/Molan2/src/pages/Clean/index.tsx#L647-L658)
 
 ---
 
@@ -126,7 +126,7 @@ iconService.preloadIconsIdle(paths)  // paths 应包括 appBundlePath
 
 两种格式都可以，前端可以适配。
 
-前端代码位置：[Clean/index.tsx#L330-L341](file:///Users/liuy/mole_desktop/mvp/MoleStudio2/src/pages/Clean/index.tsx#L330-L341)
+前端代码位置：[Clean/index.tsx#L330-L341](file:///Users/liuy/mole_desktop/mvp/Molan2/src/pages/Clean/index.tsx#L330-L341)
 
 ---
 
@@ -158,7 +158,7 @@ iconService.preloadIconsIdle(paths)  // paths 应包括 appBundlePath
 
 扫描数据中的 `whitelist_matched` 字段应与白名单引擎联动。
 
-前端代码位置：[Clean/index.tsx#L634-L639](file:///Users/liuy/mole_desktop/mvp/MoleStudio2/src/pages/Clean/index.tsx#L634-L639)
+前端代码位置：[Clean/index.tsx#L634-L639](file:///Users/liuy/mole_desktop/mvp/Molan2/src/pages/Clean/index.tsx#L634-L639)
 
 ---
 
@@ -190,7 +190,7 @@ iconService.preloadIconsIdle(paths)  // paths 应包括 appBundlePath
 
 ### 前端代码位置
 
-[Clean/index.tsx#L343-L360](file:///Users/liuy/mole_desktop/mvp/MoleStudio2/src/pages/Clean/index.tsx#L343-L360)
+[Clean/index.tsx#L343-L360](file:///Users/liuy/mole_desktop/mvp/Molan2/src/pages/Clean/index.tsx#L343-L360)
 
 ---
 

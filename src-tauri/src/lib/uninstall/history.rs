@@ -1,6 +1,6 @@
 //! 卸载历史记录管理
 //!
-//! 存储位置：~/.config/mole/uninstall_history.json
+//! 存储位置：~/.config/molan/uninstall_history.json
 //! 保留策略：最近 20 条
 //!
 //! 对齐 Pearcleaner 的 UndoHistoryManager，但简化实现：
@@ -47,7 +47,7 @@ struct HistoryStore {
 fn history_file_path() -> PathBuf {
     let config_dir = dirs::config_dir()
         .unwrap_or_else(|| PathBuf::from("/tmp"))
-        .join("mole");
+        .join("molan");
 
     // 确保目录存在
     fs::create_dir_all(&config_dir).ok();
@@ -124,7 +124,7 @@ mod tests {
     #[test]
     fn test_history_file_path() {
         let path = history_file_path();
-        assert!(path.to_string_lossy().contains("mole"));
+        assert!(path.to_string_lossy().contains("molan"));
         assert!(path.to_string_lossy().ends_with("uninstall_history.json"));
     }
 

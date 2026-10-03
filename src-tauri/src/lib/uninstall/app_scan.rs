@@ -43,7 +43,7 @@ struct AppMetaCacheEntry {
 
 fn meta_cache_file() -> std::path::PathBuf {
     let home = std::env::var("HOME").unwrap_or_default();
-    std::path::PathBuf::from(format!("{home}/.cache/mole/uninstall_app_metadata_v2.json"))
+    std::path::PathBuf::from(format!("{home}/.cache/molan/uninstall_app_metadata_v2.json"))
 }
 
 fn load_meta_cache() -> HashMap<String, AppMetaCacheEntry> {

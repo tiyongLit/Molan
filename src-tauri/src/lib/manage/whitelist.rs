@@ -16,11 +16,11 @@ pub struct WhitelistLoadResult {
 }
 
 /// 对齐 `lib/manage/whitelist.sh:13`
-const WHITELIST_CONFIG_CLEAN: &str = "~/.config/mole/whitelist";
+const WHITELIST_CONFIG_CLEAN: &str = "~/.config/molan/whitelist";
 /// 对齐 `lib/manage/whitelist.sh:14`
-const WHITELIST_CONFIG_OPTIMIZE: &str = "~/.config/mole/whitelist_optimize";
+const WHITELIST_CONFIG_OPTIMIZE: &str = "~/.config/molan/whitelist_optimize";
 /// 对齐 `lib/manage/whitelist.sh:15`
-const WHITELIST_CONFIG_OPTIMIZE_LEGACY: &str = "~/.config/mole/whitelist_checks";
+const WHITELIST_CONFIG_OPTIMIZE_LEGACY: &str = "~/.config/molan/whitelist_checks";
 
 /// 对齐 `lib/core/base.sh:88-112` 中的 `DEFAULT_WHITELIST_PATTERNS`。
 pub fn default_whitelist_patterns() -> Vec<String> {

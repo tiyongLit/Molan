@@ -16,7 +16,7 @@ import {
 import { EVT_TRAY_MENU_ACTION } from '@/constants/tauri-events'
 
 /** 项目 GitHub 仓库（「关于」菜单跳转目标；修改时需同步 capabilities/default.json 的 allow-open-url 白名单） */
-const PROJECT_GITHUB_URL = 'https://github.com/tiyongLit/MoleStudio'
+const PROJECT_GITHUB_URL = 'https://github.com/tiyongLit/Molan'
 
 /** 退出应用：直接走 Rust 侧 app.exit(0)。
  * 不能用 destroy()/close()——主窗口注册了 preventClose→hide，

@@ -1,4 +1,4 @@
-//! MoleStudio 后端 crate root。
+//! Molan 后端 crate root。
 //!
 //! 模块布局决策：crate root 为 `lib.rs`（Tauri 约定），与 `src/lib/` 目录同名，
 //! 各域以 `#[path = ...]` 显式桥接（命名冲突的既定代价，改造决策见 git 历史）。
@@ -143,7 +143,7 @@ pub fn run() {
             controllers::updates::mole_updates_check,
             controllers::updates::mole_updates_apply,
             controllers::updates::mole_updates_brew_upgrade,
-            // Self-Update — MoleStudio 自身更新
+            // Self-Update — Molan 自身更新
             controllers::app_version::mole_app_version_check,
             controllers::app_version::mole_app_version_install,
             controllers::app_version::mole_app_version_open_appstore,
@@ -212,7 +212,7 @@ pub fn run() {
             {
                 if let Ok(exe) = std::env::current_exe() {
                     if let Ok(legacy) = auto_launch::AutoLaunchBuilder::new()
-                        .set_app_name("MoleStudio")
+                        .set_app_name("Molan")
                         .set_app_path(&exe.to_string_lossy())
                         .build()
                     {
@@ -224,7 +224,7 @@ pub fn run() {
                 }
             }
 
-            if let Some(main_window) = handle.get_webview_window("MoleStudio") {
+            if let Some(main_window) = handle.get_webview_window("Molan") {
                 // 关闭主窗口时隐藏到托盘，不退出进程（对齐 Lemon Cleaner）。
                 // 这样 sudo keepalive 持续有效，用户下次从托盘/Dock 打开时
                 // 不需要重新输入密码。真正退出走托盘右键菜单或 Dock→Quit。

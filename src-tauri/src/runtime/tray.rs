@@ -459,9 +459,9 @@ mod tests {
         assert_eq!(tray_label("zh-CN", KEY_TRAY_UPDATE), "检查更新");
         assert_eq!(tray_label("en-US", KEY_TRAY_UPDATE), "Check for Updates");
         assert_eq!(tray_label("zh-TW", KEY_TRAY_UPDATE), "檢查更新");
-        assert_eq!(tray_label("zh-CN", KEY_TRAY_SETTINGS), "设置");
+        assert_eq!(tray_label("zh-CN", KEY_TRAY_SETTINGS), "系统设置");
         assert_eq!(tray_label("en-US", KEY_TRAY_SETTINGS), "Settings");
-        assert_eq!(tray_label("zh-TW", KEY_TRAY_SETTINGS), "設定");
+        assert_eq!(tray_label("zh-TW", KEY_TRAY_SETTINGS), "系統設定");
         assert_eq!(tray_label("zh-CN", KEY_TRAY_ABOUT), "关于我们");
         assert_eq!(tray_label("en-US", KEY_TRAY_ABOUT), "About Us");
         assert_eq!(tray_label("zh-TW", KEY_TRAY_ABOUT), "關於我們");

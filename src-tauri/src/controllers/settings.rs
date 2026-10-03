@@ -108,7 +108,7 @@ fn is_macos_13_plus() -> bool {
 fn build_launch_agent() -> Result<auto_launch::AutoLaunch, String> {
     let current_exe = std::env::current_exe().map_err(|e| e.to_string())?;
     auto_launch::AutoLaunchBuilder::new()
-        .set_app_name("MoleStudio")
+        .set_app_name("Molan")
         .set_app_path(&current_exe.to_string_lossy())
         .set_use_launch_agent(true)
         .build()
@@ -261,7 +261,7 @@ pub async fn mole_trash_reminder_get_state(
 ) -> Result<crate::runtime::trash_watch::Snapshot, String> {
     require_window(
         window.label(),
-        &["trash-reminder", "MoleStudio", "settings"],
+        &["trash-reminder", "Molan", "settings"],
     )?;
     let refresh = window.label() == "settings";
     let ready = window.label() == "trash-reminder";

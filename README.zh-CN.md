@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>MoleStudio</h1>
+  <h1>Molan</h1>
   <p><em>🐹 一款原生 macOS 清理 / 优化应用 —— 深度清理、智能卸载、系统维护与磁盘透视，为普通用户打造的图形界面。</em></p>
 </div>
 
@@ -11,27 +11,27 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/tiyongLit/MoleStudio"><img src="https://img.shields.io/badge/GitHub-%E4%BB%93%E5%BA%93-181717?style=flat-square&logo=github" alt="GitHub"></a>
-  <a href="https://gitee.com/tiyong/molestudio"><img src="https://img.shields.io/badge/Gitee-%E9%95%9C%E5%83%8F-orange?style=flat-square&logo=git&logoColor=white" alt="Gitee"></a>
+  <a href="https://github.com/tiyongLit/Molan"><img src="https://img.shields.io/badge/GitHub-%E4%BB%93%E5%BA%93-181717?style=flat-square&logo=github" alt="GitHub"></a>
+  <a href="https://gitee.com/tiyong/Molan"><img src="https://img.shields.io/badge/Gitee-%E9%95%9C%E5%83%8F-orange?style=flat-square&logo=git&logoColor=white" alt="Gitee"></a>
 </p>
 
 <p align="center">
   <a href="./README.md">English</a> | 简体中文
 </p>
 
-> 💡 **MoleStudio** 是一款帮助你在 Mac 上完成清理、卸载、优化与磁盘洞察的 GUI 应用。其扫描与清理逻辑是对开源命令行工具 [`tw93/Mole`](https://github.com/tw93/Mole) 的 **Rust 完整重写**，并围绕原生桌面体验重构：可视化分类、勾选框、结果预览、显式确认、一键回收空间 —— 全程无需打开终端。
+> 💡 **Molan** 是一款帮助你在 Mac 上完成清理、卸载、优化与磁盘洞察的 GUI 应用。其扫描与清理逻辑是对开源命令行工具 [`tw93/Mole`](https://github.com/tw93/Mole) 的 **Rust 完整重写**，并围绕原生桌面体验重构：可视化分类、勾选框、结果预览、显式确认、一键回收空间 —— 全程无需打开终端。
 
 <!-- 截图占位：将 PNG 放入 docs/img/ 并替换本注释 -->
 
-## 为什么做 MoleStudio
+## 为什么做 Molan
 
 原版 Mole CLI 已经证明：一个工具就能替代 CleanMyMac、AppCleaner、DaisyDisk 和 iStat Menus —— 但它活在终端里，而大多数 Mac 用户从不打开终端。
 
-MoleStudio 继承了同一套久经考验的规则与算法，把整个引擎用 Rust 重写（不嵌入任何外部二进制、不调用任何 Shell 脚本），再封装进一个精致的 Tauri 图形界面，按照人们真实的清理习惯来设计：
+Molan 继承了同一套久经考验的规则与算法，把整个引擎用 Rust 重写（不嵌入任何外部二进制、不调用任何 Shell 脚本），再封装进一个精致的 Tauri 图形界面，按照人们真实的清理习惯来设计：
 
 - **先看后删。** 扫描永远无副作用。结果按分类聚合，展示大小、文件数与原生文件图标，供你勾选确认后才动手。
 - **不经你同意，什么都不删。** 所有删除统一移入废纸篓，任何破坏性操作都必须显式确认。
-- **为 GUI 用户增强。** CLI 里是交互式 TUI 列表，MoleStudio 换成了可展开的目录树、「自动选中 / 需人工复核」分组、删除历史、菜单栏仪表盘，以及卸载残留智能检测。
+- **为 GUI 用户增强。** CLI 里是交互式 TUI 列表，Molan 换成了可展开的目录树、「自动选中 / 需人工复核」分组、删除历史、菜单栏仪表盘，以及卸载残留智能检测。
 
 ## 功能
 
@@ -43,7 +43,7 @@ MoleStudio 继承了同一套久经考验的规则与算法，把整个引擎用
 
 卸载 `/Applications` 中的应用，并连带清掉它们留下的偏好设置、缓存、容器与启动项 —— 还提供 CLI 给不了的安全网：
 
-- **残留检测** —— 当你手动把应用拖进废纸篓后，MoleStudio 会主动提示扫描并清理其残留文件。
+- **残留检测** —— 当你手动把应用拖进废纸篓后，Molan 会主动提示扫描并清理其残留文件。
 - **自动选中 vs. 需复核** —— 残留文件被拆分为「可放心删除」与「请先复核」两组，共享数据绝不会被静默移除。
 - **同族应用保护** —— 共享同一 Bundle ID 的应用（如 Xcode 与 Xcode-beta）其共享数据会被完整保留。
 - **仅清除数据** —— 不卸载应用，只重置它的数据状态。
@@ -79,7 +79,7 @@ MoleStudio 继承了同一套久经考验的规则与算法，把整个引擎用
 
 ## 安全与隐私
 
-MoleStudio 的设计原则是：清理工具本身绝不能成为新的麻烦。
+Molan 的设计原则是：清理工具本身绝不能成为新的麻烦。
 
 - **走废纸篓，绝不 `rm`。** 所有删除都进入系统废纸篓，随时可恢复。
 - **扫描 ≠ 删除。** 扫描只读；清理仅发生在你勾选并确认之后。
@@ -114,17 +114,17 @@ MoleStudio 的设计原则是：清理工具本身绝不能成为新的麻烦。
 
 ## 快速开始
 
-MoleStudio 面向 **macOS 12+**（Intel 与 Apple Silicon）。开发环境需要带 Xcode Command Line Tools 的 macOS、[Node.js](https://nodejs.org) 20+、[pnpm](https://pnpm.io)，以及较新的 [Rust](https://rustup.rs) 工具链。
+Molan 面向 **macOS 12+**（Intel 与 Apple Silicon）。开发环境需要带 Xcode Command Line Tools 的 macOS、[Node.js](https://nodejs.org) 20+、[pnpm](https://pnpm.io)，以及较新的 [Rust](https://rustup.rs) 工具链。
 
 源码同时托管在 GitHub 与 Gitee，哪个快用哪个：
 
 ```bash
 # GitHub
-git clone https://github.com/tiyongLit/MoleStudio.git
+git clone https://github.com/tiyongLit/Molan.git
 # Gitee（国内访问更快）
-git clone https://gitee.com/tiyong/molestudio.git
+git clone https://gitee.com/tiyong/Molan.git
 
-cd MoleStudio
+cd Molan
 pnpm install
 pnpm tauri:dev          # 开发模式启动（数据目录隔离在仓库内）
 ```
@@ -159,6 +159,6 @@ pnpm tauri build              # 原生 Tauri 构建（仅当前主机架构）
 
 ## 许可证
 
-MoleStudio 采用 [MIT 许可证](LICENSE)。
+Molan 采用 [MIT 许可证](LICENSE)。
 
-清理逻辑的灵感来自 [`tw93/Mole`](https://github.com/tw93/Mole)（GPL-3.0）；MoleStudio 以 Rust 重新实现其行为，并未链接或嵌入原始代码。
+清理逻辑的灵感来自 [`tw93/Mole`](https://github.com/tw93/Mole)（GPL-3.0）；Molan 以 Rust 重新实现其行为，并未链接或嵌入原始代码。

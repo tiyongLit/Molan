@@ -2,11 +2,11 @@
 //! 做行为验证（语义基线见 controllers/updates.md §6 对齐清单）。
 //! 跑法：cargo test --test updates_probe -- --nocapture
 
-use molestudio_lib::updates::appcast::parse_appcast;
-use molestudio_lib::updates::brew::{brew_progress_phrase, parse_outdated};
-use molestudio_lib::updates::detect::{UpdateSource, detect_update_source, feed_url};
-use molestudio_lib::updates::itunes::parse_itunes_lookup;
-use molestudio_lib::updates::version::{is_version_newer, os_is_installable};
+use molan_lib::updates::appcast::parse_appcast;
+use molan_lib::updates::brew::{brew_progress_phrase, parse_outdated};
+use molan_lib::updates::detect::{UpdateSource, detect_update_source, feed_url};
+use molan_lib::updates::itunes::parse_itunes_lookup;
+use molan_lib::updates::version::{is_version_newer, os_is_installable};
 
 /// 版本比较：去一个前导 v/V、非数字段归 0、缺段补 0、全等 false。
 #[test]

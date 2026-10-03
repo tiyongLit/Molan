@@ -1,9 +1,11 @@
 import { lazy, Suspense } from 'react'
 import MainLayout from './layout'
 import { createBrowserRouter, Navigate } from 'react-router-dom'
+import { Home } from '@/pages/Home'
 
 // ── 路由级代码分割：每个页面独立 chunk，首次切到该路由时才加载 ──
-const Home = lazy(() => import('@/pages/Home').then(m => ({ default: m.Home })))
+// Home 是首屏必经页，静态引入进入口 chunk：消除首帧最大的 Home chunk 加载等待
+//（dev 下 vite 现场编译该 chunk 曾占启动卡顿 ~5.4s，见 nav.switch commit 埋点）
 const Clean = lazy(() => import('@/pages/Clean').then(m => ({ default: m.Clean })))
 const ShellUninstall = lazy(() => import('@/pages/Uninstall').then(m => ({ default: m.ShellUninstall })))
 const Optimize = lazy(() => import('@/pages/Optimize').then(m => ({ default: m.Optimize })))

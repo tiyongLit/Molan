@@ -2,7 +2,7 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Capability for the main window",
-  "windows": ["MoleStudio", "dashboard", "analyze", "uninstall", "shell", "settings", "trash-reminder", "fda-guide"],
+  "windows": ["Molan", "dashboard", "analyze", "uninstall", "shell", "settings", "trash-reminder", "fda-guide"],
   "permissions": [
     "core:default",
     "core:tray:default",
@@ -26,7 +26,7 @@
     "opener:default",
     {
       "identifier": "opener:allow-open-url",
-      "allow": [{ "url": "x-apple.systempreferences:*" }, { "url": "https://github.com/tiyongLit/MoleStudio*" }]
+      "allow": [{ "url": "x-apple.systempreferences:*" }, { "url": "https://github.com/tiyongLit/Molan*" }]
     },
     "dialog:allow-open",
     "updater:default",

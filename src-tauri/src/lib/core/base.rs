@@ -695,7 +695,7 @@ pub fn get_mole_temp_root() -> String {
             }
             let invoking_home = get_invoking_home();
             if !invoking_home.is_empty() {
-                let cache_tmp = format!("{invoking_home}/.cache/mole/tmp");
+                let cache_tmp = format!("{invoking_home}/.cache/molan/tmp");
                 if let Some(resolved) = probe_temp_root(&cache_tmp, true) {
                     return resolved;
                 }

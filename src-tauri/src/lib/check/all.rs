@@ -112,7 +112,7 @@ pub fn check_mole_update() -> Option<MoleUpdateStatus> {
     }
 
     let current_version = detect_mole_current_version();
-    let cache_file = format!("{home}/.cache/mole/mole_version");
+    let cache_file = format!("{home}/.cache/molan/mole_version");
     let cache_ttl: u64 = 600;
 
     let latest_version = if is_cache_valid(&cache_file, cache_ttl) {

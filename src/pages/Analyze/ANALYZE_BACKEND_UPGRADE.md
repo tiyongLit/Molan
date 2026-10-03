@@ -81,7 +81,7 @@
 
 ## 6. 验证
 
-- V1（MoleStudio）与 V2（MoleStudio2）引擎 `cargo test` 各 **87 全过**。
+- V1（Molan）与 V2（Molan2）引擎 `cargo test` 各 **87 全过**。
 - 双仓库同步：`diff` 验证 V2 引擎文件与 V1 HEAD 一致后 `cp` 同步 5 个文件：
   `delete.rs` / `protected.rs` / `constants.rs` / `cache.rs` / `scanner.rs`。
 

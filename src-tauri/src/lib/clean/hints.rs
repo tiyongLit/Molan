@@ -33,7 +33,7 @@ pub struct ProjectArtifactHints {
 
 /// SH `load_quick_purge_hint_paths` (第 13-28 行)
 pub fn load_quick_purge_hint_paths() -> Vec<String> {
-    let config_file = format!("{}/.config/mole/purge_paths", home_dir());
+    let config_file = format!("{}/.config/molan/purge_paths", home_dir());
     let paths = mole_purge_read_paths_config(&config_file);
     if paths.is_empty() {
         MOLE_PURGE_DEFAULT_SEARCH_PATHS

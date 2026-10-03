@@ -1,4 +1,4 @@
-# AGENTS.md — MoleStudio 项目 AI 规则指引
+# AGENTS.md — Molan 项目 AI 规则指引
 
 > 本文件是 `.trae/rules/` 目录下所有规则文件的融合版本，供 AI Agent 与开发者一次性阅读。  
 > 如与分文件版本冲突，以本文件为准。
@@ -19,11 +19,11 @@
 
 ## 1. 项目身份与技术栈
 
-### MoleStudio 是什么
+### Molan 是什么
 
-MoleStudio 是一款 **macOS 清理 / 优化 GUI 软件**，面向最终用户上架 Mac App Store（MAS）与官网分发。
+Molan 是一款 **macOS 清理 / 优化 GUI 软件**，面向最终用户上架 Mac App Store（MAS）与官网分发。
 
-它是 MoleStudio（v1 MVP）的第二版。v2 在 v1 已验证的 Rust 后端底座之上重做前端 UI，并补充功能。
+它是 Molan（v1 MVP）的第二版。v2 在 v1 已验证的 Rust 后端底座之上重做前端 UI，并补充功能。
 
 ### 与 v1 的关系
 
@@ -71,20 +71,20 @@ MoleStudio 是一款 **macOS 清理 / 优化 GUI 软件**，面向最终用户�
 
 ### 应用功能域（参考 Mole CLI）
 
-clean（深度清理）、uninstall（智能卸载）、optimize（优化维护）、analyze（磁盘透视）、status（实时状态）、purge（构建产物清理）、installer（安装包清理）。MoleStudio 在 GUI 中以 `Shell*` 外壳组织这些域。
+clean（深度清理）、uninstall（智能卸载）、optimize（优化维护）、analyze（磁盘透视）、status（实时状态）、purge（构建产物清理）、installer（安装包清理）。Molan 在 GUI 中以 `Shell*` 外壳组织这些域。
 
 ---
 
 ## 2. 参考项目分工
 
-MoleStudio 不是从零开始，有四个参考项目。每个项目角色清晰，**只参考其角色范围内内容，不跨界**。
+Molan 不是从零开始，有四个参考项目。每个项目角色清晰，**只参考其角色范围内内容，不跨界**。
 
 | 项目 | 技术栈 | 角色 | 可参考 | 不可参考 |
 |---|---|---|---|---|
 | **Mole**（`tw93/mole`，`mo` CLI） | Go + Bash | **算法/扫描清理逻辑的权威参考** | 路径规则、清理分类、size 算法、protected 名单、命令行口径 | **不嵌入** Go 二进制或 Shell 脚本；逻辑全部 Rust 重写 |
 | **lemon-cleaner**（腾讯 Lemon） | Objective-C / Cocoa | **UI/UX 交互基准** | 扫描入口、分类折叠面板、可展开目录、勾选+统计呈现 | 不参考其代码实现 |
 | **CleanMyMac X** | 闭源 | 商业产品 UX 对照 | 功能流程、信息架构 | 不涉及代码 |
-| **MoleStudio v1** | Tauri + React + Rust | **已验证的 Rust 后端来源 + 架构约束出处** | Rust 后端实现、架构红线 | 前端页面组织已被 v2 替换 |
+| **Molan v1** | Tauri + React + Rust | **已验证的 Rust 后端来源 + 架构约束出处** | Rust 后端实现、架构红线 | 前端页面组织已被 v2 替换 |
 
 **一句话总结**：Mole 给"算什么"、Lemon 给"长什么样"、v1 给"已实现的底座和红线"、v2 在此之上重做 UI 并补功能。
 

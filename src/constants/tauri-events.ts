@@ -39,7 +39,7 @@ export const EVT_UNINSTALL_PROGRESS = 'uninstall::progress' as const
 /** 卸载：单个 app 清理完成（与 Rust `uninstall::complete` 一致） */
 export const EVT_UNINSTALL_COMPLETE = 'uninstall::complete' as const
 
-/** 应用版本：MoleStudio 自身更新下载/安装进度（与 Rust `app-version::progress` 一致） */
+/** 应用版本：Molan 自身更新下载/安装进度（与 Rust `app-version::progress` 一致） */
 export const EVT_APP_VERSION_PROGRESS = 'app-version::progress' as const
 
 /** Dock 退出拦截：有长任务在跑时 Rust emit 此事件，前端弹确认框（与 Rust `dock-quit-requested` 一致） */

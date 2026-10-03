@@ -46,7 +46,7 @@ export const CMD_MOLE_UPDATES_CHECK = 'mole_updates_check' as const
 export const CMD_MOLE_UPDATES_APPLY = 'mole_updates_apply' as const
 export const CMD_MOLE_UPDATES_BREW_UPGRADE = 'mole_updates_brew_upgrade' as const
 
-/** Self-Update — MoleStudio 自身更新 */
+/** Self-Update — Molan 自身更新 */
 export const CMD_MOLE_APP_VERSION_CHECK = 'mole_app_version_check' as const
 export const CMD_MOLE_APP_VERSION_INSTALL = 'mole_app_version_install' as const
 export const CMD_MOLE_APP_VERSION_OPEN_APPSTORE = 'mole_app_version_open_appstore' as const

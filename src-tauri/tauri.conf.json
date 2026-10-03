@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "MoleStudio",
+  "productName": "Molan",
   "version": "1.0.0-alpha.1",
-  "identifier": "com.tiyong.molestudio",
+  "identifier": "com.tiyong.molan",
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",
@@ -13,8 +13,8 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "label": "MoleStudio",
-        "title": "MoleStudio",
+        "label": "Molan",
+        "title": "Molan",
         "width": 1056,
         "height": 640,
         "resizable": true,
@@ -93,8 +93,8 @@
   "plugins": {
     "updater": {
       "endpoints": [
-        "https://gitee.com/tiyong/molestudio/raw/master/update/latest.json",
-        "https://github.com/tiyong/molestudio/raw/main/update/latest.json"
+        "https://gitee.com/tiyong/Molan/raw/master/update/latest.json",
+        "https://github.com/tiyong/Molan/raw/main/update/latest.json"
       ],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDJCMzk0RUIwMUEwQzg5NDIKUldSQ2lRd2FzRTQ1Szh1Rk90WjdPRGtaYmVEenB3MnVTS3lkSHkrU29aZFBQZEFuM1BjZlM5ZUwK"
     }

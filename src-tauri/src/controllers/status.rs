@@ -4,7 +4,7 @@
 //   使用三级采集节奏：Fast(2s) / Process(2s) / Full(30s)。
 // - Mole `--watch`：持续 NDJSON，同样三层节奏。
 //
-// MoleStudio 端降低 Fast/Process 频率至 2s，减少 CPU/电池开销：
+// Molan 端降低 Fast/Process 频率至 2s，减少 CPU/电池开销：
 // - **持久 Collector**（全局单例）：跨命令调用复用，保留网络/磁盘 I/O 上一次计数。
 // - **`mole_status_start_watch` / `mole_status_stop_watch`**（Tauri 命令）：
 //   前端可通过 invoke 启停后台采集循环。

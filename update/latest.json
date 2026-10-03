@@ -4,11 +4,11 @@
   "platforms": {
     "darwin-aarch64": {
       "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSQ2lRd2FzRTQ1SzVqNEtGVjV4aXYxWjVCYkFVTm1Xa0IwT1ZYQ2N5dFNobUVETzhqY3F6dW16K0F3SFpXMkY4K0hvVkxDRndIcklPQW9CdXdnVEl1RGFwckVZdXByVXdvPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkwOTMwMzkzCWZpbGU6TW9sZVN0dWRpby5hcHAudGFyLmd6CjB0SkxzZ3VFaWlLT1dYbzZkZ3R0NnRGS1AvRjJhSmM3Z2FkQUhJeUpxQmUwYXF2ZzcxemxFSk1FOUJVTklYd1lMZVJ5WHorTHVKL0NZTjBFeHJPekFBPT0K",
-      "url": "https://gitee.com/tiyong/molestudio/releases/download/1.0.0-alpha.2/MoleStudio_1.0.0-alpha.2_aarch64.app.tar.gz"
+      "url": "https://gitee.com/tiyong/Molan/releases/download/1.0.0-alpha.2/MoleStudio_1.0.0-alpha.2_aarch64.app.tar.gz"
     },
     "darwin-x86_64": {
       "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSQ2lRd2FzRTQ1SzNqYVhtYnhTZjZxMmFpWFRFYWVWcUlYUm02NUJRekQ5NVkvbVVJZEkwOUQvenpmU3dGakF1NzREVDdwK3phdDlpVi9hek1lSTZ2MjlWZ0x4WGFxZlF3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkwOTMwNzE2CWZpbGU6TW9sZVN0dWRpby5hcHAudGFyLmd6ClM3ZWFTclZiOFo4MHZLYXhQTjZRV1JmL2VSQy9yYXNJMHh1MC8xbVRqYjZLZTRoMldnYzZqbHphK0hlbGVlcnZqN0h2ay84RnBjaFMzTnl5c3Y5dkRnPT0K",
-      "url": "https://gitee.com/tiyong/molestudio/releases/download/1.0.0-alpha.2/MoleStudio_1.0.0-alpha.2_x64.app.tar.gz"
+      "url": "https://gitee.com/tiyong/Molan/releases/download/1.0.0-alpha.2/MoleStudio_1.0.0-alpha.2_x64.app.tar.gz"
     }
   }
 }

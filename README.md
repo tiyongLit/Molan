@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>MoleStudio</h1>
+  <h1>Molan</h1>
   <p><em>🐹 A native macOS cleanup & optimization app — deep cleaning, smart uninstall, system maintenance, and disk insights, with a GUI built for humans.</em></p>
 </div>
 
@@ -11,27 +11,27 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/tiyongLit/MoleStudio"><img src="https://img.shields.io/badge/GitHub-repo-181717?style=flat-square&logo=github" alt="GitHub"></a>
-  <a href="https://gitee.com/tiyong/molestudio"><img src="https://img.shields.io/badge/Gitee-mirror-orange?style=flat-square&logo=git&logoColor=white" alt="Gitee"></a>
+  <a href="https://github.com/tiyongLit/Molan"><img src="https://img.shields.io/badge/GitHub-repo-181717?style=flat-square&logo=github" alt="GitHub"></a>
+  <a href="https://gitee.com/tiyong/Molan"><img src="https://img.shields.io/badge/Gitee-mirror-orange?style=flat-square&logo=git&logoColor=white" alt="Gitee"></a>
 </p>
 
 <p align="center">
   English | <a href="./README.zh-CN.md">简体中文</a>
 </p>
 
-> 💡 **MoleStudio** is a GUI app for cleaning, uninstalling, optimizing, and understanding your Mac. The scanning and cleanup logic is a **complete Rust rewrite** of the beloved open-source CLI [`tw93/Mole`](https://github.com/tw93/Mole), rebuilt around a native desktop experience: visual categories, checkboxes, previews, confirmations, and one-click reclaim — no terminal required.
+> 💡 **Molan** is a GUI app for cleaning, uninstalling, optimizing, and understanding your Mac. The scanning and cleanup logic is a **complete Rust rewrite** of the beloved open-source CLI [`tw93/Mole`](https://github.com/tw93/Mole), rebuilt around a native desktop experience: visual categories, checkboxes, previews, confirmations, and one-click reclaim — no terminal required.
 
 <!-- Screenshot placeholder: drop a PNG into docs/img/ and replace this comment -->
 
-## Why MoleStudio
+## Why Molan
 
 The original Mole CLI proved that a single tool could replace CleanMyMac, AppCleaner, DaisyDisk, and iStat Menus — but it lives in a terminal. Most Mac users never open one.
 
-MoleStudio takes the same battle-tested rules and algorithms, rewrites the entire engine in Rust (no external binaries, no shell scripts), and wraps it in a polished Tauri GUI designed around how people actually clean a computer:
+Molan takes the same battle-tested rules and algorithms, rewrites the entire engine in Rust (no external binaries, no shell scripts), and wraps it in a polished Tauri GUI designed around how people actually clean a computer:
 
 - **See first, act second.** Every scan is side-effect-free. Results are grouped into visual categories with sizes, file counts, and native file icons before you select anything.
 - **Nothing is deleted without you.** Cleanup always moves files to the Trash, and every destructive action requires an explicit confirmation.
-- **Enhanced for GUI users.** Where the CLI offers interactive TUI lists, MoleStudio adds expandable directory trees, auto-selected vs. needs-review grouping, deletion history, tray dashboards, and smart leftover detection.
+- **Enhanced for GUI users.** Where the CLI offers interactive TUI lists, Molan adds expandable directory trees, auto-selected vs. needs-review grouping, deletion history, tray dashboards, and smart leftover detection.
 
 ## Features
 
@@ -43,7 +43,7 @@ Scan known-safe caches, logs, browser data, developer artifacts, device leftover
 
 Uninstall apps from `/Applications` together with the preferences, caches, containers, and launch agents they leave behind — with a safety net the CLI can't offer:
 
-- **Residual detection** — when an app is moved to the Trash manually, MoleStudio prompts to scan and clean its leftovers.
+- **Residual detection** — when an app is moved to the Trash manually, Molan prompts to scan and clean its leftovers.
 - **Auto selected vs. Needs review** — residual files are split into confidently-safe and review-first groups, so shared data is never removed silently.
 - **Sibling-app protection** — apps sharing a bundle ID (e.g. Xcode and Xcode-beta) keep their shared data intact.
 - **Clear Data Only** — reset an app's state without uninstalling it.
@@ -79,7 +79,7 @@ A menu-bar dashboard with real-time CPU, temperature, fan speed, memory (with pe
 
 ## Safety & Privacy
 
-MoleStudio is built around the principle that a cleaner must never become the mess:
+Molan is built around the principle that a cleaner must never become the mess:
 
 - **Trash, never `rm`.** All deletions go to the system Trash so you can recover.
 - **Scan ≠ delete.** Scanning is read-only; cleanup only happens after you select and confirm.
@@ -114,17 +114,17 @@ Design notes:
 
 ## Quick Start
 
-MoleStudio targets **macOS 12+** (Intel & Apple Silicon). Development requires macOS with Xcode Command Line Tools, [Node.js](https://nodejs.org) 20+, [pnpm](https://pnpm.io), and a recent [Rust](https://rustup.rs) toolchain.
+Molan targets **macOS 12+** (Intel & Apple Silicon). Development requires macOS with Xcode Command Line Tools, [Node.js](https://nodejs.org) 20+, [pnpm](https://pnpm.io), and a recent [Rust](https://rustup.rs) toolchain.
 
 The source is hosted on both GitHub and Gitee — use whichever is faster for you:
 
 ```bash
 # GitHub
-git clone https://github.com/tiyongLit/MoleStudio.git
+git clone https://github.com/tiyongLit/Molan.git
 # Gitee (mirror, faster in mainland China)
-git clone https://gitee.com/tiyong/molestudio.git
+git clone https://gitee.com/tiyong/Molan.git
 
-cd MoleStudio
+cd Molan
 pnpm install
 pnpm tauri:dev          # launch in dev mode (data dir isolated to the repo)
 ```
@@ -159,6 +159,6 @@ Contributors: run `pnpm format` before committing (prettier + rustfmt; also enfo
 
 ## License
 
-MoleStudio is licensed under the [MIT License](LICENSE).
+Molan is licensed under the [MIT License](LICENSE).
 
-The cleanup logic is inspired by [`tw93/Mole`](https://github.com/tw93/Mole) (GPL-3.0). MoleStudio reimplements that behavior in Rust and does not link against or embed any of the original code.
+The cleanup logic is inspired by [`tw93/Mole`](https://github.com/tw93/Mole) (GPL-3.0). Molan reimplements that behavior in Rust and does not link against or embed any of the original code.

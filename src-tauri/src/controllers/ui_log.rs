@@ -2,7 +2,7 @@
 //!
 //! WebView 侧的 `uiTrace()`（`src/utils/uiTrace.ts`）把关键时间轴——页面挂载、
 //! 任务快照迁移（authorizing → scanning → idle）、扫描事件计数、渲染帧率、
-//! 路由提交耗时——通过 `mole_ui_log` 转发到后端日志（mole.log 的 `[ui:*]` 行），
+//! 路由提交耗时——通过 `mole_ui_log` 转发到后端日志（molan.log 的 `[ui:*]` 行），
 //! 与 `[clean-job]` / `[section]` 等后端日志落在同一份文件、同一时间轴，
 //! 用于定位「清理界面卡顿 / 路由点击不响应」这类跨前后端问题。
 //!

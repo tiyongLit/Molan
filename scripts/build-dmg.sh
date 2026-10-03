@@ -13,9 +13,9 @@
 # 保证 dmg 文件名、app 版本、自更新 current_version 三处一致。
 #
 # 自更新更新包：构建必须能签名（tauri.conf.json 已启用 createUpdaterArtifacts），
-# 私钥默认读 ~/.molestudio-key.txt，可用 MOLESTUDIO_SIGNING_KEY_FILE 或
+# 私钥默认读 ~/.molan-key.txt，可用 MOLAN_SIGNING_KEY_FILE 或
 # TAURI_SIGNING_PRIVATE_KEY（私钥内容/路径）环境变量覆盖。更新包收集时重命名为
-# MoleStudio_<version>_<arch>.app.tar.gz 并附带同名 .sig，最后由
+# Molan_<version>_<arch>.app.tar.gz 并附带同名 .sig，最后由
 # scripts/gen-latest-json.sh 生成 release/latest.json 草稿。
 #
 # 产物收集语义：release/ 下同名文件直接覆盖——不检测历史包、不重命名，
@@ -91,8 +91,8 @@ fi
 #       不读 TAURI_SIGNING_PRIVATE_KEY_PATH（那是 signer 子命令专用）。
 # 坑 2：两个变量同时存在会让 signer 报 "cannot be used with"（exit 2），
 #       故统一只注入 TAURI_SIGNING_PRIVATE_KEY（内容），外部误设的 _PATH 会被转注后清除。
-# 解析顺序：已有 TAURI_SIGNING_PRIVATE_KEY → ~/.molestudio-key.txt（可用 MOLESTUDIO_SIGNING_KEY_FILE 覆盖）。
-KEY_FILE="${MOLESTUDIO_SIGNING_KEY_FILE:-$HOME/.molestudio-key.txt}"
+# 解析顺序：已有 TAURI_SIGNING_PRIVATE_KEY → ~/.molan-key.txt（可用 MOLAN_SIGNING_KEY_FILE 覆盖）。
+KEY_FILE="${MOLAN_SIGNING_KEY_FILE:-$HOME/.molan-key.txt}"
 KEY_FROM_ENV=0
 if [ -n "${TAURI_SIGNING_PRIVATE_KEY:-}" ]; then
   KEY_FROM_ENV=1
@@ -112,7 +112,7 @@ if [ -z "${TAURI_SIGNING_PRIVATE_KEY:-}" ]; then
     echo "[build-dmg] 警告：未找到签名私钥 ${KEY_FILE}（dry-run 继续；真实构建会失败）"
   else
     echo "[build-dmg] 错误：未找到签名私钥（$KEY_FILE 不存在）" >&2
-    echo "  请先运行：pnpm tauri signer generate -w ~/.molestudio-key.txt" >&2
+    echo "  请先运行：pnpm tauri signer generate -w ~/.molan-key.txt" >&2
     echo "  或设置环境变量 TAURI_SIGNING_PRIVATE_KEY（私钥内容或路径）" >&2
     exit 1
   fi
@@ -121,7 +121,7 @@ elif [ "$KEY_FROM_ENV" -eq 1 ]; then
 fi
 # 签名密码解析：环境变量 → ${KEY_FILE}.password 文件（须非空）→ 空（无密码私钥）。
 # 私钥有密码时必须命中前两者之一，否则下方签名预检会提前失败。
-PW_FILE="${MOLESTUDIO_SIGNING_KEY_PASSWORD_FILE:-${KEY_FILE}.password}"
+PW_FILE="${MOLAN_SIGNING_KEY_PASSWORD_FILE:-${KEY_FILE}.password}"
 PW_SOURCE=""
 if [ -n "${TAURI_SIGNING_PRIVATE_KEY_PASSWORD:-}" ]; then
   PW_SOURCE="环境变量"
@@ -138,7 +138,7 @@ fi
 
 # 签名预检：几秒内验证私钥+密码可用，避免长构建跑完才在打包签名阶段失败。
 if [ "$DRY_RUN" -eq 0 ]; then
-  CHECK_FILE="$(mktemp -t molestudio-signcheck)"
+  CHECK_FILE="$(mktemp -t molan-signcheck)"
   printf 'signcheck' > "$CHECK_FILE"
   if CI=true pnpm tauri signer sign "$CHECK_FILE" >/dev/null 2>&1; then
     echo "[build-dmg] 签名预检通过"
@@ -163,7 +163,7 @@ while [ "$i" -lt "${#triples[@]}" ]; do
     # 签名校验：产物必须携带有效代码签名（ad-hoc 或 Developer ID）。
     # 未签名 app 的 TCC 身份校验失败（tccd 报 -67062），完全磁盘访问等授权
     # 全部无法生效（曾致生产包废纸篓读取 EPERM），必须阻断出包。
-    APP_BUNDLE="target/${triples[$i]}/release/bundle/macos/MoleStudio.app"
+    APP_BUNDLE="target/${triples[$i]}/release/bundle/macos/Molan.app"
     if ! codesign --verify "$APP_BUNDLE" >/dev/null 2>&1; then
       echo "[build-dmg] 错误：${chips[$i]} 产物缺少有效代码签名" >&2
       echo "  检查 tauri.conf.json 的 bundle.macOS.signingIdentity 是否为 \"-\"（ad-hoc）" >&2
@@ -205,7 +205,7 @@ while [ "$i" -lt "${#triples[@]}" ]; do
   fi
 
   # 自更新更新包（.app.tar.gz + .sig）：重命名带 版本+架构 后缀。
-  # 双架构产物同名（MoleStudio.app.tar.gz），不加后缀上传同一 Release 会冲突。
+  # 双架构产物同名（Molan.app.tar.gz），不加后缀上传同一 Release 会冲突。
   mac_dir="target/$triple/release/bundle/macos"
   tfound=0
   for tarball in "$mac_dir"/*.app.tar.gz; do

@@ -1,6 +1,6 @@
 # 更新（Updates）功能 — 设计实现方案（评审稿）
 
-> 目的：为 MoleStudio2（Tauri 2 + Rust）实现「应用更新」（Updates 标签页）后端。
+> 目的：为 Molan2（Tauri 2 + Rust）实现「应用更新」（Updates 标签页）后端。
 > 本文件是**设计方案**，含架构决策、命令契约、语义对齐清单与实现顺序；评审通过后按第 7 节执行。
 >
 > 关键前提：**此功能与 Mole 无对齐关系**。Mole CLI 没有应用更新检查（`mo update` 只更新 Mole 自身）。
@@ -62,7 +62,7 @@
 
 | # | 决策 | 结论 | 理由 |
 |---|---|---|---|
-| D1 | 网络层 | **Rust 命令内 `curl` 子进程**，不加任何 HTTP 库 | 沿用 MoleStudio 现有约定（所有外部能力走 Tauri 命令 + useTauri IPC）；零依赖；`-o 临时文件`天然规避管道死锁 |
+| D1 | 网络层 | **Rust 命令内 `curl` 子进程**，不加任何 HTTP 库 | 沿用 Molan 现有约定（所有外部能力走 Tauri 命令 + useTauri IPC）；零依赖；`-o 临时文件`天然规避管道死锁 |
 | D2 | 检测落点 | **`mole_list_apps` 返回加 `update_source` 字段** | 一次性检测（纯本地、极快），切到更新 tab 零额外 IPC |
 | D3 | XML 解析 | `quick-xml`（提为直接依赖） | 已在 lock 中（plist 传递依赖），零新编译；只做 `<enclosure>` 属性提取 |
 | D4 | 版本比较 | **新写 `is_version_newer`**，不复用 `lib/clean/user.rs::version_compare` | 语义不同（见 §6.1），复用会出 bug |

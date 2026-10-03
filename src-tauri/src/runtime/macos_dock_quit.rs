@@ -203,7 +203,7 @@ unsafe extern "C" fn should_terminate_handler(
     if let Some(handle) = ACTIVE_APP.lock().unwrap().clone() {
         use tauri::Manager;
         // 隐藏主窗口
-        if let Some(win) = handle.get_webview_window("MoleStudio") {
+        if let Some(win) = handle.get_webview_window("Molan") {
             let _ = win.hide();
         }
         // 隐藏 dashboard 气泡
@@ -289,7 +289,7 @@ pub fn restore_main_window(app: &AppHandle) {
             return;
         }
     }
-    if let Some(window) = app.get_webview_window("MoleStudio") {
+    if let Some(window) = app.get_webview_window("Molan") {
         let _ = window.show();
         let _ = window.set_focus();
     }

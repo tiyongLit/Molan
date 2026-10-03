@@ -84,7 +84,7 @@ pub fn mole_open_shell_window(app: tauri::AppHandle) -> Result<(), String> {
         use tauri::{TitleBarStyle, WebviewUrl, WebviewWindowBuilder};
 
         let window = WebviewWindowBuilder::new(&app, "shell", WebviewUrl::App("/shell".into()))
-            .title("MoleStudio")
+            .title("Molan")
             .inner_size(940.0, 640.0)
             .resizable(true)
             .visible(false)
@@ -219,7 +219,7 @@ fn resolve_target(path: &str, overview: bool) -> Result<(String, bool), String> 
     if !Path::new(&abs_str).exists() {
         log::error!("[resolve_target] path does not exist: {abs_str}");
         return Err(format!(
-            "路径不存在: {}（已展开 ~/ 为主目录。若有笔误请核对，例如 m/MoleStudio → mvp/MoleStudio）",
+            "路径不存在: {}（已展开 ~/ 为主目录。若有笔误请核对，例如 m/Molan → mvp/Molan）",
             abs_str
         ));
     }

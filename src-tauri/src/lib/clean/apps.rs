@@ -417,7 +417,7 @@ pub fn clean_orphaned_app_data() -> (u64, u64) {
     }
 
     // 1. 收集 installed bundles 到 HashSet(SH 用文件 + grep,我们用内存)
-    let cache_file = format!("{home}/.cache/mole/installed_bundles");
+    let cache_file = format!("{home}/.cache/molan/installed_bundles");
     if let Some(p) = Path::new(&cache_file).parent() {
         let _ = std::fs::create_dir_all(p);
     }

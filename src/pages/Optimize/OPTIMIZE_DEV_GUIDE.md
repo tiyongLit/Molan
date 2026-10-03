@@ -204,7 +204,7 @@ const summary = await useTauri().mole_optimize({
    ```
    两边的结果点（含条件）应一一对应；差异必须能解释（合并/拆分等价或平台差异）。
 4. **fail-closed 原则**：探测类子命令异常时宁可任务 failed，不要静默继续或误删。
-5. **验证命令**（`MoleStudio2/src-tauri` 下）：
+5. **验证命令**（`Molan2/src-tauri` 下）：
    ```bash
    cargo check          # 无 error、无 unused 警告
    cargo test --lib     # 当前 140 个测试全通过

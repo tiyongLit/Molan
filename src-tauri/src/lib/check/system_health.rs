@@ -1110,7 +1110,7 @@ fn check_cache_size_line(home: &Path) -> CacheSizeLine {
 }
 
 /// 对齐 SH 第 324-428 行 `check_homebrew_updates`:
-/// - 缓存文件 `$HOME/.cache/mole/brew_updates`,TTL 600s,内容 `<formula> <cask>`;
+/// - 缓存文件 `$HOME/.cache/molan/brew_updates`,TTL 600s,内容 `<formula> <cask>`;
 /// - 并发执行两次 `brew outdated`(对齐 SH 第 369-378 行 `&` + `wait`);
 /// - 仅当**两侧都成功**才写缓存(对齐 SH 第 396-399 行的注释);
 /// - 任一侧 timeout(124) 整体返回 `TimedOut`(对齐 SH 第 400-402);
@@ -1136,7 +1136,7 @@ fn check_brew_outdated_line(wl: &[String], home: &Path) -> Option<BrewOutdatedLi
         return Some(BrewOutdatedLine::NotInstalled);
     }
 
-    let cache_file = home.join(".cache/mole/brew_updates");
+    let cache_file = home.join(".cache/molan/brew_updates");
 
     // 1) 命中文件缓存:直接复用结果,避免再跑 `brew outdated`(SH 第 343-352)。
     if is_cache_file_valid(&cache_file, 600) {
@@ -1302,7 +1302,7 @@ fn is_macos_software_update_text(text: &str) -> bool {
 
 #[cfg(target_os = "macos")]
 fn softwareupdate_cache_file(home: &Path) -> PathBuf {
-    home.join(".cache/mole/softwareupdate_list")
+    home.join(".cache/molan/softwareupdate_list")
 }
 
 #[cfg(target_os = "macos")]

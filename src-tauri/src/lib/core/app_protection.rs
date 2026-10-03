@@ -800,7 +800,7 @@ pub fn should_protect_path(path: &str) -> bool {
     if wildcard_match(path, "*/Library/Preferences/com.apple.dock.plist")
         || wildcard_match(path, "*/Library/Preferences/com.apple.finder.plist")
         || path.ends_with("/Library/Logs/mole")
-        || path.contains("/Library/Logs/mole/")
+        || path.contains("/Library/Logs/molan/")
         || wildcard_match(path, "*/ByHost/com.apple.bluetooth.*")
         || wildcard_match(path, "*/ByHost/com.apple.wifi.*")
         || wildcard_match(

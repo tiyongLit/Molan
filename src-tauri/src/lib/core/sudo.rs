@@ -580,7 +580,7 @@ fn _request_password_via_osascript_fallback(prompt_msg: &str) -> bool {
     let _ = Command::new("sudo").arg("-k").output();
 
     let script = format!(
-        "display dialog \"{prompt_msg}\" default answer \"\" with title \"MoleStudio\" with icon caution with hidden answer"
+        "display dialog \"{prompt_msg}\" default answer \"\" with title \"Molan\" with icon caution with hidden answer"
     );
     let password = Command::new("osascript")
         .args(["-e", &script, "-e", "text returned of result"])
@@ -616,7 +616,7 @@ pub fn request_sudo_access_with_prompt_detailed(prompt_msg: &str) -> AdminAuthRe
     }
 
     // GUI 应用：优先用 Security.framework 弹出原生认证面板
-    // （显示 "MoleStudio 想要进行更改" + 用户名 + 密码框）。
+    // （显示 "Molan 想要进行更改" + 用户名 + 密码框）。
     // 授权成功后利用系统缓存建立 sudo 票据，无需二次弹窗。
     match request_password_via_osascript(prompt_msg) {
         Some(r) => return r,
@@ -710,7 +710,7 @@ pub fn is_admin_authorized() -> bool {
 
 /// 确保管理员权限。
 ///
-/// - 首次调用 → 弹原生认证面板 "MoleStudio 想要进行更改"
+/// - 首次调用 → 弹原生认证面板 "Molan 想要进行更改"
 /// - 后续调用 → 检查 MOLE_AUTH_REF，已有权限直接返回 true
 /// - 返回 false = 用户取消或认证失败
 ///

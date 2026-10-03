@@ -984,7 +984,7 @@ pub fn _mole_move_to_trash_batch(paths: &[String]) -> bool {
 
 pub fn _mole_delete_log(mode: &str, size: &str, status: &str, path: &str) {
     let log_file = std::env::var("MOLE_DELETE_LOG")
-        .unwrap_or_else(|_| format!("{}/Library/Logs/mole/deletions.log", home_dir()));
+        .unwrap_or_else(|_| format!("{}/Library/Logs/molan/deletions.log", home_dir()));
     let log_dir = Path::new(&log_file)
         .parent()
         .map(|p| p.to_path_buf())

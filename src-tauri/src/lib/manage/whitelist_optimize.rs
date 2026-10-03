@@ -57,8 +57,8 @@ fn read_whitelist_file_lines(path: &Path) -> Vec<String> {
 
 /// 等价于 `load_whitelist "optimize"` 后 `CURRENT_WHITELIST_PATTERNS`（不写入迁移副作用；legacy 仅读取）。
 pub fn load_optimize_whitelist_patterns(home: &Path) -> Vec<String> {
-    let config = home.join(".config/mole/whitelist_optimize");
-    let legacy = home.join(".config/mole/whitelist_checks");
+    let config = home.join(".config/molan/whitelist_optimize");
+    let legacy = home.join(".config/molan/whitelist_checks");
 
     let path_opt = if config.is_file() {
         Some(config)

@@ -260,10 +260,10 @@ pub fn check_and_prompt(app: &AppHandle) {
 
 /// 引导决策主体（仅主线程执行）。
 fn prompt_on_main(app: &AppHandle) {
-    // 仅当本应用有"聚焦窗口"时弹（用户正看着 MoleStudio 的某个界面）：
+    // 仅当本应用有"聚焦窗口"时弹（用户正看着 Molan 的某个界面）：
     // - 纯托盘驻留 / 开机自启（无窗口）不弹；
     // - 用户在其他应用前台工作时（我们的窗口只是"可见"在后台）也不弹——
-    //   避免突然抢焦点打断用户；等用户切回 MoleStudio 后的下一轮测量再弹。
+    //   避免突然抢焦点打断用户；等用户切回 Molan 后的下一轮测量再弹。
     let any_focused = app
         .webview_windows()
         .values()

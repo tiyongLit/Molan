@@ -43,7 +43,7 @@ pub fn build_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
 }
 
 /// 把 App 子菜单末尾的默认 Quit 项（`terminate:` 直通）替换为自定义项：
-/// 「退出 MoleStudio」+ Cmd+Q —— 点击后走 Tauri 菜单事件，而非系统终止流程。
+/// 「退出 Molan」+ Cmd+Q —— 点击后走 Tauri 菜单事件，而非系统终止流程。
 #[cfg(target_os = "macos")]
 fn replace_quit_item<R: Runtime>(app: &AppHandle<R>, menu: &Menu<R>) -> tauri::Result<()> {
     // App 子菜单是 macOS 默认菜单的第一项（顶栏以 App 名开头的菜单）。
@@ -66,7 +66,7 @@ fn replace_quit_item<R: Runtime>(app: &AppHandle<R>, menu: &Menu<R>) -> tauri::R
     let custom_quit = MenuItem::with_id(
         app,
         MENU_QUIT_ID,
-        "退出 MoleStudio",
+        "退出 Molan",
         true,
         Some("CmdOrCtrl+Q"),
     )?;
@@ -75,7 +75,7 @@ fn replace_quit_item<R: Runtime>(app: &AppHandle<R>, menu: &Menu<R>) -> tauri::R
     Ok(())
 }
 
-/// 应用内退出请求入口（Cmd+Q / 菜单栏「退出 MoleStudio」）。
+/// 应用内退出请求入口（Cmd+Q / 菜单栏「退出 Molan」）。
 ///
 /// 与 BottomBar「退出应用」同一守卫口径：
 /// - 空闲 → 直接退出（置放行标志后 `app.exit(0)`，经 `lib.rs` 的 ExitRequested 闸门放行）；

@@ -277,7 +277,7 @@ fn app_group_identifiers(app_path: &str) -> Vec<String> {
         return Vec::new();
     }
     let tmp = std::env::temp_dir().join(format!(
-        "molestudio_entitlements_{}_{}.plist",
+        "molan_entitlements_{}_{}.plist",
         std::process::id(),
         app_path.len()
     ));

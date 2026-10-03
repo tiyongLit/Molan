@@ -1,6 +1,6 @@
 //! 启动项过滤规则：决定哪些服务默认对用户可见。
 //! 对齐 Launchdeck `is_apple_service` + Lemon `needFilterFile` 的共识：
-//! 隐藏 Apple 系统服务、XPC 运行时进程、MoleStudio 自身。
+//! 隐藏 Apple 系统服务、XPC 运行时进程、Molan 自身。
 
 use super::model::Service;
 
@@ -29,8 +29,14 @@ pub fn is_user_visible(service: &Service, show_system: bool) -> bool {
         return false;
     }
 
-    // 规则 4：MoleStudio 自身 → 永远隐藏
-    if service.label.contains("molestudio") || service.label.starts_with("com.mole.") {
+    // 规则 4：Molan 自身（含 MoleStudio 历史口径残留条目）→ 永远隐藏
+    // label 先小写归一：新 identifier（com.tiyong.molan）与 app 名（Molan）大小写不一，
+    // 精确小写匹配会漏掉首字母大写的条目。
+    let label_lc = service.label.to_lowercase();
+    if label_lc.contains("molan")
+        || label_lc.contains("molestudio")
+        || service.label.starts_with("com.mole.")
+    {
         return false;
     }
 
@@ -95,13 +101,21 @@ mod tests {
     }
 
     #[test]
-    fn molestudio_self_hidden() {
+    fn molan_self_hidden() {
+        // 新口径：identifier com.tiyong.molan 派生的登录项 label
         let svc = make_service(
+            "com.tiyong.molan.helper",
+            Some("/Users/x/Library/LaunchAgents/com.tiyong.molan.helper.plist"),
+            None,
+        );
+        assert!(!is_user_visible(&svc, false));
+        // 旧口径：MoleStudio 时代的登录项残留同样隐藏
+        let legacy = make_service(
             "com.molestudio.helper",
             Some("/Users/x/Library/LaunchAgents/com.molestudio.helper.plist"),
             None,
         );
-        assert!(!is_user_visible(&svc, false));
+        assert!(!is_user_visible(&legacy, false));
     }
 
     #[test]

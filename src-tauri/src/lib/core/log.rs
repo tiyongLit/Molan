@@ -21,15 +21,15 @@ fn append_main_with_debug_mirror(line: &str) {
 }
 
 pub fn log_file() -> String {
-    format!("{}/Library/Logs/mole/mole.log", home_dir())
+    format!("{}/Library/Logs/molan/molan.log", home_dir())
 }
 
 pub fn operations_log_file() -> String {
-    format!("{}/Library/Logs/mole/operations.log", home_dir())
+    format!("{}/Library/Logs/molan/operations.log", home_dir())
 }
 
 pub fn debug_log_file() -> String {
-    format!("{}/Library/Logs/mole/mole_debug_session.log", home_dir())
+    format!("{}/Library/Logs/molan/molan_debug_session.log", home_dir())
 }
 
 pub fn append_log_line(file_path: &str, line: &str) {
@@ -297,7 +297,7 @@ pub fn log_system_info() {
 
     let lines = vec![
         "----------------------------------------------------------------------".to_string(),
-        format!("Mole Debug Session, {}", get_timestamp()),
+        format!("Molan Debug Session, {}", get_timestamp()),
         "----------------------------------------------------------------------".to_string(),
         format!("User: {}", std::env::var("USER").unwrap_or_default()),
         format!("Hostname: {hostname}"),

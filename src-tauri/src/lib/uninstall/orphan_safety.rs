@@ -1,6 +1,6 @@
 //! 孤儿残留扫描与安全策略（对齐 PureMac `OrphanSafetyPolicy.swift` + `AppState.findOrphans()`）。
 //!
-//! "孤儿"指已卸载 app 留下的残留文件——用户在用 MoleStudio 之前通过拖到废纸篓等
+//! "孤儿"指已卸载 app 留下的残留文件——用户在用 Molan 之前通过拖到废纸篓等
 //! 方式卸载的 app，其残留数据靠正向扫描（find_app_files）抓不到，因为根本没有
 //! 目标 app 可作为输入。本模块实现反向扫描：遍历一组固定路径，过滤掉属于
 //! 已安装 app 的条目，剩下的就是孤儿候选。
@@ -171,7 +171,8 @@ const ORPHAN_SKIP_PREFIXES: &[&str] = &[
     "caches",
     "crashreporter",
     "trash",
-    // MoleStudio 自身
+    // Molan / MoleStudio 历史口径自身（含 CLI 遗留），一律绝不清理
+    "molan",
     "molestudio",
     "mole",
     // Common SDKs and Shared Components

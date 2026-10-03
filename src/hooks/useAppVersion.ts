@@ -75,7 +75,7 @@ export interface AppVersionState {
 }
 
 /**
- * MoleStudio 应用版本检查 hook。
+ * Molan 应用版本检查 hook。
  *
  * 封装 mole_app_version_check / mole_app_version_install 命令，
  * 提供检查、安装、进度追踪和结果缓存能力。

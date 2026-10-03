@@ -3,7 +3,7 @@
 # 生成自更新清单 release/latest.json（tauri-plugin-updater 静态格式）。
 #
 # 输入：release/ 下由 scripts/build-dmg.sh 收集的
-#   MoleStudio_<version>_<arch>.app.tar.gz（+ 同名 .sig），arch ∈ {aarch64, x64}
+#   Molan_<version>_<arch>.app.tar.gz（+ 同名 .sig），arch ∈ {aarch64, x64}
 # 输出：release/latest.json（signature 直接取 .sig 文件内容，单行 base64）
 #
 # 用法：
@@ -11,7 +11,7 @@
 #   bash scripts/gen-latest-json.sh 1.0.0-alpha.2  # 显式指定版本
 #
 # 环境变量：
-#   GITEE_REPO   仓库地址，默认 https://gitee.com/tiyong/molestudio
+#   GITEE_REPO   仓库地址，默认 https://gitee.com/tiyong/Molan
 #   RELEASE_TAG  Release tag，默认与版本号相同
 #
 # 发布顺序（重要）：先建 Gitee Release 并上传更新包与 dmg，再把 latest.json
@@ -22,7 +22,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 OUT_DIR="release"
 
-GITEE_REPO="${GITEE_REPO:-https://gitee.com/tiyong/molestudio}"
+GITEE_REPO="${GITEE_REPO:-https://gitee.com/tiyong/Molan}"
 GITEE_REPO="${GITEE_REPO%/}"
 VERSION="${1:-$(grep -m1 '"version"' package.json | sed -E 's/.*"version"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/')}"
 RELEASE_TAG="${RELEASE_TAG:-$VERSION}"
@@ -34,7 +34,7 @@ fi
 # ── 收集更新包条目（文件名里的架构标记 → 平台键） ─────────────────
 # x64 → darwin-x86_64，aarch64 → darwin-aarch64（与 tauri 平台键一致）
 entries=()
-for tarball in "$OUT_DIR"/MoleStudio_"$VERSION"_*.app.tar.gz; do
+for tarball in "$OUT_DIR"/Molan_"$VERSION"_*.app.tar.gz; do
   [ -e "$tarball" ] || continue
   name="$(basename "$tarball")"
   case "$name" in

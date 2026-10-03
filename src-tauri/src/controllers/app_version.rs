@@ -1,4 +1,4 @@
-//! MoleStudio 应用版本检查（App Version）Tauri command 入口。
+//! Molan 应用版本检查（App Version）Tauri command 入口。
 //!
 //! 薄层：只做参数解析、调用 `lib/manage/app_version::*` 业务逻辑、发射事件。
 //! 所有核心逻辑见 [`crate::manage::app_version`]。
@@ -7,7 +7,7 @@ use tauri::AppHandle;
 
 use crate::manage::app_version;
 
-/// 检查 MoleStudio 自身是否有新版本。
+/// 检查 Molan 自身是否有新版本。
 ///
 /// 官网版：使用 tauri-plugin-updater 查询配置好的 endpoints (Gitee → GitHub)。
 /// MAS 版：返回 source="app_store"，前端引导 App Store。

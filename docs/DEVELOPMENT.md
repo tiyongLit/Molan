@@ -1,4 +1,4 @@
-# MoleStudio 开发与发版指南
+# Molan 开发与发版指南
 
 > 本指南面向"很久以后再回来发版"的场景：照着第四节操作即可完成一次发布。
 > 最后校准：2026-10（1.0.0-alpha.2 发布周期）。
@@ -23,12 +23,12 @@
 3. 拉代码并安装依赖：
 
    ```bash
-   git clone https://gitee.com/tiyong/molestudio.git
-   cd molestudio
+   git clone https://gitee.com/tiyong/Molan.git
+   cd Molan
    pnpm install
    ```
 
-4. 配置签名私钥（发版必需）：从已有机器安全拷贝 `~/.molestudio-key.txt`（见第三节），并 `chmod 600 ~/.molestudio-key.txt`。
+4. 配置签名私钥（发版必需）：从已有机器安全拷贝 `~/.molan-key.txt`（见第三节），并 `chmod 600 ~/.molan-key.txt`。
    - 只写代码不发版的话，第 4 步可以跳过。
 
 ## 三、签名密钥管理（关键，务必读完）
@@ -39,7 +39,7 @@
 
 | 名字 | 是什么 | 存在哪 | 需要动吗 |
 |---|---|---|---|
-| 私钥 | 「盖章机」，给更新包签名 | `~/.molestudio-key.txt`（两台电脑同一份） | 基本不动，构建时脚本自动读取 |
+| 私钥 | 「盖章机」，给更新包签名 | `~/.molan-key.txt`（两台电脑同一份） | 基本不动，构建时脚本自动读取 |
 | 公钥 | 「验章对照表」，App 用它验证更新包 | `src-tauri/tauri.conf.json` 的 `plugins.updater.pubkey`，构建时打进 App | 只在轮换密钥时改一次 |
 | 密码 | 本密钥**无密码**（刻意简化） | 无 | 永远不用管 |
 
@@ -52,16 +52,16 @@
 
 新机器首次配置（3 步）：
 
-1. 从已配置的机器拷贝 `~/.molestudio-key.txt` 到新机器同样位置。
+1. 从已配置的机器拷贝 `~/.molan-key.txt` 到新机器同样位置。
    - 安全渠道：隔空投送（AirDrop）、密码管理器附件、加密 U 盘。
    - 不要走 git、聊天软件明文、邮件。
-2. 收紧权限：`chmod 600 ~/.molestudio-key.txt`
-3. 验证：在项目目录执行 `bash scripts/build-dmg.sh --dry-run`，应看到 `签名私钥：/Users/<用户名>/.molestudio-key.txt`。
+2. 收紧权限：`chmod 600 ~/.molan-key.txt`
+3. 验证：在项目目录执行 `bash scripts/build-dmg.sh --dry-run`，应看到 `签名私钥：/Users/<用户名>/.molan-key.txt`。
 
 日常纪律：
 
 - 只「拷贝」私钥；**绝不在第二台机器上重新执行 `tauri signer generate`**（那会生成两把不同的钥匙，签出的包用户装不上）。
-- 快速核对两台机器钥匙是否一致：两台分别执行 `shasum -a 256 ~/.molestudio-key.txt`，输出必须相同。
+- 快速核对两台机器钥匙是否一致：两台分别执行 `shasum -a 256 ~/.molan-key.txt`，输出必须相同。
 - **备份**：把私钥存在安全处（密码管理器 / 加密盘）。丢了就无法再发自更新，老用户只能手动重装新包。
 - 私钥永不进 git、永不发到任何聊天 / 邮件里。
 
@@ -72,11 +72,11 @@
 1. 生成新密钥（无密码、非交互）：
 
    ```bash
-   CI=true pnpm tauri signer generate -w ~/.molestudio-key.txt --force
+   CI=true pnpm tauri signer generate -w ~/.molan-key.txt --force
    ```
 
-2. `chmod 600 ~/.molestudio-key.txt`
-3. 打开 `~/.molestudio-key.txt.pub`，把**整个内容**替换到 `src-tauri/tauri.conf.json` 的 `plugins.updater.pubkey`。
+2. `chmod 600 ~/.molan-key.txt`
+3. 打开 `~/.molan-key.txt.pub`，把**整个内容**替换到 `src-tauri/tauri.conf.json` 的 `plugins.updater.pubkey`。
 4. 把新私钥同步到另一台机器（替换旧文件），并按上节 3 步验证。
 5. 提高一个版本号，按第四节发一版。
 
@@ -86,7 +86,7 @@
 
 - **为什么必需**：macOS 隐私保护按代码签名身份记录授权。app 完全未签名时，tccd 无法验证其身份（系统日志报 `-67062: Invalid Code Signature`），用户手动添加的「完全磁盘访问权限」也不会生效——曾实际导致生产包「废纸篓清理提醒」永远显示"无法读取废纸篓，请检查访问权限"（读取 `~/.Trash` 被拒 `EPERM`；应用日志特征：`[trash-watch] watch unavailable: Operation not permitted`）。
 - **怎么做的**：`src-tauri/tauri.conf.json` → `bundle.macOS.signingIdentity: "-"`（Tauri 官方支持的 ad-hoc 伪身份）。每次构建自动对 app 做 ad-hoc 签名，dmg 内的 app 同样带签名。
-- **防回归**：`scripts/build-dmg.sh` 在每个架构构建完成后强制 `codesign --verify`，未签名**直接中断出包**。正常构建会输出 `签名校验通过：Identifier=com.tiyong.molestudio Signature=adhoc`。
+- **防回归**：`scripts/build-dmg.sh` 在每个架构构建完成后强制 `codesign --verify`，未签名**直接中断出包**。正常构建会输出 `签名校验通过：Identifier=com.tiyong.molan Signature=adhoc`。
 - **代价与边界（无 Apple Developer 账号阶段的取舍）**：
   - 用户侧：涉及隐私资源的功能（废纸篓提醒 / 清空废纸篓）需要一次性授权「系统偏好设置 → 安全性与隐私 → 隐私 → 完全磁盘访问权限」（macOS 13+ 为「系统设置 → 隐私与安全性」）。**每发一版新包（cdhash 变化），授权都要"移除旧条目 → 重新添加"一次**；授权后需完全退出并重启 app（Cmd+Q 真退出，仅关窗口 / 刷新界面无效）。
   - 分发侧：产物未经公证，从网络下载 dmg 首次打开会被 Gatekeeper 拦截，安装说明须提示**右键 → 打开**。
@@ -117,9 +117,9 @@ pnpm build:mac          # 双架构（发版用这个）
 
 | 文件 | 用途 | 传 Gitee？ |
 |---|---|---|
-| `MoleStudio_<版本>_aarch64.app.tar.gz` | M 芯片自更新包 | 必须 |
-| `MoleStudio_<版本>_x64.app.tar.gz` | Intel 自更新包 | 必须 |
-| `MoleStudio_<版本>_aarch64.dmg` / `_x64.dmg` | 新用户安装包 | 建议 |
+| `Molan_<版本>_aarch64.app.tar.gz` | M 芯片自更新包 | 必须 |
+| `Molan_<版本>_x64.app.tar.gz` | Intel 自更新包 | 必须 |
+| `Molan_<版本>_aarch64.dmg` / `_x64.dmg` | 新用户安装包 | 建议 |
 | `*.app.tar.gz.sig` | 签名文件（内容已写进 latest.json） | 不用传 |
 | `latest.json` | 更新清单（App 检查更新时读取） | 不直接传，见第 3 步 |
 
@@ -127,7 +127,7 @@ pnpm build:mac          # 双架构（发版用这个）
 
 ### 第 2 步 · Gitee 建 Release 并上传
 
-1. 打开 <https://gitee.com/tiyong/molestudio/releases/new>
+1. 打开 <https://gitee.com/tiyong/Molan/releases/new>
 2. Tag 填**与 package.json version 完全一致**的版本号，如 `1.0.0-alpha.3`。
    - **不带 `v` 前缀**；填错会导致用户下载 404（latest.json 里的下载地址就是按这个 tag 拼的）
 3. 从 `release/` 拖入 4 个文件（**文件名保持原样，不要改**）：两个 `.app.tar.gz`（必须）+ 两个 `.dmg`（建议）。
@@ -150,7 +150,7 @@ git push
 ### 第 4 步 · 验证（push 后等约 1 分钟）
 
 ```bash
-curl -sL https://gitee.com/tiyong/molestudio/raw/master/update/latest.json | head -4
+curl -sL https://gitee.com/tiyong/Molan/raw/master/update/latest.json | head -4
 ```
 
 看到 `"version": "新版本号"` 即为通（Gitee raw 有约 60 秒 CDN 缓存，刚推送立刻查可能拿旧内容）。
@@ -169,7 +169,7 @@ App 内验证：安装新 dmg → 托盘齿轮 → 「检查更新」→ 应显�
 App 内置公钥 + 更新源（配置在 tauri.conf.json → plugins.updater）
   │ 启动后静默检查 / 托盘齿轮手动「检查更新」
   ▼
-请求 https://gitee.com/tiyong/molestudio/raw/master/update/latest.json（GitHub 为备用源，暂未配置）
+请求 https://gitee.com/tiyong/Molan/raw/master/update/latest.json（GitHub 为备用源，暂未配置）
   │ 版本比较：远端 > 当前 → 有更新（齿轮亮红点）
   ▼
 下载 Release 附件 .app.tar.gz → Ed25519 验签（与 App 内置公钥配对）→ 替换 App → 自动重启
@@ -187,15 +187,15 @@ App 内置公钥 + 更新源（配置在 tauri.conf.json → plugins.updater）
 
 | 现象 | 原因 / 处理 |
 |---|---|
-| 构建报「未找到签名私钥」 | 本机没有 `~/.molestudio-key.txt` → 见第三节"新机器首次配置" |
-| 构建报「签名预检失败——私钥与密码不匹配」 | 私钥文件损坏 / 换成了别的钥匙；或环境里残留了 `TAURI_SIGNING_PRIVATE_KEY(_PATH/_PASSWORD)` 变量；或存在旧的密码文件 `~/.molestudio-key.txt.password`（有内容就删除，当前密钥无密码） |
+| 构建报「未找到签名私钥」 | 本机没有 `~/.molan-key.txt` → 见第三节"新机器首次配置" |
+| 构建报「签名预检失败——私钥与密码不匹配」 | 私钥文件损坏 / 换成了别的钥匙；或环境里残留了 `TAURI_SIGNING_PRIVATE_KEY(_PATH/_PASSWORD)` 变量；或存在旧的密码文件 `~/.molan-key.txt.password`（有内容就删除，当前密钥无密码） |
 | 构建"卡住"很久没反应 | 正常，双架构 Rust 全量编译本来就慢；签名问题会在开头 3 秒报错，不会卡在这里 |
 | 用户下载更新 404 | ① 包没上传 / 文件名被改；② tag 与 latest.json 里 URL 的 tag 不一致；③ 顺序反了（先推了 latest.json 后传包） |
 | 检查更新报错（而非"已是最新"） | latest.json 缺当前架构的平台键 / latest.json 未推送 / 刚推完还没过 60 秒缓存 |
 | 改完 update/latest.json 立刻测不到 | 等约 60 秒 CDN 缓存后再试 |
 | `pnpm build:mac` 报 TS / 前端错误 | 先跑 `pnpm build` 本地复现并修复前端错误 |
 | 构建报「产物缺少有效代码签名」 | `tauri.conf.json` 的 `signingIdentity` 被改回 `null` 或签名未执行 → 恢复为 `"-"` 后重新构建 |
-| 用户反馈「无法读取废纸篓，请检查访问权限」 | ① 用户装的是未签名旧版 → 让其升级到带签名的新包；② 未授权完全磁盘访问权限，或升级后未重做授权 → 引导：完全磁盘访问权限 → 移除 MoleStudio → 重新添加 → Cmd+Q 重启 app（详见第三节结尾） |
+| 用户反馈「无法读取废纸篓，请检查访问权限」 | ① 用户装的是未签名旧版 → 让其升级到带签名的新包；② 未授权完全磁盘访问权限，或升级后未重做授权 → 引导：完全磁盘访问权限 → 移除 Molan → 重新添加 → Cmd+Q 重启 app（详见第三节结尾） |
 
 ## 七、日常开发命令速查
 

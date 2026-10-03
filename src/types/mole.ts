@@ -1044,7 +1044,7 @@ export interface StartupActionResult {
 }
 
 // ============================================================
-// App Version (MoleStudio 应用版本检查)
+// App Version (Molan 应用版本检查)
 // ============================================================
 
 export interface AppVersionCheckResult {
