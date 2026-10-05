@@ -49,11 +49,10 @@ Uninstall apps from `/Applications` together with the preferences, caches, conta
 - **Clear Data Only** — reset an app's state without uninstalling it.
 - **Deletion history** — every uninstall is recorded; reopen the Trash with one click.
 
-### 🔄 App Updates, Startup Items & Orphans
+### 🔄 Startup Items & Orphans
 
 Beyond uninstall, the same page manages:
 
-- **Updates** — check app updates, including Homebrew-managed casks and formulae.
 - **Startup items** — login items and launch agents/services, tagged by provenance (Homebrew / user / vendor / system), enable or disable them individually.
 - **Orphans** — find leftover files from apps that are already gone, and move them to the Trash.
 

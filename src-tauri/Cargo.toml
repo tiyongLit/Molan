@@ -52,8 +52,6 @@ tokio = { version = "1", features = ["time", "sync"] }  # time=超时包装；sy
 percent-encoding = "2"  # system_confirm URL query 的 UTF-8 百分号编码
 rayon = "1"               # cmd/analyze 并发递归扫描（对齐 Go scanner.go 的 goroutine 池）
 regex = "1"               # 用于路径模式匹配（如 Darwin runtime dir 安全检查）
-ed25519-dalek = "2"       # 更新执行引擎：Sparkle 2 更新包 EdDSA 验签（纯 Rust 算法）
-zip = "2"                 # 更新执行引擎：zip 全量包解压（含 Zip Slip 防护复核）
 
 [dev-dependencies]
 tempfile = "3"
@@ -98,8 +96,6 @@ objc2-app-kit = { version = "0.3.2", features = [
   "NSView",        # 同上（NSAlert 与按钮方法均依赖）
   "NSWindow",      # beginSheetModalForWindow / isVisible / isMiniaturized
   "block2",        # beginSheetModalForWindow 完成回调
-  # ── 更新执行引擎：目标 App 退出等待（NSRunningApplication）──
-  "NSRunningApplication",
 ] }
 dispatch2 = { version = "0.3.1", default-features = false, features = ["std", "alloc"] }
 block2 = "0.6.2"    # macos_dialog：sheet 完成回调（原为 objc2-app-kit 传递依赖，提为直接依赖零新编译）

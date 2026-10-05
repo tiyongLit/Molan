@@ -31,8 +31,6 @@ pub mod startup;
 pub mod status;
 #[path = "lib/uninstall/mod.rs"]
 pub mod uninstall;
-#[path = "lib/updates/mod.rs"]
-pub mod updates;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -138,14 +136,6 @@ pub fn run() {
             // 卸载残留定向链路 — 通知点击 → pending 快照消费 → 定向扫描
             controllers::uninstall::mole_residual_take_pending,
             controllers::uninstall::mole_orphan_scan_for,
-            // Updates — 应用更新（Updates 标签页后端）
-            controllers::updates::mole_updates_brew_outdated,
-            controllers::updates::mole_updates_check,
-            controllers::updates::mole_updates_apply,
-            controllers::updates::mole_updates_brew_upgrade,
-            controllers::updates::mole_updates_install,
-            controllers::updates::mole_updates_install_commit,
-            controllers::updates::mole_updates_install_cancel,
             // Self-Update — Molan 自身更新
             controllers::app_version::mole_app_version_check,
             controllers::app_version::mole_app_version_install,
@@ -272,9 +262,6 @@ pub fn run() {
             // （macOS 用户通常不关机，app 可能数周不重启）
             crate::vendor::log_cleanup::cleanup_old_logs(&handle);
             crate::vendor::log_cleanup::start_periodic_cleanup(&handle);
-
-            // 更新引擎：清理遗留的安装暂存目录（三重判据：前缀 + 属主 + 超 24h）
-            crate::updates::engine::staging::cleanup_stale_staging_dirs();
 
             // Dock 退出拦截：有长任务在跑时拦截 Dock 右键退出
             #[cfg(target_os = "macos")]

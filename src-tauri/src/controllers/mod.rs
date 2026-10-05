@@ -10,4 +10,3 @@ pub mod startup;
 pub mod status;
 pub mod ui_log;
 pub mod uninstall;
-pub mod updates;

@@ -331,11 +331,6 @@ pub fn emit_clean_apply_progress(app: &AppHandle, payload: &CleanApplyProgressPa
     let _ = app.emit(EVT_CLEAN_APPLY_PROGRESS, payload);
 }
 
-// ── Updates（应用更新）brew 流式进度 ──
-
-/// Updates 模块：brew upgrade 流式进度短语。
-pub const EVT_UPDATES_BREW_PROGRESS: &str = "updates::brew-progress";
-
 // ── Self-Update（自更新）进度 ──
 
 /// Molan 自身更新下载/安装进度。
@@ -360,48 +355,6 @@ pub fn emit_app_version_progress(app: &AppHandle, phase: &str, progress: f64) {
             progress,
         },
     );
-}
-
-/// brew 升级进度 payload。
-#[derive(Clone, serde::Serialize)]
-pub struct BrewProgressPayload {
-    /// 升级目标 id：单包 = formula/cask name，全部 = "brew"。
-    pub id: String,
-    /// `==> ` 前缀行提取的进度短语（如 "Pouring foo…"）。
-    pub phrase: String,
-}
-
-/// 向所有 Webview 广播 brew 升级进度短语。
-pub fn emit_updates_brew_progress(app: &AppHandle, id: &str, phrase: &str) {
-    let _ = app.emit(
-        EVT_UPDATES_BREW_PROGRESS,
-        BrewProgressPayload {
-            id: id.to_string(),
-            phrase: phrase.to_string(),
-        },
-    );
-}
-
-/// Updates 模块：第三方 App 原地安装（更新执行引擎）进度。
-/// payload: `{ app_path, stage, bytes?, message? }`（stage 见 `engine::session::InstallStage`）
-pub const EVT_UPDATES_INSTALL_PROGRESS: &str = "updates::install-progress";
-
-/// 原地安装进度 payload。
-#[derive(Clone, serde::Serialize)]
-pub struct InstallProgressPayload {
-    /// 目标应用路径（前端按行匹配）
-    pub app_path: String,
-    /// "downloading" | "verifying" | "ready_to_install" | "installing" | "completed"
-    pub stage: String,
-    /// downloading 阶段的已下载字节数
-    pub bytes: Option<u64>,
-    /// 预留补充信息（失败原因等）
-    pub message: Option<String>,
-}
-
-/// 向所有 Webview 广播第三方 App 原地安装进度。
-pub fn emit_updates_install_progress(app: &AppHandle, payload: InstallProgressPayload) {
-    let _ = app.emit(EVT_UPDATES_INSTALL_PROGRESS, payload);
 }
 
 // ── Dock 退出拦截 ──

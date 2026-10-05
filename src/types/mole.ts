@@ -656,8 +656,6 @@ export interface MoleListAppsEntry {
   last_used_relative: string
   version: string
   running: boolean
-  /** 更新机制来源（本地零网络检测）："sparkle" | "app_store" | "electron" | null */
-  update_source: 'sparkle' | 'app_store' | 'electron' | null
 }
 
 export interface MoleUninstallAppInfo {
@@ -781,64 +779,6 @@ export interface ResidualTarget {
   bundleId: string | null
   /** 检测/点击时间（Unix 秒） */
   detectedAt: number
-}
-
-// ============================================================
-// Updates types (Rust controllers/updates.rs)
-// ============================================================
-
-/** brew outdated --json=v2 行条目 */
-export interface BrewOutdatedItem {
-  name: string
-  installed: string
-  latest: string
-  /** "formula" | "cask" */
-  kind: string
-}
-
-/** mole_updates_check 单个 app 结果（网络检查部分） */
-export interface AppCheckResult {
-  path: string
-  source: string
-  latest_version: string | null
-  page_url?: string | null
-  minimum_os?: string | null
-}
-
-/** mole_updates_check 返回 */
-export interface UpdatesCheckResult {
-  checked_at: string
-  /** 当前 macOS 版本，前端 OSUpdateGate 用 */
-  running_os: string
-  apps: AppCheckResult[]
-  brew: BrewOutdatedItem[]
-}
-
-/** updates::brew-progress 事件 payload */
-export interface BrewProgressEvent {
-  /** 升级目标：单包 = name，全部 = "brew" */
-  id: string
-  phrase: string
-}
-
-/** mole_updates_install 返回摘要（原地安装 prepare 完成） */
-export interface InstallPrepareResult {
-  app_path: string
-  /** appcast 中新包的展示版本号 */
-  new_version: string
-  bundle_id: string
-}
-
-/** updates::install-progress 事件 payload（第三方 App 原地安装） */
-export interface InstallProgressEvent {
-  /** 目标应用路径（按行匹配） */
-  app_path: string
-  /** "downloading" | "verifying" | "ready_to_install" | "installing" | "completed" */
-  stage: string
-  /** downloading 阶段的已下载字节数 */
-  bytes: number | null
-  /** 预留补充信息（失败原因等） */
-  message: string | null
 }
 
 // ============================================================

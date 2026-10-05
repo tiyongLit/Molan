@@ -13,9 +13,7 @@ export {
   EVT_OPTIMIZE_PROGRESS,
   EVT_APP_VERSION_PROGRESS,
   EVT_STATUS_SNAPSHOT,
-  EVT_TABLE_REFRESH,
-  EVT_UPDATES_BREW_PROGRESS,
-  EVT_UPDATES_INSTALL_PROGRESS
+  EVT_TABLE_REFRESH
 } from '@/constants/tauri-events'
 
 // 与后端 Rust AppConfig 对应的前端类型（字段名与 tauri_store.rs 中保持一致）

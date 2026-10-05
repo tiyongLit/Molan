@@ -30,12 +30,6 @@ export const EVT_CLEANUP_CATEGORY_RESULT = 'cleanup::category-result' as const
 /** 清理执行：移废纸篓阶段进度（与 Rust `clean::apply-progress` 一致） */
 export const EVT_CLEAN_APPLY_PROGRESS = 'clean::apply-progress' as const
 
-/** 应用更新：brew upgrade 流式进度短语（与 Rust `updates::brew-progress` 一致） */
-export const EVT_UPDATES_BREW_PROGRESS = 'updates::brew-progress' as const
-
-/** 应用更新：第三方 App 原地安装进度（与 Rust `updates::install-progress` 一致） */
-export const EVT_UPDATES_INSTALL_PROGRESS = 'updates::install-progress' as const
-
 /** 卸载：单个 app 清理进度（与 Rust `uninstall::progress` 一致） */
 export const EVT_UNINSTALL_PROGRESS = 'uninstall::progress' as const
 

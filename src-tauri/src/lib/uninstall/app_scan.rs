@@ -23,9 +23,6 @@ pub struct AppListEntry {
     pub last_used_relative: String,
     pub version: String,
     pub running: bool,
-    /// 更新机制来源（本地零网络检测）：
-    /// "sparkle" | "app_store" | "electron" | null（不可检测）。
-    pub update_source: Option<crate::updates::detect::UpdateSource>,
 }
 
 /// 卸载应用元数据缓存：mtime 匹配 + 7 天 TTL 内复用 size / last_used，避免每次全量 mdls/du。
@@ -339,7 +336,6 @@ pub fn list_apps_blocking() -> Result<Vec<AppListEntry>, String> {
                 last_used_relative,
                 version,
                 running,
-                update_source: crate::updates::detect::detect_update_source(path),
             }
         })
         .collect();

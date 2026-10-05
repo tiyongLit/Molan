@@ -3,7 +3,6 @@ import { Segmented } from 'antd'
 import { Type, HardDrive, Clock, ArrowUpDown, ArrowDownUp, ArrowUp, ArrowDown, LayoutGrid, Rocket, Cog, AlertTriangle, Trash2, X } from 'lucide-react'
 import { listen } from '@tauri-apps/api/event'
 import { UninstallTab, type UninstallSelection, type SortField } from './UninstallTab'
-import { UpdatesTab } from './UpdatesTab'
 import { StartupTab } from './StartupTab'
 import { OrphansTab } from './OrphansTab'
 import { UninstallToolbar } from './components/UninstallToolbar'
@@ -29,7 +28,7 @@ const APPS_THEME_VARS: React.CSSProperties = {
   '--border': 'rgba(255, 255, 255, 0.14)',
 } as React.CSSProperties
 
-type AppTab = 'uninstall' | 'updates' | 'startup' | 'orphans'
+type AppTab = 'uninstall' | 'startup' | 'orphans'
 
 // ── 启动 tab：筛选下拉（App 分组模式：全部/应用/服务/问题）──
 const STARTUP_FILTER_LABEL: Record<StartupFilter, TranslationKey> = {
@@ -53,7 +52,7 @@ const SORT_DEFAULT_ASC: Record<SortField, boolean> = {
 }
 
 /**
- * Apps 页壳：顶部 Segmented（卸载 / 更新 / 启动项）+ 右侧工具栏 + 底部操作栏
+ * Apps 页壳：顶部 Segmented（卸载 / 启动项 / 残留孤儿）+ 右侧工具栏 + 底部操作栏
  *
  * 布局：
  *   ① 顶部：Segmented 胶囊分段（左） + 随 tab 变化的右侧工具栏（排序 chips / 刷新 / 搜索）
@@ -398,7 +397,6 @@ export function ShellUninstall() {
           onChange={(v) => setActiveTab(v as AppTab)}
           options={[
             { label: t('uninstall.tab.uninstall'), value: 'uninstall' },
-            { label: t('uninstall.tab.updates'), value: 'updates' },
             { label: t('uninstall.tab.startup'), value: 'startup' },
             { label: t('uninstall.tab.orphans'), value: 'orphans' },
           ]}
@@ -448,9 +446,6 @@ export function ShellUninstall() {
             onMenuClick={(key) => setStartupFilter(key as StartupFilter)}
             onRefresh={handleRescan}
           />
-        )}
-        {activeTab === 'updates' && (
-          <span className="text-[10px] text-white/60">{t('uninstall.updates.toolbarHint')}</span>
         )}
         {activeTab === 'orphans' && (
           // 残留孤儿 tab 的扫描按钮组由 OrphansTab 通过 Portal 注入此槽位（仅扫描完成后出现）
@@ -515,7 +510,6 @@ export function ShellUninstall() {
             />
           )
         )}
-        {activeTab === 'updates' && <UpdatesTab apps={apps} />}
         {activeTab === 'startup' && (
           <StartupTab
             filter={startupFilter}

@@ -9,7 +9,7 @@
 //!      executableURL 末段 / bundleURL 路径。**只读属性、不编码图标**，
 //!      数十个应用为毫秒级，故可用短 TTL 跟随应用启停。
 //!   2. 图标像素（**无 TTL**，mtime 指纹校验）：bundle 路径 → PNG base64。
-//!      失效条件是 bundle 内容变更（应用更新/重装），对标 `controllers/platform.rs`
+//!      失效条件是 bundle 内容变更（重装或内容被修改），对标 `controllers/platform.rs`
 //!      文件域 AppCache 的 `try_cache` 语义，实现「长期缓存、按需刷新」；
 //!      且只对真正展示的少数进程（top_processes 截断后 ≤5 个）按需编码。
 //!
