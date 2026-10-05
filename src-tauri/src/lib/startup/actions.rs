@@ -53,6 +53,11 @@ pub struct ActionPlan {
     pub kind: ActionKind,
     pub service_id: String,
     pub command: Vec<String>,
+    /// 主命令成功后的第二步命令（对齐 Lemon 的组合语义：enable 配套 load、
+    /// disable 配套 unload，让「启用/禁用」当场生效）。独立执行而非拼进 shell；
+    /// 失败容忍——服务未加载时 unload、已加载时 load 都会报错，
+    /// 但那正说明目标状态已达成，不作为整体失败。
+    pub secondary: Option<Vec<String>>,
     pub warning: String,
     pub blocked_reason: Option<String>,
     pub needs_sudo: bool,
@@ -119,6 +124,7 @@ fn blocked(service: &Service, kind: ActionKind, reason: &str) -> ActionPlan {
         kind,
         service_id: service.id.clone(),
         command: Vec::new(),
+        secondary: None,
         warning: reason.to_string(),
         blocked_reason: Some(reason.to_string()),
         needs_sudo: false,
@@ -159,6 +165,7 @@ fn plan_brew(service: &Service, kind: ActionKind) -> ActionPlan {
             subcommand.into(),
             formula.clone(),
         ],
+        secondary: None,
         warning: format!("Homebrew 将更新 {formula} 的服务注册"),
         blocked_reason: None,
         needs_sudo: false,
@@ -179,6 +186,7 @@ fn plan_classic_login_item(service: &Service, kind: ActionKind) -> ActionPlan {
                 kind,
                 service_id: service.id.clone(),
                 command: vec!["classic_delete".into(), display_name.to_string()],
+                secondary: None,
                 warning: format!("将从登录项中删除「{display_name}」"),
                 blocked_reason: None,
                 needs_sudo: false,
@@ -203,6 +211,9 @@ fn plan_launchd(service: &Service, kind: ActionKind) -> ActionPlan {
         ActionKind::Delete => service.elevation.plist_remove || service.elevation.runtime,
     };
 
+    // 第二步命令（对齐 Lemon 的组合语义，仅 enable/disable 使用）
+    let mut secondary: Option<Vec<String>> = None;
+
     let command = match kind {
         ActionKind::Start => {
             if service.loaded == Some(false) {
@@ -210,26 +221,36 @@ fn plan_launchd(service: &Service, kind: ActionKind) -> ActionPlan {
                     return blocked(service, kind, "未加载的服务无 plist 可 bootstrap");
                 };
                 vec![
-                    "launchctl".into(),
+                    "/bin/launchctl".into(),
                     "bootstrap".into(),
                     service.domain.clone(),
                     path.clone(),
                 ]
             } else {
-                vec!["launchctl".into(), "kickstart".into(), target]
+                vec!["/bin/launchctl".into(), "kickstart".into(), target]
             }
         }
         ActionKind::Stop => {
-            vec!["launchctl".into(), "bootout".into(), target]
+            vec!["/bin/launchctl".into(), "bootout".into(), target]
         }
         ActionKind::Restart => {
-            vec!["launchctl".into(), "kickstart".into(), "-k".into(), target]
+            vec!["/bin/launchctl".into(), "kickstart".into(), "-k".into(), target]
         }
         ActionKind::Enable => {
-            vec!["launchctl".into(), "enable".into(), target]
+            // 对齐 Lemon：`launchctl enable <target> && launchctl load <plist>`
+            // ——清掉禁用印记后立即加载，让「启用」当场生效。
+            if let Some(path) = &service.plist_path {
+                secondary = Some(vec!["/bin/launchctl".into(), "load".into(), path.clone()]);
+            }
+            vec!["/bin/launchctl".into(), "enable".into(), target]
         }
         ActionKind::Disable => {
-            vec!["launchctl".into(), "disable".into(), target]
+            // 对齐 Lemon：`launchctl disable <target> && launchctl unload <plist>`
+            // ——写入禁用印记后立即卸载停止，服务不能"禁用了还在跑"。
+            if let Some(path) = &service.plist_path {
+                secondary = Some(vec!["/bin/launchctl".into(), "unload".into(), path.clone()]);
+            }
+            vec!["/bin/launchctl".into(), "disable".into(), target]
         }
         ActionKind::Delete => {
             let Some(path) = &service.plist_path else {
@@ -240,7 +261,7 @@ fn plan_launchd(service: &Service, kind: ActionKind) -> ActionPlan {
             }
             // 先 bootout 再移入废纸篓（红线 4：不直接 rm）
             vec![
-                "launchctl".into(),
+                "/bin/launchctl".into(),
                 "bootout".into(),
                 target,
                 "&&".into(),
@@ -254,8 +275,8 @@ fn plan_launchd(service: &Service, kind: ActionKind) -> ActionPlan {
         ActionKind::Start => "将请求 launchd 启动此服务".to_string(),
         ActionKind::Stop => "将从 launchd 域中卸载此服务（下次开机不再自动启动）".to_string(),
         ActionKind::Restart => "将终止并立即重启此服务".to_string(),
-        ActionKind::Enable => "将在 launchd 域中启用此服务".to_string(),
-        ActionKind::Disable => "将在 launchd 域中禁用此服务（持久化，重启后仍生效）".to_string(),
+        ActionKind::Enable => "将在 launchd 域中启用此服务并立即加载".to_string(),
+        ActionKind::Disable => "将写入禁用印记并立即卸载停止此服务（重启后保持禁用）".to_string(),
         ActionKind::Delete => "将卸载服务并把 plist 移入废纸篓".to_string(),
     };
 
@@ -263,6 +284,7 @@ fn plan_launchd(service: &Service, kind: ActionKind) -> ActionPlan {
         kind,
         service_id: service.id.clone(),
         command,
+        secondary,
         warning,
         blocked_reason: None,
         needs_sudo,
@@ -299,48 +321,58 @@ pub fn execute(plan: &ActionPlan) -> ActionResult {
     let args: Vec<&str> = plan.command[1..].iter().map(String::as_str).collect();
     let timeout = 15.0;
 
-    if plan.needs_sudo {
-        // 需要 root：走 sudo 模块（AEWP 或 sudo_output）
-        let mut full_args: Vec<&str> = vec!["--"];
-        full_args.extend(args.iter().copied());
-        // 使用 crate::core::sudo 执行
-        let output = crate::core::sudo::sudo_output(&[program, &full_args.join(" ")]);
-        if output.status.success() {
-            ActionResult {
-                success: true,
-                message: "操作成功（root）".to_string(),
-            }
-        } else {
+    let success_message = if plan.needs_sudo {
+        // 需要 root：把完整 argv（绝对路径程序名 + 参数）交给 sudo_output。
+        // sudo_output 接受完整参数列表，exec_root 会按 TRUSTED_ROOT_BINARIES
+        // 校验 args[0]——program 必须是白名单内的绝对路径（/bin/launchctl）；
+        // 禁止再拼接参数字符串，否则 launchctl 会收到单一错误参数。
+        let argv: Vec<&str> = plan.command.iter().map(String::as_str).collect();
+        let output = crate::core::sudo::sudo_output(&argv);
+        if !output.status.success() {
             let err = String::from_utf8_lossy(&output.stderr);
-            ActionResult {
+            return ActionResult {
                 success: false,
                 message: format!("操作失败: {}", err.trim()),
-            }
+            };
         }
+        "操作成功（root）".to_string()
     } else {
         let rc = run_with_timeout(timeout, program, &args);
-        if rc == 0 {
-            ActionResult {
-                success: true,
-                message: "操作成功".to_string(),
-            }
-        } else {
-            // launchctl 退出码不可靠，尝试 re-read 验证
-            ActionResult {
-                success: rc == 0,
-                message: if rc == 0 {
-                    "操作成功".to_string()
-                } else {
-                    format!("launchctl 退出码: {rc}")
-                },
+        if rc != 0 {
+            return ActionResult {
+                success: false,
+                message: format!("launchctl 退出码: {rc}"),
+            };
+        }
+        "操作成功".to_string()
+    };
+
+    // 第二步（对齐 Lemon 的组合语义）：enable 后立即 load、disable 后立即 unload，
+    // 让「启用/禁用」当场生效——否则只写印记，服务照旧运行（用户观感「没反应」）。
+    // 失败容忍：服务本就未加载时 unload、已加载时 load 都会报错，
+    // 但那正说明目标状态已达成；主命令（印记）的成败已在上方判定。
+    if let Some(secondary) = &plan.secondary {
+        if secondary.len() > 1 {
+            let sec_program = secondary[0].as_str();
+            let sec_args: Vec<&str> = secondary[1..].iter().map(String::as_str).collect();
+            if plan.needs_sudo {
+                let sec_argv: Vec<&str> = secondary.iter().map(String::as_str).collect();
+                let _ = crate::core::sudo::sudo_output(&sec_argv);
+            } else {
+                let _ = run_with_timeout(timeout, sec_program, &sec_args);
             }
         }
+    }
+
+    ActionResult {
+        success: true,
+        message: success_message,
     }
 }
 
 fn execute_delete(plan: &ActionPlan) -> ActionResult {
     // 从 command 中提取 target 和 plist path
-    // command 格式: ["launchctl", "bootout", "<target>", "&&", "trash", "<path>"]
+    // command 格式: ["/bin/launchctl", "bootout", "<target>", "&&", "trash", "<path>"]
     if plan.command.len() < 6 {
         return ActionResult {
             success: false,
@@ -352,7 +384,7 @@ fn execute_delete(plan: &ActionPlan) -> ActionResult {
 
     // 步骤 1：bootout（可能失败，服务未加载时正常）
     if plan.needs_sudo {
-        let _ = crate::core::sudo::sudo_output(&["/bin/launchctl", &format!("bootout {target}")]);
+        let _ = crate::core::sudo::sudo_output(&["/bin/launchctl", "bootout", target]);
     } else {
         let _ = run_with_timeout(10.0, "/bin/launchctl", &["bootout", target]);
     }

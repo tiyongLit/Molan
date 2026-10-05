@@ -2,7 +2,10 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { AppWindow, Package, CheckCircle2 } from 'lucide-react'
 import SimpleBar from 'simplebar-react'
 import 'simplebar-react/dist/simplebar.min.css'
-import useTauri, { EVT_UPDATES_BREW_PROGRESS } from '@/hooks/useTauri'
+import useTauri, { EVT_UPDATES_BREW_PROGRESS, EVT_UPDATES_INSTALL_PROGRESS } from '@/hooks/useTauri'
+import { moleMessage } from '@/components/ui'
+import { moleNativeConfirm } from '@/hooks/useMoleConfirm'
+import { formatSize } from '@/utils/format'
 import { AppIcon } from '@/components/business/Apps/AppIcon'
 import { SectionHeader } from '@/components/business/Apps/SectionHeader'
 import { Badge } from '@/components/business/Apps/Badge'
@@ -11,6 +14,8 @@ import type {
   AppCheckResult,
   BrewOutdatedItem,
   BrewProgressEvent,
+  InstallProgressEvent,
+  InstallPrepareResult,
   MoleListAppsEntry,
 } from '@/types/mole'
 
@@ -27,6 +32,19 @@ const SOURCE_STYLE: Record<string, { color: string; bg: string }> = {
   app_store: { color: '#a3a3a3', bg: 'rgba(255,255,255,0.08)' },
   electron: { color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)' },
   homebrew: { color: '#fbbf24', bg: 'rgba(251,191,36,0.12)' },
+}
+
+// ── 原地安装（更新执行引擎）UI 状态 ──
+
+/** 与后端 `engine::session::InstallStage` 对应的前端阶段 */
+type InstallUiStage = 'downloading' | 'verifying' | 'ready' | 'installing' | 'completed'
+
+interface InstallUi {
+  stage: InstallUiStage
+  /** 下载阶段的已下载字节数 */
+  bytes: number
+  /** ready / completed 时的新版本号 */
+  newVersion?: string
 }
 
 /** 会话级 guard：自动 surface 每会话一次 */
@@ -165,6 +183,10 @@ export function UpdatesTab({ apps }: { apps: MoleListAppsEntry[] }) {
   const [upgrading, setUpgrading] = useState<Set<string>>(new Set())
   /** 全局升级进度短语（并发 guard 保证同时只有一个升级任务） */
   const [brewPhrase, setBrewPhrase] = useState('')
+  /** 深链交接状态（对齐 Burrow `.handedOff`）：已成功把更新交接给目标 App / App Store 的行 */
+  const [handedOff, setHandedOff] = useState<Map<string, 'app' | 'appstore'>>(new Map())
+  /** 原地安装状态（更新执行引擎）：按 app.path 记录阶段/进度 */
+  const [installs, setInstalls] = useState<Map<string, InstallUi>>(new Map())
 
   // ── 挂载：autoSurface（brew outdated，每会话一次）──
   useEffect(() => {
@@ -187,6 +209,47 @@ export function UpdatesTab({ apps }: { apps: MoleListAppsEntry[] }) {
     tauri.onIpcEvent<BrewProgressEvent>(
       EVT_UPDATES_BREW_PROGRESS,
       (payload) => setBrewPhrase(payload?.phrase ?? ''),
+      ac.signal
+    )
+    return () => ac.abort()
+  }, [tauri])
+
+  // ── 原地安装流式进度事件（prepare/commit 阶段推进）──
+  useEffect(() => {
+    const ac = new AbortController()
+    tauri.onIpcEvent<InstallProgressEvent>(
+      EVT_UPDATES_INSTALL_PROGRESS,
+      (payload) => {
+        if (!payload?.app_path) return
+        setInstalls((prev) => {
+          const cur = prev.get(payload.app_path)
+          const bytes = cur?.bytes ?? 0
+          const newVersion = cur?.newVersion
+          const next = new Map(prev)
+          switch (payload.stage) {
+            case 'downloading':
+              next.set(payload.app_path, {
+                stage: 'downloading',
+                bytes: payload.bytes ?? 0,
+                newVersion,
+              })
+              break
+            case 'verifying':
+              next.set(payload.app_path, { stage: 'verifying', bytes, newVersion })
+              break
+            case 'ready_to_install':
+              next.set(payload.app_path, { stage: 'ready', bytes, newVersion })
+              break
+            case 'installing':
+              next.set(payload.app_path, { stage: 'installing', bytes, newVersion })
+              break
+            case 'completed':
+              next.set(payload.app_path, { stage: 'completed', bytes, newVersion })
+              break
+          }
+          return next
+        })
+      },
       ac.signal
     )
     return () => ac.abort()
@@ -226,6 +289,14 @@ export function UpdatesTab({ apps }: { apps: MoleListAppsEntry[] }) {
   // ── 手动检查（对齐 checkNow：并发 6 由后端保证；完成后 brew 直接覆盖）──
   const handleCheck = () => {
     if (checking) return
+    // 原地安装进行中（下载/验证/替换）不允许重新检查：避免与安装会话交错
+    if (
+      [...installs.values()].some(
+        (v) => v.stage === 'downloading' || v.stage === 'verifying' || v.stage === 'installing'
+      )
+    ) {
+      return
+    }
     setChecking(true)
     tauri
       .mole_updates_check({ app_paths: mechanismApps.map((a) => a.path) })
@@ -236,25 +307,122 @@ export function UpdatesTab({ apps }: { apps: MoleListAppsEntry[] }) {
         setCheckResults(map)
         setBrewItems(res.brew ?? [])
         setChecked(true)
+        // 重新检查后重置交接态（版本已刷新，旧交接标记失效）
+        setHandedOff(new Map())
+        // 已完成的安装标记同样过期（版本信息已刷新）；进行中的会话保留
+        setInstalls((prev) => {
+          const next = new Map<string, InstallUi>()
+          for (const [k, v] of prev) {
+            if (v.stage !== 'completed') next.set(k, v)
+          }
+          return next
+        })
       })
       .catch(() => {})
       .finally(() => setChecking(false))
   }
 
-  // ── 深链更新（对齐 update(_:)：sparkle/electron 开应用、App Store 开页面/更新页）──
-  // 失败静默（深链打开失败不弹错）
+  // ── 深链更新（对齐 Burrow `.handedOff`：打开成功 → 行内标记「已在 X 中继续」，
+  //     按钮换为状态文字防重复点击；失败不再静默——mole_updates_apply 已回传
+  //     open 的真实退出码，弹错让用户知道原因）──
   const handleUpdate = (app: MoleListAppsEntry) => {
-    const apply = (payload: { action: string; target?: string }) =>
-      tauri.mole_updates_apply(payload).catch(() => {})
+    const dest: 'app' | 'appstore' = app.update_source === 'app_store' ? 'appstore' : 'app'
+    const applied = () => setHandedOff((prev) => new Map(prev).set(app.path, dest))
+    const failed = (err: unknown) => {
+      console.warn('[Updates] apply failed', err)
+      moleMessage.error(t('uninstall.updates.applyFailed'))
+    }
     if (app.update_source === 'app_store') {
       const r = checkResults.get(app.path)
       if (r?.page_url) {
-        apply({ action: 'open_url', target: r.page_url })
+        tauri.mole_updates_apply({ action: 'open_url', target: r.page_url }).then(applied).catch(failed)
       } else {
-        apply({ action: 'macappstore' })
+        tauri.mole_updates_apply({ action: 'macappstore' }).then(applied).catch(failed)
       }
     } else {
-      apply({ action: 'open_app', target: app.path })
+      tauri.mole_updates_apply({ action: 'open_app', target: app.path }).then(applied).catch(failed)
+    }
+  }
+
+  // ── 原地安装（更新执行引擎）：sparkle 源走 prepare → commit 全流程 ──
+  // 语义对齐 Burrow：确认后应用内完成下载/验证；就绪后用户再点「安装并重启」。
+  // prepare 失败且原因属「不支持原地更新」时回退深链交接（Burrow 同款降级）。
+
+  const startInstall = async (app: MoleListAppsEntry) => {
+    const name = app.display_name || app.name
+    const ok = await moleNativeConfirm(t('uninstall.updates.installConfirmTitle'), {
+      informativeText: t('uninstall.updates.installConfirmMessage', { name }),
+      okLabel: t('uninstall.updates.installConfirmOk'),
+    })
+    if (!ok) return
+    setInstalls((prev) => new Map(prev).set(app.path, { stage: 'downloading', bytes: 0 }))
+    try {
+      const res = (await tauri.mole_updates_install({
+        app_path: app.path,
+        current_version: app.version,
+      })) as InstallPrepareResult
+      setInstalls((prev) => {
+        const next = new Map(prev)
+        const cur = next.get(app.path)
+        next.set(app.path, {
+          stage: 'ready',
+          bytes: cur?.bytes ?? 0,
+          newVersion: res.new_version,
+        })
+        return next
+      })
+    } catch (err) {
+      console.warn('[Updates] install prepare failed', err)
+      setInstalls((prev) => {
+        const next = new Map(prev)
+        next.delete(app.path)
+        return next
+      })
+      const msg = String(err)
+      // 智能回退：缺 SUPublicEDKey / feed / 可选包 = 不支持原地更新 → 打开应用交接
+      if (
+        msg.includes('SUPublicEDKey') ||
+        msg.includes('SUFeedURL') ||
+        msg.includes('没有可用的全量更新包')
+      ) {
+        moleMessage.info(t('uninstall.updates.installFallback'))
+        handleUpdate(app)
+      } else {
+        moleMessage.error(`${t('uninstall.updates.installFailed')}: ${msg}`)
+      }
+    }
+  }
+
+  const commitInstall = async (app: MoleListAppsEntry) => {
+    setInstalls((prev) => {
+      const next = new Map(prev)
+      const cur = next.get(app.path)
+      next.set(app.path, {
+        stage: 'installing',
+        bytes: cur?.bytes ?? 0,
+        newVersion: cur?.newVersion,
+      })
+      return next
+    })
+    try {
+      await tauri.mole_updates_install_commit({ app_path: app.path })
+      // completed 由事件补齐（含 newVersion）
+    } catch (err) {
+      console.warn('[Updates] install commit failed', err)
+      moleMessage.error(`${t('uninstall.updates.installFailed')}: ${String(err)}`)
+      // 失败回 ready（后端暂存保留，可重试）
+      setInstalls((prev) => {
+        const next = new Map(prev)
+        const cur = next.get(app.path)
+        if (cur) {
+          next.set(app.path, {
+            stage: 'ready',
+            bytes: cur.bytes,
+            newVersion: cur.newVersion,
+          })
+        }
+        return next
+      })
     }
   }
 
@@ -308,6 +476,73 @@ export function UpdatesTab({ apps }: { apps: MoleListAppsEntry[] }) {
   }
 
   const totalUpdates = available.length + brewItems.length
+
+  /**
+   * available 行操作区（优先级）：原地安装状态 > 交接状态 > 「更新」按钮。
+   * - sparkle 源点「更新」→ 原地安装流程（确认 → 下载 → 验证 → 安装并重启）；
+   * - 其余源（Electron / App Store）维持深链交接。
+   */
+  const renderRowAction = (app: MoleListAppsEntry) => {
+    const inst = installs.get(app.path)
+    if (inst) {
+      switch (inst.stage) {
+        case 'downloading':
+          return (
+            <span className="text-[10px] text-white/60 whitespace-nowrap">
+              {t('uninstall.updates.downloading', { size: formatSize(inst.bytes) })}
+            </span>
+          )
+        case 'verifying':
+          return (
+            <span className="text-[10px] text-white/60 whitespace-nowrap">
+              {t('uninstall.updates.verifying')}
+            </span>
+          )
+        case 'ready':
+          return (
+            <button
+              onClick={() => void commitInstall(app)}
+              className="apps-primary-btn text-[11px] font-semibold px-3 py-1 rounded-full"
+            >
+              {t('uninstall.updates.installAndRestart')}
+            </button>
+          )
+        case 'installing':
+          return (
+            <span className="text-[10px] text-amber-400 whitespace-nowrap">
+              {t('uninstall.updates.installing')}
+            </span>
+          )
+        case 'completed':
+          return (
+            <span className="text-[10px] text-green-400 whitespace-nowrap">
+              {t('uninstall.updates.installed', { version: inst.newVersion ?? '' })}
+            </span>
+          )
+      }
+    }
+    const handoff = handedOff.get(app.path)
+    if (handoff) {
+      // 交接完成态（Burrow 同款 amber 语义）：替代按钮，防重复点击
+      return (
+        <span className="text-[10px] text-amber-400 whitespace-nowrap">
+          {t(
+            handoff === 'appstore'
+              ? 'uninstall.updates.handedOffAppStore'
+              : 'uninstall.updates.handedOffApp'
+          )}
+        </span>
+      )
+    }
+    return (
+      <button
+        onClick={() => (app.update_source === 'sparkle' ? void startInstall(app) : handleUpdate(app))}
+        className="apps-primary-btn text-[11px] font-semibold px-3 py-1 rounded-full"
+      >
+        {t('uninstall.updates.update')}
+      </button>
+    )
+  }
 
   return (
     <div className="h-full flex flex-col">
@@ -380,14 +615,7 @@ export function UpdatesTab({ apps }: { apps: MoleListAppsEntry[] }) {
                   key={app.path}
                   app={app}
                   latestVersion={isNewer ? latest : undefined}
-                  action={
-                    <button
-                      onClick={() => handleUpdate(app)}
-                      className="apps-primary-btn text-[11px] font-semibold px-3 py-1 rounded-full"
-                    >
-                      {t('uninstall.updates.update')}
-                    </button>
-                  }
+                  action={renderRowAction(app)}
                 />
               )
             })}

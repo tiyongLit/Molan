@@ -9,5 +9,6 @@
 pub mod appcast;
 pub mod brew;
 pub mod detect;
+pub mod engine;
 pub mod itunes;
 pub mod version;

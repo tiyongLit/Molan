@@ -821,6 +821,26 @@ export interface BrewProgressEvent {
   phrase: string
 }
 
+/** mole_updates_install 返回摘要（原地安装 prepare 完成） */
+export interface InstallPrepareResult {
+  app_path: string
+  /** appcast 中新包的展示版本号 */
+  new_version: string
+  bundle_id: string
+}
+
+/** updates::install-progress 事件 payload（第三方 App 原地安装） */
+export interface InstallProgressEvent {
+  /** 目标应用路径（按行匹配） */
+  app_path: string
+  /** "downloading" | "verifying" | "ready_to_install" | "installing" | "completed" */
+  stage: string
+  /** downloading 阶段的已下载字节数 */
+  bytes: number | null
+  /** 预留补充信息（失败原因等） */
+  message: string | null
+}
+
 // ============================================================
 // scan_home / scan_directory (Rust native scanner)
 // ============================================================

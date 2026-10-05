@@ -382,6 +382,28 @@ pub fn emit_updates_brew_progress(app: &AppHandle, id: &str, phrase: &str) {
     );
 }
 
+/// Updates 模块：第三方 App 原地安装（更新执行引擎）进度。
+/// payload: `{ app_path, stage, bytes?, message? }`（stage 见 `engine::session::InstallStage`）
+pub const EVT_UPDATES_INSTALL_PROGRESS: &str = "updates::install-progress";
+
+/// 原地安装进度 payload。
+#[derive(Clone, serde::Serialize)]
+pub struct InstallProgressPayload {
+    /// 目标应用路径（前端按行匹配）
+    pub app_path: String,
+    /// "downloading" | "verifying" | "ready_to_install" | "installing" | "completed"
+    pub stage: String,
+    /// downloading 阶段的已下载字节数
+    pub bytes: Option<u64>,
+    /// 预留补充信息（失败原因等）
+    pub message: Option<String>,
+}
+
+/// 向所有 Webview 广播第三方 App 原地安装进度。
+pub fn emit_updates_install_progress(app: &AppHandle, payload: InstallProgressPayload) {
+    let _ = app.emit(EVT_UPDATES_INSTALL_PROGRESS, payload);
+}
+
 // ── Dock 退出拦截 ──
 
 /// Dock 右键退出请求事件（有长任务在跑时拦截退出，通知前端弹确认框）。

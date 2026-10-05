@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { ConfigProvider, Switch, theme } from 'antd'
+import type { SwitchProps } from 'antd'
 import {
   AlertTriangle,
   ChevronDown,
@@ -80,6 +82,30 @@ function isActionable(svc: StartupService): boolean {
   return svc.safety_level !== 'readonly_system' && svc.safety_level !== 'protected_vendor'
 }
 
+/**
+ * 启动项开关：统一走 antd Switch（small 尺寸 + dark 主题），与设置页开关同构。
+ * loading 期间自带转圈并阻止交互，替代此前手写的 button role="switch" + 外置 Loader2。
+ */
+function StartupSwitch({
+  checked,
+  loading,
+  title,
+  onChange,
+}: {
+  checked: boolean
+  loading?: boolean
+  title?: string
+  onChange: SwitchProps['onChange']
+}) {
+  return (
+    <span className="shrink-0 inline-flex" title={title}>
+      <ConfigProvider theme={{ algorithm: theme.darkAlgorithm }}>
+        <Switch size="small" checked={checked} loading={loading} disabled={loading} onChange={onChange} />
+      </ConfigProvider>
+    </span>
+  )
+}
+
 /** 系统 plist 图标采样路径 */
 const SYSTEM_PLIST_ICON_PATH = '/System/Library/CoreServices/SystemVersion.plist'
 
@@ -156,28 +182,56 @@ export function StartupTab({ filter, searchText, reloadTick }: StartupTabProps) 
     await reload(true)
   }
 
+  /** 进行中的服务操作（id 集合）：按钮禁用 + 转圈，避免「点了没反应」的错觉 */
+  const [pending, setPending] = useState<Set<string>>(new Set())
+
+  const runPending = async (ids: string[], fn: () => Promise<void>) => {
+    setPending((prev) => {
+      const next = new Set(prev)
+      ids.forEach((id) => next.add(id))
+      return next
+    })
+    try {
+      await fn()
+    } finally {
+      setPending((prev) => {
+        const next = new Set(prev)
+        ids.forEach((id) => next.delete(id))
+        return next
+      })
+    }
+  }
+
   /** 执行操作 */
   const doAction = async (serviceId: string, action: string) => {
-    try {
-      const res = await tauri.mole_startup_action({ service_id: serviceId, action })
-      if (!res.success) {
-        moleMessage.error(res.message || t('uninstall.startup.actionFailed'))
+    await runPending([serviceId], async () => {
+      try {
+        const res = await tauri.mole_startup_action({ service_id: serviceId, action })
+        if (!res.success) {
+          moleMessage.error(res.message || t('uninstall.startup.actionFailed'))
+        }
+        // 操作后重扫
+        await reload(loginItemsIncluded)
+      } catch (err) {
+        console.error('[Startup] action failed', err)
+        moleMessage.error(t('uninstall.startup.actionRunFailed'))
       }
-      // 操作后重扫
-      await reload(loginItemsIncluded)
-    } catch (err) {
-      console.error('[Startup] action failed', err)
-      moleMessage.error(t('uninstall.startup.actionRunFailed'))
-    }
+    })
   }
 
   /** App 级一键开关 */
   const toggleAppGroup = (group: AppGroup, enable: boolean) => {
     const action = enable ? 'enable' : 'disable'
     const actionable = group.services.filter(isActionable)
-    Promise.all(actionable.map((s) => tauri.mole_startup_action({ service_id: s.id, action })))
-      .then(() => reload(loginItemsIncluded))
-      .catch(() => moleMessage.error(t('uninstall.startup.batchFailed')))
+    void runPending(
+      actionable.map((s) => s.id),
+      () =>
+        Promise.all(actionable.map((s) => tauri.mole_startup_action({ service_id: s.id, action })))
+          .then(() => reload(loginItemsIncluded))
+          .catch(() => {
+            moleMessage.error(t('uninstall.startup.batchFailed'))
+          }),
+    )
   }
 
   /** 预加载 App 图标 */
@@ -311,6 +365,7 @@ export function StartupTab({ filter, searchText, reloadTick }: StartupTabProps) 
                           onToggleExpand={() => toggleExpand(group.bundle_id || group.app_path)}
                           onAction={doAction}
                           onBatchToggle={toggleAppGroup}
+                          pendingIds={pending}
                         />
                       ))}
                     </div>
@@ -323,7 +378,7 @@ export function StartupTab({ filter, searchText, reloadTick }: StartupTabProps) 
                     <SectionHeader title={t('uninstall.startup.section.services')} count={filteredStandalone.length} />
                     <div className="space-y-0.5">
                       {filteredStandalone.map((svc) => (
-                        <ServiceRow key={svc.id} service={svc} onAction={doAction} />
+                        <ServiceRow key={svc.id} service={svc} onAction={doAction} busy={pending.has(svc.id)} />
                       ))}
                     </div>
                   </>
@@ -345,17 +400,20 @@ function AppGroupRow({
   onToggleExpand,
   onAction,
   onBatchToggle,
+  pendingIds,
 }: {
   group: AppGroup
   expanded: boolean
   onToggleExpand: () => void
   onAction: (id: string, action: string) => void
   onBatchToggle: (group: AppGroup, enable: boolean) => void
+  pendingIds: Set<string>
 }) {
   const { t } = useI18n()
   const statusCfg = ENABLE_STATUS_CONFIG[group.enable_status]
   const allOn = group.enable_status !== 'all_disabled'
   const actionable = group.services.filter(isActionable)
+  const busy = actionable.some((s) => pendingIds.has(s.id))
 
   return (
     <div>
@@ -381,23 +439,16 @@ function AppGroupRow({
           {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         </span>
 
-        {/* App 级一键开关 */}
+        {/* App 级一键开关（antd Switch，与设置页统一；点击不触发展开） */}
         {actionable.length > 0 && (
-          <button
-            role="switch"
-            aria-checked={allOn}
-            onClick={(e) => {
+          <StartupSwitch
+            checked={allOn}
+            loading={busy}
+            onChange={(checked, e) => {
               e.stopPropagation()
-              onBatchToggle(group, !allOn)
+              onBatchToggle(group, checked)
             }}
-            className="relative w-8 h-[18px] rounded-full transition-colors shrink-0"
-            style={{ background: allOn ? 'rgba(99,102,241,0.9)' : 'rgba(255,255,255,0.16)' }}
-          >
-            <span
-              className="absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white transition-[left] duration-150"
-              style={{ left: allOn ? 16 : 2 }}
-            />
-          </button>
+          />
         )}
       </div>
 
@@ -405,7 +456,7 @@ function AppGroupRow({
       {expanded && (
         <div className="ml-[52px] border-l border-white/[0.06] pl-3">
           {group.services.map((svc) => (
-            <ServiceRow key={svc.id} service={svc} onAction={onAction} compact />
+            <ServiceRow key={svc.id} service={svc} onAction={onAction} compact busy={pendingIds.has(svc.id)} />
           ))}
         </div>
       )}
@@ -419,10 +470,12 @@ function ServiceRow({
   service,
   onAction,
   compact,
+  busy,
 }: {
   service: StartupService
   onAction: (id: string, action: string) => void
   compact?: boolean
+  busy?: boolean
 }) {
   const { t } = useI18n()
   const actionable = isActionable(service)
@@ -480,8 +533,9 @@ function ServiceRow({
           {service.status === 'running' && (
             <button
               onClick={() => onAction(service.id, 'stop')}
+              disabled={busy}
               title={t('uninstall.startup.stopService')}
-              className="text-white/40 hover:text-red-400 p-1"
+              className="text-white/40 hover:text-red-400 p-1 disabled:opacity-40"
             >
               <Square size={11} />
             </button>
@@ -489,27 +543,21 @@ function ServiceRow({
           {(service.status === 'stopped' || service.status === 'failed') && service.loaded && (
             <button
               onClick={() => onAction(service.id, 'start')}
+              disabled={busy}
               title={t('uninstall.startup.startService')}
-              className="text-white/40 hover:text-green-400 p-1"
+              className="text-white/40 hover:text-green-400 p-1 disabled:opacity-40"
             >
               <Play size={11} />
             </button>
           )}
 
-          {/* 启用/禁用开关 */}
-          <button
-            role="switch"
-            aria-checked={enabled}
+          {/* 启用/禁用开关：antd Switch（对齐设置页），busy 时转圈并禁止交互 */}
+          <StartupSwitch
+            checked={enabled}
+            loading={busy}
             title={enabled ? t('uninstall.startup.disableItem') : t('uninstall.startup.enableItem')}
-            onClick={() => onAction(service.id, enabled ? 'disable' : 'enable')}
-            className="relative w-7 h-[16px] rounded-full transition-colors"
-            style={{ background: enabled ? 'rgba(99,102,241,0.9)' : 'rgba(255,255,255,0.16)' }}
-          >
-            <span
-              className="absolute top-[2px] w-[12px] h-[12px] rounded-full bg-white transition-[left] duration-150"
-              style={{ left: enabled ? 14 : 2 }}
-            />
-          </button>
+            onChange={(checked) => onAction(service.id, checked ? 'enable' : 'disable')}
+          />
         </div>
       ) : (
         <span title={t('uninstall.startup.readonly')} className="text-white/35 shrink-0">

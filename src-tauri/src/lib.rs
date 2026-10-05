@@ -143,6 +143,9 @@ pub fn run() {
             controllers::updates::mole_updates_check,
             controllers::updates::mole_updates_apply,
             controllers::updates::mole_updates_brew_upgrade,
+            controllers::updates::mole_updates_install,
+            controllers::updates::mole_updates_install_commit,
+            controllers::updates::mole_updates_install_cancel,
             // Self-Update — Molan 自身更新
             controllers::app_version::mole_app_version_check,
             controllers::app_version::mole_app_version_install,
@@ -269,6 +272,9 @@ pub fn run() {
             // （macOS 用户通常不关机，app 可能数周不重启）
             crate::vendor::log_cleanup::cleanup_old_logs(&handle);
             crate::vendor::log_cleanup::start_periodic_cleanup(&handle);
+
+            // 更新引擎：清理遗留的安装暂存目录（三重判据：前缀 + 属主 + 超 24h）
+            crate::updates::engine::staging::cleanup_stale_staging_dirs();
 
             // Dock 退出拦截：有长任务在跑时拦截 Dock 右键退出
             #[cfg(target_os = "macos")]

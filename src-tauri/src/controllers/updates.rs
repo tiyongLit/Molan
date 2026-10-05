@@ -77,23 +77,37 @@ fn running_os_version() -> String {
         .unwrap_or_default()
 }
 
-/// 深链更新动作：
+/// 深链更新动作（对齐 Burrow 的 `.handedOff` 语义：交接必须「可确认」）：
 /// - open_app：Sparkle/Electron → `open <app>`
 /// - open_url：App Store 有 trackViewUrl → `open <url>`
 /// - macappstore：App Store 无 pageURL → `open macappstore://showUpdatesPage`
+///
+/// 原实现 spawn 后不看退出码：open 失败（URL 无效 / 应用不存在 / scheme
+/// 不被支持）会被静默成功化，前端只剩「点了没反应」。改为等待退出码并
+/// 回传 stderr，让前端能给出失败反馈；同时走绝对路径（GUI 环境不依赖 PATH）。
+/// spawn_blocking 隔离等待，避免阻塞 IPC 线程。
 #[tauri::command(rename_all = "snake_case")]
-pub fn mole_updates_apply(action: String, target: Option<String>) -> Result<(), String> {
-    let url = match action.as_str() {
-        "open_app" => target.ok_or("缺少应用路径")?,
-        "open_url" => target.ok_or("缺少链接")?,
-        "macappstore" => "macappstore://showUpdatesPage".to_string(),
-        other => return Err(format!("未知 action: {other}")),
-    };
-    std::process::Command::new("open")
-        .arg(&url)
-        .spawn()
-        .map(|_| ())
-        .map_err(|e| format!("启动失败: {e}"))
+pub async fn mole_updates_apply(action: String, target: Option<String>) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let url = match action.as_str() {
+            "open_app" => target.ok_or("缺少应用路径")?,
+            "open_url" => target.ok_or("缺少链接")?,
+            "macappstore" => "macappstore://showUpdatesPage".to_string(),
+            other => return Err(format!("未知 action: {other}")),
+        };
+        let out = std::process::Command::new("/usr/bin/open")
+            .arg(&url)
+            .output()
+            .map_err(|e| format!("启动失败: {e}"))?;
+        if out.status.success() {
+            Ok(())
+        } else {
+            let err = String::from_utf8_lossy(&out.stderr);
+            Err(format!("打开失败: {}", err.trim()))
+        }
+    })
+    .await
+    .map_err(|e| format!("打开任务失败: {e}"))?
 }
 
 /// brew 流式升级：`name` 为 None = 全部。单包 1800s / 全部 3600s 超时。
@@ -115,6 +129,98 @@ pub async fn mole_updates_brew_upgrade(
     })
     .await
     .map_err(|e| format!("升级任务失败: {e}"))
+}
+
+// ── 第三方 App 原地安装（更新执行引擎，P0：Sparkle 2 + zip） ──
+
+/// `mole_updates_install` 返回摘要（前端持有，用于展示新版本号）。
+#[derive(Serialize)]
+pub struct InstallPrepareResult {
+    pub app_path: String,
+    pub new_version: String,
+    pub bundle_id: String,
+}
+
+/// 原地安装·prepare：拉 feed → 下载 → 五道门验证 → 暂存就绪。
+/// 进度经 `updates::install-progress` 事件推送；就绪后等待 `_commit`。
+/// 失败（含"不支持原地更新"）时不触碰系统文件——由前端决定回退深链。
+#[tauri::command(rename_all = "snake_case")]
+pub async fn mole_updates_install(
+    app: tauri::AppHandle,
+    app_path: String,
+    current_version: String,
+) -> Result<InstallPrepareResult, String> {
+    use crate::updates::engine::session::{self, InstallStage};
+
+    let _slot = session::InstallSlotGuard::acquire()?;
+    let handle = app.clone();
+    let path_for_task = app_path.clone();
+    let prepared = tauri::async_runtime::spawn_blocking(move || {
+        let mut emit_stage = |stage: InstallStage, bytes: Option<u64>| {
+            crate::events::emit_updates_install_progress(
+                &handle,
+                crate::events::InstallProgressPayload {
+                    app_path: path_for_task.clone(),
+                    stage: session::stage_str(stage).to_string(),
+                    bytes,
+                    message: None,
+                },
+            );
+        };
+        session::prepare_install(&path_for_task, &current_version, &mut emit_stage)
+    })
+    .await
+    .map_err(|e| format!("安装任务失败: {e}"))??;
+
+    let summary = InstallPrepareResult {
+        app_path: prepared.app_path.clone(),
+        new_version: prepared.new_version.clone(),
+        bundle_id: prepared.bundle_id.clone(),
+    };
+    session::stash_session(prepared);
+    Ok(summary)
+}
+
+/// 原地安装·commit：退出目标 App → 替换 → 复验 → 重启（失败自动回滚）。
+/// 需先经 `mole_updates_install` 完成下载与验证。失败时暂存保留可重试。
+#[tauri::command(rename_all = "snake_case")]
+pub async fn mole_updates_install_commit(
+    app: tauri::AppHandle,
+    app_path: String,
+) -> Result<(), String> {
+    use crate::updates::engine::session::{self, InstallStage};
+
+    let prepared = session::take_session(&app_path)
+        .ok_or_else(|| "没有待安装的会话（请先下载并验证更新）".to_string())?;
+    let _slot = session::InstallSlotGuard::acquire()?;
+    let handle = app.clone();
+    let path_for_task = app_path.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        let mut emit_stage = |stage: InstallStage, bytes: Option<u64>| {
+            crate::events::emit_updates_install_progress(
+                &handle,
+                crate::events::InstallProgressPayload {
+                    app_path: path_for_task.clone(),
+                    stage: session::stage_str(stage).to_string(),
+                    bytes,
+                    message: None,
+                },
+            );
+        };
+        session::commit_prepared(prepared, &mut emit_stage)
+    })
+    .await
+    .map_err(|e| format!("安装任务失败: {e}"))?
+}
+
+/// 原地安装·cancel：丢弃待安装会话的暂存（不触碰系统文件）。
+#[tauri::command(rename_all = "snake_case")]
+pub fn mole_updates_install_cancel(app_path: String) -> Result<(), String> {
+    use crate::updates::engine::session;
+    if let Some(prepared) = session::take_session(&app_path) {
+        session::cancel_prepared(&prepared);
+    }
+    Ok(())
 }
 
 // ── 内部实现 ──

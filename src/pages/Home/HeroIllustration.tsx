@@ -97,6 +97,13 @@ export default function HeroIllustration({ className }: { className?: string }) 
           <stop offset="100%" stopColor="#7EE0C8" />
         </linearGradient>
 
+        {/* 主轴轴心：深青绿 → 盘面色径向过渡，取代原先的深紫实心圆 */}
+        <radialGradient id="core-axis" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#2F6156" />
+          <stop offset="55%" stopColor="#3F7D6E" />
+          <stop offset="100%" stopColor="#6BC2AC" />
+        </radialGradient>
+
         <linearGradient id="clean-zone" x1="0" y1="0" x2="1" y2="0">
           <stop offset="0%" stopColor="#8AE0C8" stopOpacity="0" />
           <stop offset="60%" stopColor="#8AE0C8" stopOpacity="0.4" />
@@ -137,7 +144,7 @@ export default function HeroIllustration({ className }: { className?: string }) 
       />
 
       <circle cx="140" cy="120" r="36" fill="url(#core-fill)" className="pulse-core" />
-      <circle cx="140" cy="120" r="22" fill="#3f3a5a" />
+      <circle cx="140" cy="120" r="22" fill="url(#core-axis)" />
       <circle cx="140" cy="120" r="10" fill="#8AE0C8" className="pulse-inner" />
       <circle cx="140" cy="120" r="4" fill="#A0ECD8" />
 

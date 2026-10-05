@@ -45,6 +45,10 @@ export const CMD_MOLE_UPDATES_BREW_OUTDATED = 'mole_updates_brew_outdated' as co
 export const CMD_MOLE_UPDATES_CHECK = 'mole_updates_check' as const
 export const CMD_MOLE_UPDATES_APPLY = 'mole_updates_apply' as const
 export const CMD_MOLE_UPDATES_BREW_UPGRADE = 'mole_updates_brew_upgrade' as const
+/** 更新执行引擎：原地安装 prepare / commit / cancel（Sparkle 2 + zip） */
+export const CMD_MOLE_UPDATES_INSTALL = 'mole_updates_install' as const
+export const CMD_MOLE_UPDATES_INSTALL_COMMIT = 'mole_updates_install_commit' as const
+export const CMD_MOLE_UPDATES_INSTALL_CANCEL = 'mole_updates_install_cancel' as const
 
 /** Self-Update — Molan 自身更新 */
 export const CMD_MOLE_APP_VERSION_CHECK = 'mole_app_version_check' as const
@@ -186,6 +190,9 @@ export const TAURI_COMMANDS = [
   CMD_MOLE_UPDATES_CHECK,
   CMD_MOLE_UPDATES_APPLY,
   CMD_MOLE_UPDATES_BREW_UPGRADE,
+  CMD_MOLE_UPDATES_INSTALL,
+  CMD_MOLE_UPDATES_INSTALL_COMMIT,
+  CMD_MOLE_UPDATES_INSTALL_CANCEL,
   CMD_MOLE_APP_VERSION_CHECK,
   CMD_MOLE_APP_VERSION_INSTALL,
   CMD_MOLE_APP_VERSION_OPEN_APPSTORE,
