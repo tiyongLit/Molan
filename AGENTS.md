@@ -48,7 +48,7 @@ Molan 是一款 **macOS 清理 / 优化 GUI 软件**，面向最终用户上架 
 
 - Tauri 2 + Rust
 - 命令入口：`src-tauri/src/controllers/`
-- 底层能力：`src-tauri/src/lib/`（域模块：`clean`、`core`、`manage`、`optimize`、`uninstall`、`check`、`platform`、`startup`、`updates`）
+- 底层能力：`src-tauri/src/lib/`（域模块：`clean`、`core`、`manage`、`optimize`、`uninstall`、`check`、`platform`、`startup`）
 - 磁盘分析与系统监控：`src-tauri/src/lib/analyze/`、`src-tauri/src/lib/status/`（自 CLI `cmd/` 迁移归位）
 - 内嵌规则：`src-tauri/src/embedded_rules.rs`（编译期 const/静态表）
 - 事件：`src-tauri/src/events.rs`
@@ -172,7 +172,7 @@ Molan 不是从零开始，有四个参考项目。每个项目角色清晰，**
 |---|---|
 | `src-tauri/src/lib/clean/` | 深度清理（caches、apps、brew、dev、system、user…） |
 | `src-tauri/src/lib/core/` | 公共能力（base、common、file_ops、bundle_resolver、pkg_receipts、app_protection、sudo、timeout…） |
-| `src-tauri/src/lib/manage/` | 白名单、清理路径、更新、autofix |
+| `src-tauri/src/lib/manage/` | 白名单、清理路径、自更新、autofix |
 | `src-tauri/src/lib/optimize/` | 优化维护（diagnostics、maintenance、tasks） |
 | `src-tauri/src/lib/uninstall/` | 智能卸载（batch、brew） |
 | `src-tauri/src/lib/check/` | 健康检查、安全检查、开发环境检查 |

@@ -37,7 +37,6 @@ bincode = "1.3"      # cmd/analyze 快照缓存二进制序列化
 trash = "3"         # 用于安全删除到废纸篓 (MAS 合规关键)
 dirs = "6"          # 解析用户主目录（scan_home）
 plist = "1"         # 读取 .app/Contents/Info.plist 的 CFBundleIdentifier
-quick-xml = "0.41"  # 解析 Sparkle appcast（原为 plist 的传递依赖，提为直接依赖零新编译）
 tauri-plugin-dialog = "2" # 预留：书签/未来授权流
 tauri-plugin-updater = "2" # 自更新：tauri 官方 updater，Ed25519 签名 + Gitee/GitHub 双源
 glob = "0.3"
