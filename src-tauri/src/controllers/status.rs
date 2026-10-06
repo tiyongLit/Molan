@@ -31,9 +31,9 @@ use std::time::{Duration, Instant};
 
 use tauri::{AppHandle, Emitter, Runtime};
 
+use crate::platform::native_icon_registry;
 use crate::status::metrics::{Collector, instant_snapshot_lockfree};
 use crate::status::process_watch::ProcessWatchOptions;
-use crate::platform::native_icon_registry;
 
 /// 与前端 `EVT_STATUS_SNAPSHOT` 字符串保持一致。
 const EVT_STATUS_SNAPSHOT: &str = "status::snapshot";
@@ -298,10 +298,7 @@ pub(crate) fn start_status_watch<R: Runtime>(app: AppHandle<R>) {
     });
 }
 
-fn emit_snapshot<R: Runtime>(
-    app: &AppHandle<R>,
-    snap: &crate::status::metrics::MetricsSnapshot,
-) {
+fn emit_snapshot<R: Runtime>(app: &AppHandle<R>, snap: &crate::status::metrics::MetricsSnapshot) {
     match serde_json::to_value(snap) {
         Ok(v) => {
             let _ = app.emit(EVT_STATUS_SNAPSHOT, v);

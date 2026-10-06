@@ -234,7 +234,12 @@ fn plan_launchd(service: &Service, kind: ActionKind) -> ActionPlan {
             vec!["/bin/launchctl".into(), "bootout".into(), target]
         }
         ActionKind::Restart => {
-            vec!["/bin/launchctl".into(), "kickstart".into(), "-k".into(), target]
+            vec![
+                "/bin/launchctl".into(),
+                "kickstart".into(),
+                "-k".into(),
+                target,
+            ]
         }
         ActionKind::Enable => {
             // 对齐 Lemon：`launchctl enable <target> && launchctl load <plist>`

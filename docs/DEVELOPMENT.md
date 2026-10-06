@@ -121,7 +121,8 @@ pnpm build:mac          # 双架构（发版用这个）
 | `Molan_<版本>_x64.app.tar.gz` | Intel 自更新包 | 必须 |
 | `Molan_<版本>_aarch64.dmg` / `_x64.dmg` | 新用户安装包 | 建议 |
 | `*.app.tar.gz.sig` | 签名文件（内容已写进 latest.json） | 不用传 |
-| `latest.json` | 更新清单（App 检查更新时读取） | 不直接传，见第 3 步 |
+
+> 更新清单不在本目录：构建脚本直接把清单写入 `update/latest.json`（唯一清单，随 Git 提交，见第 3 步）。
 
 > 提示：产物自带 ad-hoc 代码签名（见第三节）。老用户升级后若用到废纸篓相关功能，需引导其授权「完全磁盘访问权限」：移除旧条目 → 重新添加 → 完全退出并重启 app；每轮升级都要重做一次。
 
@@ -135,10 +136,11 @@ pnpm build:mac          # 双架构（发版用这个）
 
 > 顺序要求：**必须先传完包，再进第 3 步**。
 
-### 第 3 步 · 更新清单并推送
+### 第 3 步 · 提交清单并推送
+
+构建时清单已由脚本直接写入 `update/latest.json`（无需手动复制）：
 
 ```bash
-cp release/latest.json update/latest.json
 git add update/latest.json
 git commit -m "chore(release): 1.0.0-alpha.3"
 git push
@@ -180,7 +182,7 @@ App 内置公钥 + 更新源（配置在 tauri.conf.json → plugins.updater）
 - `latest.json` 的 `platforms` 键必须覆盖**所有已分发的架构**（`darwin-aarch64` / `darwin-x86_64`）。
   缺哪个架构的键，那个架构的客户端「检查更新」会**直接报错**（而不是显示无更新）。
 - 各架构用户用的是各架构的更新包，文件名不同（`_aarch64` / `_x64`），别传错。
-- 更新源为 Gitee 主源 + GitHub 备源（配置里预留了 GitHub 地址，但对应仓库 / latest.json 尚未建立；Gitee 正常时不会访问备源，当前单 Gitee 即可）。
+- 更新源为 Gitee 主源 + GitHub 备源（配置里预留了 GitHub 地址，但对应仓库 / latest.json 尚未建立；Gitee 正常时不会访问备源，当前单 Gitee 即可）。脚本已留 GitHub 口子：开通时设 `GITHUB_REPO` 重新生成清单，即可产出备源草稿 `release/latest.github.json`。
 - 版本线备忘：`1.0.0-alpha.1` 为占位公钥构建，**永远收不到自更新**；`1.0.0-alpha.2` 起为真密钥构建，可接收后续所有更新。
 
 ## 六、常见问题速查
@@ -215,10 +217,10 @@ App 内置公钥 + 更新源（配置在 tauri.conf.json → plugins.updater）
 | 路径 | 作用 |
 |---|---|
 | `scripts/build-dmg.sh` | 构建主脚本：版本同步 + 私钥注入 + 签名预检 + 双架构构建 + 代码签名校验 + 产物收集 + 生成清单 |
-| `scripts/gen-latest-json.sh` | 单独重新生成 `release/latest.json`（扫描 release/ 产物，无需重新编译） |
+| `scripts/gen-latest-json.sh` | 单独重新生成 `update/latest.json`（扫描 release/ 产物，无需重新编译；设 `GITHUB_REPO` 可额外产出 GitHub 备源草稿） |
 | `update/latest.json` | 更新清单（推送后生效；App 检查更新读取的就是它） |
 | `src-tauri/tauri.conf.json` | 更新源 endpoints、公钥 pubkey、`createUpdaterArtifacts` 开关、`signingIdentity`（ad-hoc `"-"`）、版本号（自动同步） |
 | `src-tauri/src/lib/manage/app_version.rs` | 自更新后端逻辑（检查 / 下载 / 安装） |
 | `src/hooks/useAppVersion.ts` | 自更新前端逻辑（红点 / 静默检查 / 安装进度） |
 | `release/` | 本地产物目录（gitignore，同名文件直接覆盖） |
-| `docs/自更新功能实现总结.md` | 自更新设计背景（部分命名口径较早，与本指南冲突时以本指南为准） |
+| `docs/自更新功能实现总结.md` | 自更新设计背景与实现细节（发版操作仍以本指南为准） |

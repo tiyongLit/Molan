@@ -3,7 +3,7 @@ use serde_json::Value;
 use tauri::Manager;
 
 use crate::uninstall::app_ops::{run_dry_run, run_execute};
-use crate::uninstall::app_scan::{list_apps_blocking, AppListEntry};
+use crate::uninstall::app_scan::{AppListEntry, list_apps_blocking};
 
 // CLI scan_applications 对齐翻译
 #[tauri::command(rename_all = "snake_case")]

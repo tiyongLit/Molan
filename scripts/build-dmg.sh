@@ -16,7 +16,7 @@
 # 私钥默认读 ~/.molan-key.txt，可用 MOLAN_SIGNING_KEY_FILE 或
 # TAURI_SIGNING_PRIVATE_KEY（私钥内容/路径）环境变量覆盖。更新包收集时重命名为
 # Molan_<version>_<arch>.app.tar.gz 并附带同名 .sig，最后由
-# scripts/gen-latest-json.sh 生成 release/latest.json 草稿。
+# scripts/gen-latest-json.sh 直接写入发布清单 update/latest.json。
 #
 # 产物收集语义：release/ 下同名文件直接覆盖——不检测历史包、不重命名，
 # 版本号没改时重跑即覆盖旧包（更新包因带版本+架构后缀，天然区分）。
@@ -230,5 +230,5 @@ while [ "$i" -lt "${#triples[@]}" ]; do
   i=$((i + 1))
 done
 
-# ── 6. 生成自更新清单草稿（release/latest.json） ──────────────────
+# ── 6. 生成自更新发布清单（update/latest.json） ───────────────────
 bash scripts/gen-latest-json.sh "$VERSION"

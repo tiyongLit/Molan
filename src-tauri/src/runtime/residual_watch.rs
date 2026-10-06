@@ -12,8 +12,8 @@
 
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use tauri::{AppHandle, Manager};
@@ -86,7 +86,9 @@ pub fn start_residual_watch(app: AppHandle) {
                         continue;
                     }
                     let app_name = file_name.strip_suffix(".app").unwrap_or(file_name);
-                    log::info!("[residual_watch] new .app detected: {app_name} (bundle: {bundle_id:?})");
+                    log::info!(
+                        "[residual_watch] new .app detected: {app_name} (bundle: {bundle_id:?})"
+                    );
                     notify_new_app(&app, app_name, bundle_id.as_deref());
                 }
 
@@ -115,8 +117,9 @@ fn notify_new_app(app: &AppHandle, app_name: &str, bundle_id: Option<&str>) {
 
     // 主通道：macOS 原生通知（成功即送达，不再发事件，避免双通道打扰）
     #[cfg(target_os = "macos")]
-    let delivered =
-        crate::platform::macos_notifications::send_residual_notification(app_name, bundle_id, &lang);
+    let delivered = crate::platform::macos_notifications::send_residual_notification(
+        app_name, bundle_id, &lang,
+    );
     #[cfg(not(target_os = "macos"))]
     let delivered = false;
 

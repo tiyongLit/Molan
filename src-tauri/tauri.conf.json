@@ -94,7 +94,7 @@
     "updater": {
       "endpoints": [
         "https://gitee.com/tiyong/Molan/raw/master/update/latest.json",
-        "https://github.com/tiyong/Molan/raw/main/update/latest.json"
+        "https://github.com/tiyongLit/Molan/raw/main/update/latest.json"
       ],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEM1QzU4M0Y1MTlENjc4NTIKUldSU2VOWVo5WVBGeFJqaXlwMS90YUw2b1hGNnNBWGNsRW9QWFM1dU5FY0MxVTZkRnUrQmpzMFEK"
     }

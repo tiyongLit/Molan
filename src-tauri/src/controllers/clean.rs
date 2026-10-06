@@ -7,6 +7,7 @@ use std::time::Duration;
 use serde::Deserialize;
 use serde_json::Value;
 
+use crate::clean::job_state;
 use crate::clean::model::MoleCleanPathItem;
 use crate::clean::orchestrator::run_clean_core;
 use crate::clean::scan_job::{
@@ -14,7 +15,6 @@ use crate::clean::scan_job::{
     wait_for_job,
 };
 use crate::clean::scan_registry::take_scan_snapshot;
-use crate::clean::job_state;
 use crate::core::sudo;
 
 #[tauri::command(rename_all = "snake_case")]
@@ -167,7 +167,6 @@ pub fn clean_job_cancel(app: tauri::AppHandle, job_id: Option<String>) -> Result
     let snap = request_clean_scan_cancel(&app, job_id.as_deref());
     serde_json::to_value(&snap).map_err(|e| e.to_string())
 }
-
 
 #[derive(Deserialize)]
 pub struct CleanApplyArgs {

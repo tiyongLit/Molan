@@ -17,7 +17,7 @@
 //! 均经 `confirm_tray_exit()` 置位放行；Dock 右键退出永不置位；
 //! 系统来源放行时同步置位（保证两道防线口径一致）。
 
-use std::ffi::{c_char, c_uchar, c_void, CStr};
+use std::ffi::{CStr, c_char, c_uchar, c_void};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use tauri::{AppHandle, Emitter};
@@ -118,10 +118,7 @@ unsafe fn quit_request_source() -> (Option<String>, u32) {
     if attr.is_null() {
         return (None, event_id);
     }
-    let pid = objc_msg_send_i32(
-        attr,
-        sel_registerName(b"int32Value\0".as_ptr() as *const _),
-    );
+    let pid = objc_msg_send_i32(attr, sel_registerName(b"int32Value\0".as_ptr() as *const _));
     if pid <= 0 {
         return (None, event_id);
     }

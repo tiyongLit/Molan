@@ -15,13 +15,13 @@
 //! - `UNUserNotificationCenter.delegate` 是 **weak** 属性，delegate 实例
 //!   必须在本模块强引用持有，否则回调静默失效。
 
-use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use std::sync::OnceLock;
+use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 
 use block2::{DynBlock, RcBlock};
 use objc2::rc::Retained;
 use objc2::runtime::{AnyObject, ProtocolObject};
-use objc2::{define_class, msg_send, AnyThread};
+use objc2::{AnyThread, define_class, msg_send};
 use objc2_foundation::{NSDictionary, NSError, NSObject, NSObjectProtocol, NSString};
 use objc2_user_notifications::{
     UNAuthorizationOptions, UNAuthorizationStatus, UNMutableNotificationContent,
@@ -150,7 +150,8 @@ pub fn send_residual_notification(app_name: &str, bundle_id: Option<&str>, lang:
     let val_app: Retained<AnyObject> = NSString::from_str(app_name).into();
     let key_bid = NSString::from_str(USER_INFO_KEY_BUNDLE_ID);
     let val_bid: Retained<AnyObject> = NSString::from_str(bundle_id.unwrap_or("")).into();
-    let user_info = NSDictionary::from_retained_objects(&[&*key_app, &*key_bid], &[val_app, val_bid]);
+    let user_info =
+        NSDictionary::from_retained_objects(&[&*key_app, &*key_bid], &[val_app, val_bid]);
     // SAFETY: 键值均为 NSString，符合 `userInfo` 对属性列表值类型的要求。
     // `from_retained_objects` 受 `CopyingHelper` 约束只能产出 `NSDictionary<NSString, AnyObject>`，
     // 而 `setUserInfo` 要求 `NSDictionary<AnyObject, AnyObject>`：泛型参数仅存在于类型层
@@ -179,7 +180,8 @@ pub fn send_residual_notification(app_name: &str, bundle_id: Option<&str>, lang:
 
     let center = UNUserNotificationCenter::currentNotificationCenter();
     center.addNotificationRequest_withCompletionHandler(&request, Some(&handler));
-    rx.recv_timeout(std::time::Duration::from_secs(5)).unwrap_or(true)
+    rx.recv_timeout(std::time::Duration::from_secs(5))
+        .unwrap_or(true)
 }
 
 // ────────────────────────── 内部实现 ──────────────────────────
@@ -316,7 +318,10 @@ mod tests {
             auth_status_to_u8(UNAuthorizationStatus::Provisional),
             AUTH_AUTHORIZED
         );
-        assert_eq!(auth_status_to_u8(UNAuthorizationStatus::Denied), AUTH_DENIED);
+        assert_eq!(
+            auth_status_to_u8(UNAuthorizationStatus::Denied),
+            AUTH_DENIED
+        );
         assert_eq!(
             auth_status_to_u8(UNAuthorizationStatus::NotDetermined),
             AUTH_NOT_DETERMINED

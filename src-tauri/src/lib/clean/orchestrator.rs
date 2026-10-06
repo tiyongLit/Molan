@@ -14,7 +14,7 @@ use crate::clean::model::{
     CleanCategory, CleanItem, CleanOutput, CleanResult, CleanSummary, WhitelistInfo,
 };
 use crate::clean::scan_registry::{
-    generate_scan_id, store_scan_snapshot, ScanSnapshot, SnapshotItem,
+    ScanSnapshot, SnapshotItem, generate_scan_id, store_scan_snapshot,
 };
 use crate::clean::selection::compute_default_selected;
 use crate::clean::{app_caches, apps, caches, dev, hints, launch_services, system, user};
@@ -33,9 +33,9 @@ use crate::events::{
     PHASE_APPLE_SILICON_CACHES, PHASE_APPLICATIONS, PHASE_BROWSERS, PHASE_CLOUD_STORAGE,
     PHASE_DEV_TOOLS, PHASE_DEVICE_FIRMWARE, PHASE_FINDER_METADATA, PHASE_LOCAL_SNAPSHOTS,
     PHASE_OFFICE_CACHES, PHASE_ORPHANED_CONTAINER_STUBS, PHASE_ORPHANED_DATA,
-    PHASE_ORPHANED_SYSTEM_SERVICES, PHASE_PROJECT_ARTIFACTS, PHASE_SYSTEM,
-    PHASE_SYSTEM_DATA_HINTS, PHASE_TIME_MACHINE, PHASE_USER_ESSENTIALS, PHASE_VIRTUALIZATION,
-    emit_cleanup_hints_result, emit_cleanup_phase_result,
+    PHASE_ORPHANED_SYSTEM_SERVICES, PHASE_PROJECT_ARTIFACTS, PHASE_SYSTEM, PHASE_SYSTEM_DATA_HINTS,
+    PHASE_TIME_MACHINE, PHASE_USER_ESSENTIALS, PHASE_VIRTUALIZATION, emit_cleanup_hints_result,
+    emit_cleanup_phase_result,
 };
 use crate::manage::whitelist;
 

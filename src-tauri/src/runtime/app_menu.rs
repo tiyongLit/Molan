@@ -63,13 +63,8 @@ fn replace_quit_item<R: Runtime>(app: &AppHandle<R>, menu: &Menu<R>) -> tauri::R
 
     let position = items.len() - 1;
     app_submenu.remove(default_quit)?;
-    let custom_quit = MenuItem::with_id(
-        app,
-        MENU_QUIT_ID,
-        "退出 Molan",
-        true,
-        Some("CmdOrCtrl+Q"),
-    )?;
+    let custom_quit =
+        MenuItem::with_id(app, MENU_QUIT_ID, "退出 Molan", true, Some("CmdOrCtrl+Q"))?;
     app_submenu.insert(&custom_quit, position)?;
     log::info!("[app_menu] quit item replaced (Cmd+Q → in-app quit flow)");
     Ok(())

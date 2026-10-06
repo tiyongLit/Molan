@@ -504,7 +504,10 @@ enum Measurement {
     /// 无法完成测量（fail-closed）。`permission` 标记权限类失败（EPERM/EACCES，
     /// 通常为 TCC 拦截未授权），错误码据此区分，前端可引导授权完全磁盘访问权限；
     /// `detail` 为首个失败细节，仅用于日志排查。
-    Unknown { permission: bool, detail: Option<String> },
+    Unknown {
+        permission: bool,
+        detail: Option<String>,
+    },
     Cancelled,
 }
 
@@ -515,7 +518,10 @@ fn is_permission_error(error: &std::io::Error) -> bool {
 
 fn measure(path: &Path, threshold: u64, cancelled: impl Fn() -> bool) -> Measurement {
     if threshold == 0 {
-        return Measurement::Unknown { permission: false, detail: None };
+        return Measurement::Unknown {
+            permission: false,
+            detail: None,
+        };
     }
     let mut stack = vec![path.to_owned()];
     let mut total = 0u64;

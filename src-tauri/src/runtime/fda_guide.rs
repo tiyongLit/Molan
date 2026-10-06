@@ -429,11 +429,26 @@ mod tests {
     #[test]
     fn classify_maps_errno_to_outcome() {
         assert_eq!(classify_probe(true, None), ProbeOutcome::Granted);
-        assert_eq!(classify_probe(false, Some(libc::EPERM)), ProbeOutcome::Denied);
-        assert_eq!(classify_probe(false, Some(libc::EACCES)), ProbeOutcome::Denied);
-        assert_eq!(classify_probe(false, Some(libc::ENOENT)), ProbeOutcome::Unavailable);
-        assert_eq!(classify_probe(false, Some(libc::ENOTDIR)), ProbeOutcome::Unavailable);
-        assert_eq!(classify_probe(false, Some(libc::EIO)), ProbeOutcome::Inconclusive);
+        assert_eq!(
+            classify_probe(false, Some(libc::EPERM)),
+            ProbeOutcome::Denied
+        );
+        assert_eq!(
+            classify_probe(false, Some(libc::EACCES)),
+            ProbeOutcome::Denied
+        );
+        assert_eq!(
+            classify_probe(false, Some(libc::ENOENT)),
+            ProbeOutcome::Unavailable
+        );
+        assert_eq!(
+            classify_probe(false, Some(libc::ENOTDIR)),
+            ProbeOutcome::Unavailable
+        );
+        assert_eq!(
+            classify_probe(false, Some(libc::EIO)),
+            ProbeOutcome::Inconclusive
+        );
         assert_eq!(classify_probe(false, None), ProbeOutcome::Inconclusive);
     }
 

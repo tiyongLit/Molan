@@ -103,9 +103,9 @@ pub fn check_mole_update() -> Option<MoleUpdateStatus> {
 
     if crate::manage::whitelist_optimize::is_whitelisted_optimize(
         "check_mole_update",
-        &crate::manage::whitelist_optimize::load_optimize_whitelist_patterns(&std::path::PathBuf::from(
-            &home,
-        )),
+        &crate::manage::whitelist_optimize::load_optimize_whitelist_patterns(
+            &std::path::PathBuf::from(&home),
+        ),
         &std::path::PathBuf::from(&home),
     ) {
         return None;

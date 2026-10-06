@@ -6,11 +6,11 @@ use tauri::{AppHandle, Emitter};
 use crate::check::health_json::{HealthOptimizationItem, collect_health_json};
 use crate::core::sudo;
 use crate::manage::autofix::perform_auto_fix;
+use crate::manage::whitelist_optimize;
 use crate::optimize::diagnostics;
 use crate::optimize::outcome::OptimizeOutcome;
 use crate::optimize::tasks::execute_optimization;
 use crate::optimize::{clear_failure, take_failure};
-use crate::manage::whitelist_optimize;
 
 /// 与前端 `EVT_OPTIMIZE_PROGRESS` 字符串保持一致。
 const EVT_OPTIMIZE_PROGRESS: &str = "optimize::progress";

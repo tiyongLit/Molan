@@ -188,9 +188,10 @@ pub async fn mole_trash_empty(
     window: tauri::WebviewWindow,
 ) -> Result<crate::platform::macos_trash_empty::EmptyTrashResult, String> {
     require_window(window.label(), &["trash-reminder"])?;
-    let result = tauri::async_runtime::spawn_blocking(crate::platform::macos_trash_empty::empty_trash)
-        .await
-        .map_err(|e| e.to_string())??;
+    let result =
+        tauri::async_runtime::spawn_blocking(crate::platform::macos_trash_empty::empty_trash)
+            .await
+            .map_err(|e| e.to_string())??;
     // 清空成功后立即让当前提醒失效隐藏（废纸篓已空必低于阈值）。
     crate::runtime::trash_watch::service(&app).on_trash_emptied(&app);
     Ok(result)
@@ -259,10 +260,7 @@ pub async fn mole_trash_reminder_get_state(
     app: tauri::AppHandle,
     window: tauri::WebviewWindow,
 ) -> Result<crate::runtime::trash_watch::Snapshot, String> {
-    require_window(
-        window.label(),
-        &["trash-reminder", "Molan", "settings"],
-    )?;
+    require_window(window.label(), &["trash-reminder", "Molan", "settings"])?;
     let refresh = window.label() == "settings";
     let ready = window.label() == "trash-reminder";
     tauri::async_runtime::spawn_blocking(move || {

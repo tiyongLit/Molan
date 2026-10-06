@@ -3,7 +3,8 @@
 
 /// 最近一次 `clean_scan` 成功完成的时间（用于 `clean_status` 展示数据时效）。
 /// 纯内存态，重启后归零；前端据此判断是否提示「数据已过期，建议重新扫描」。
-pub static LAST_SCAN_AT: std::sync::Mutex<Option<std::time::SystemTime>> = std::sync::Mutex::new(None);
+pub static LAST_SCAN_AT: std::sync::Mutex<Option<std::time::SystemTime>> =
+    std::sync::Mutex::new(None);
 
 // ============================================================
 // 扫描快照注册表 — 防重放、防篡改、校验 scan_id

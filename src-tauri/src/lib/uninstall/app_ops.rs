@@ -200,7 +200,11 @@ pub fn run_dry_run(app_path: &str, data_only: bool) -> Result<Value, String> {
     }))
 }
 
-pub fn run_execute(app: &tauri::AppHandle, app_path: &str, data_only: bool) -> Result<Value, String> {
+pub fn run_execute(
+    app: &tauri::AppHandle,
+    app_path: &str,
+    data_only: bool,
+) -> Result<Value, String> {
     // Clear Data 模式：保留 app 本体，只清残留
     if data_only {
         unsafe { std::env::set_var("MOLE_UNINSTALL_DATA_ONLY", "1") };
