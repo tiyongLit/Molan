@@ -790,6 +790,20 @@ fn measure_size_kb(path: &str, needs_sudo: bool) -> String {
 }
 
 pub fn mole_delete(path: &str, needs_sudo: bool, expected_identity: Option<&str>) -> i32 {
+    mole_delete_with_size(path, needs_sudo, expected_identity, None)
+}
+
+/// `mole_delete` 的变体：允许调用方传入预知体积（KB 字符串），跳过 `measure_size_kb`。
+///
+/// 体积仅用于删除日志 / 操作记录与回退删除的 precomputed 透传，不影响删除行为语义。
+/// 孤儿残留链路在扫描时已测得体积（前端随删除请求回传），
+/// 免去"每条路径删除前一次 `du -skP` 全树遍历"的开销。
+pub fn mole_delete_with_size(
+    path: &str,
+    needs_sudo: bool,
+    expected_identity: Option<&str>,
+    preset_size_kb: Option<&str>,
+) -> i32 {
     let mode = std::env::var("MOLE_DELETE_MODE").unwrap_or_else(|_| "permanent".to_string());
 
     if path.is_empty() {
@@ -816,7 +830,11 @@ pub fn mole_delete(path: &str, needs_sudo: bool, expected_identity: Option<&str>
         return MOLE_ERR_MUTABLE_PARENT;
     }
 
-    let size_kb = measure_size_kb(path, needs_sudo);
+    // 体积：调用方预知（如孤儿扫描已测得）时直接复用，跳过 du 全树；否则现量
+    let size_kb = match preset_size_kb {
+        Some(s) if !s.is_empty() => s.to_string(),
+        _ => measure_size_kb(path, needs_sudo),
+    };
 
     // 对齐 SH 第 1600-1628 行:expected_identity 非空时重查 dev:ino:mode,
     // 预览与执行之间路径被换成新对象则拒绝删除。

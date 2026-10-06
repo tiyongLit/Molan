@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from 'react'
 import { Segmented } from 'antd'
-import { Type, HardDrive, Clock, ArrowUpDown, ArrowDownUp, ArrowUp, ArrowDown, LayoutGrid, Rocket, Cog, AlertTriangle, Trash2, X } from 'lucide-react'
+import { Type, HardDrive, Clock, ArrowUpDown, ArrowDownUp, ArrowUp, ArrowDown, ArrowLeft, LayoutGrid, Rocket, Cog, AlertTriangle, Trash2, X } from 'lucide-react'
 import { listen } from '@tauri-apps/api/event'
 import { UninstallTab, type UninstallSelection, type SortField } from './UninstallTab'
 import { StartupTab } from './StartupTab'
@@ -28,7 +28,10 @@ const APPS_THEME_VARS: React.CSSProperties = {
   '--border': 'rgba(255, 255, 255, 0.14)',
 } as React.CSSProperties
 
-type AppTab = 'uninstall' | 'startup' | 'orphans'
+type AppTab = 'uninstall' | 'startup'
+
+/** 卸载 tab 内的三态视图：应用列表 / 卸载历史 / 残留清理（残留视图常驻挂载保状态） */
+type UninstallView = 'list' | 'history' | 'residual'
 
 // ── 启动 tab：筛选下拉（App 分组模式：全部/应用/服务/问题）──
 const STARTUP_FILTER_LABEL: Record<StartupFilter, TranslationKey> = {
@@ -52,13 +55,13 @@ const SORT_DEFAULT_ASC: Record<SortField, boolean> = {
 }
 
 /**
- * Apps 页壳：顶部 Segmented（卸载 / 启动项 / 残留孤儿）+ 右侧工具栏 + 底部操作栏
+ * Apps 页壳：顶部 Segmented（卸载 / 启动项）+ 右侧工具栏 + 底部操作栏
  *
  * 布局：
- *   ① 顶部：Segmented 胶囊分段（左） + 随 tab 变化的右侧工具栏（排序 chips / 刷新 / 搜索）
+ *   ① 顶部：Segmented 胶囊分段（左） + 随 tab/视图变化的右侧工具栏
  *   ② hairline 分隔线
- *   ③ 内容区（随 tab 切换）
- *   ④ bottomBar（仅卸载 tab）
+ *   ③ 内容区（随 tab 切换；卸载 tab 内在 列表/历史/残留 三态视图间切换）
+ *   ④ bottomBar（仅卸载 tab 列表视图）
  */
 export function ShellUninstall() {
   const [activeTab, setActiveTab] = useState<AppTab>('uninstall')
@@ -79,7 +82,7 @@ export function ShellUninstall() {
   const [apps, setApps] = useState<MoleListAppsEntry[]>([])
   const [loading, setLoading] = useState(true)
   const { cleaningApps, startCleaning } = useUninstallProgress()
-  const [historyVisible, setHistoryVisible] = useState(false)
+  const [uninstallView, setUninstallView] = useState<UninstallView>('list')
 
   // ── 卸载残留自动检测 ──
   // 兜底通道：通知不可用（dev / 未授权 / 发送失败）时后端发事件，页面内提示条承接；
@@ -95,9 +98,13 @@ export function ShellUninstall() {
     return () => { unlisten.then(fn => fn()) }
   }, [settings.uninstall.autoDetectResidual])
 
-  // 定向目标就绪（通知点击 / 提示条「扫描残留」）→ 切到孤儿 tab，定向扫描由 OrphansTab 接管
+  // 定向目标就绪（通知点击 / 提示条「扫描残留」）→ 打开卸载页的残留视图，
+  // 定向扫描由常驻挂载的 OrphansTab 接管
   useEffect(() => {
-    if (residualTarget) setActiveTab('orphans')
+    if (residualTarget) {
+      setActiveTab('uninstall')
+      setUninstallView('residual')
+    }
   }, [residualTarget])
 
   const loadApps = useCallback(() => {
@@ -398,15 +405,14 @@ export function ShellUninstall() {
           options={[
             { label: t('uninstall.tab.uninstall'), value: 'uninstall' },
             { label: t('uninstall.tab.startup'), value: 'startup' },
-            { label: t('uninstall.tab.orphans'), value: 'orphans' },
           ]}
           className="apps-segmented"
         />
 
         <div className="flex-1" />
 
-        {/* 右侧工具栏：随 tab 变化 */}
-        {activeTab === 'uninstall' && (
+        {/* 右侧工具栏：随 tab/视图变化 */}
+        {activeTab === 'uninstall' && uninstallView !== 'residual' && (
           <UninstallToolbar
             searchText={searchText}
             onSearchChange={setSearchText}
@@ -426,8 +432,8 @@ export function ShellUninstall() {
             selectedKeys={[sortField]}
             onMenuClick={handleSortSelect}
             onRefresh={handleRescan}
-            onShowHistory={() => setHistoryVisible(!historyVisible)}
-            showHistory={historyVisible}
+            onShowHistory={() => setUninstallView((v) => (v === 'history' ? 'list' : 'history'))}
+            showHistory={uninstallView === 'history'}
           />
         )}
         {activeTab === 'startup' && (
@@ -447,9 +453,18 @@ export function ShellUninstall() {
             onRefresh={handleRescan}
           />
         )}
-        {activeTab === 'orphans' && (
-          // 残留孤儿 tab 的扫描按钮组由 OrphansTab 通过 Portal 注入此槽位（仅扫描完成后出现）
-          <div id="orphans-toolbar-slot" className="flex items-center" />
+        {activeTab === 'uninstall' && uninstallView === 'residual' && (
+          // 残留视图工具栏：返回列表 + 重扫按钮槽位（由 OrphansTab 通过 Portal 注入，仅扫描完成后出现）
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setUninstallView('list')}
+              className="group flex items-center gap-1 text-xs text-white/70 hover:text-white transition-colors"
+            >
+              <ArrowLeft size={13} className="opacity-70 group-hover:opacity-100 transition-opacity" />
+              {t('uninstall.orphan.backToList')}
+            </button>
+            <div id="orphans-toolbar-slot" className="flex items-center" />
+          </div>
         )}
       </div>
 
@@ -465,8 +480,8 @@ export function ShellUninstall() {
           </span>
           <button
             onClick={() => {
-              // 有 bundleId → 写入定向目标，走通知同款链路（自动切 tab + 定向扫描）；
-              // 无 bundleId → 保持原行为仅切 tab
+              // 有 bundleId → 写入定向目标，走通知同款链路（自动打开残留视图 + 定向扫描）；
+              // 无 bundleId → 仅打开残留视图（全量扫描）
               if (residualApp.bundleId) {
                 setResidualTarget({
                   appName: residualApp.appName,
@@ -474,7 +489,8 @@ export function ShellUninstall() {
                   detectedAt: Math.floor(Date.now() / 1000),
                 })
               } else {
-                setActiveTab('orphans')
+                setActiveTab('uninstall')
+                setUninstallView('residual')
               }
               setResidualApp(null)
             }}
@@ -494,21 +510,22 @@ export function ShellUninstall() {
       {/* ═══ 内容区 ═══ */}
       <div className="flex-1 min-h-0 overflow-hidden">
         {activeTab === 'uninstall' && (
-          historyVisible ? (
-            <UninstallHistoryList />
-          ) : (
-            <UninstallTab
-              apps={apps}
-              loading={loading}
-              searchText={searchText}
-              selection={selection}
-              sortField={sortField}
-              sortAscending={sortAscending}
-              onSelectionChange={handleSelectionChange}
-              onClearDataOnly={handleClearDataOnly}
-              cleaningApps={cleaningApps}
-            />
-          )
+          <>
+            {uninstallView === 'list' && (
+              <UninstallTab
+                apps={apps}
+                loading={loading}
+                searchText={searchText}
+                selection={selection}
+                sortField={sortField}
+                sortAscending={sortAscending}
+                onSelectionChange={handleSelectionChange}
+                onClearDataOnly={handleClearDataOnly}
+                cleaningApps={cleaningApps}
+              />
+            )}
+            {uninstallView === 'history' && <UninstallHistoryList />}
+          </>
         )}
         {activeTab === 'startup' && (
           <StartupTab
@@ -517,11 +534,14 @@ export function ShellUninstall() {
             reloadTick={startupReloadTick}
           />
         )}
-        {activeTab === 'orphans' && <OrphansTab />}
+        {/* 残留视图常驻挂载 + hidden 切换：切走不丢扫描结果与勾选，避免重复扫描 */}
+        <div className={activeTab === 'uninstall' && uninstallView === 'residual' ? 'h-full' : 'hidden'}>
+          <OrphansTab active={activeTab === 'uninstall' && uninstallView === 'residual'} />
+        </div>
       </div>
 
-      {/* ═══ 底部操作栏（仅卸载 tab）═══ */}
-      {activeTab === 'uninstall' && (
+      {/* ═══ 底部操作栏（仅卸载 tab 的列表视图；残留视图自带总览操作卡）═══ */}
+      {activeTab === 'uninstall' && uninstallView !== 'residual' && (
         <>
           <div className="shrink-0 h-px bg-gradient-to-r from-transparent via-white/35 to-transparent mx-[24px]" />
           <div className="shrink-0 flex items-center justify-between mx-[24px] h-[44px]">

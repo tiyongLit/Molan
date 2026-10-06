@@ -749,11 +749,19 @@ export interface OrphanEntry {
   deletable: boolean
 }
 
+/** 孤儿删除请求项：path + 扫描时测得体积（字节，与列表展示同口径；后端跳过 du 全树） */
+export interface OrphanDeleteItem {
+  path: string
+  size_bytes: number
+}
+
 /** 孤儿删除结果 */
 export interface OrphanDeleteResult {
   success_count: number
   failed_count: number
   total_freed_bytes: number
+  /** 删除成功的路径列表（逐条结果，前端据此精确移除列表项） */
+  deleted_paths: string[]
 }
 
 // ============================================================

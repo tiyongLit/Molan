@@ -222,55 +222,100 @@ pub async fn mole_orphan_scan(_app: tauri::AppHandle) -> Result<Vec<OrphanEntry>
     Ok(orphans)
 }
 
+/// 孤儿删除请求项：path + 扫描时测得体积（字节）。
+///
+/// 体积来自扫描结果（与列表展示同口径），随请求回传用于：
+/// - 删除日志 / 操作记录的体积字段（替代删除前 `du -skP` 全树遍历）
+/// - `total_freed_bytes` 汇总（原实现用 `metadata().len()` 取目录 inode 大小，严重偏小）
+#[derive(serde::Deserialize)]
+pub struct OrphanDeleteItem {
+    pub path: String,
+    pub size_bytes: u64,
+}
+
 /// 孤儿残留删除：走 trash crate + 用户确认。
 ///
 /// 对每条路径再次校验 `is_safe_orphan_candidate`，
-/// 然后调 `file_ops::mole_delete`（内部已有 validate_path_for_deletion + TOCTOU 防护）。
+/// 然后调 `file_ops::mole_delete_with_size`（内部已有 validate_path_for_deletion + TOCTOU 防护）。
+///
+/// 删除口径对齐扫描口径：启用 `MOLE_UNINSTALL_MODE`，让 `should_protect_path`
+/// 放宽 DATA_PROTECTED_BUNDLES / 宽口径名单（com.jetbrains.、com.macpaw. 等
+/// 已卸载 app 的易失数据），SYSTEM_CRITICAL 仍拦截；与 uninstall::batch 同款写法。
+///
+/// 逐条 trash 是阻塞 IO：整体搬进 spawn_blocking，避免占用 tokio worker。
 #[tauri::command(rename_all = "snake_case")]
 pub async fn mole_orphan_delete(
     _app: tauri::AppHandle,
-    paths: Vec<String>,
+    items: Vec<OrphanDeleteItem>,
 ) -> Result<Value, String> {
-    if paths.is_empty() {
+    if items.is_empty() {
         return Ok(serde_json::json!({
             "success_count": 0,
             "failed_count": 0,
-            "total_freed_bytes": 0
+            "total_freed_bytes": 0,
+            "deleted_paths": []
         }));
     }
 
-    let home = crate::core::base::home_dir();
-    let mut success_count = 0usize;
-    let mut failed_count = 0usize;
-    let mut total_freed: u64 = 0;
+    let (success_count, failed_count, total_freed, deleted_paths) =
+        tauri::async_runtime::spawn_blocking(move || {
+            // 孤儿删除 = 用户显式确认后的真实删除：清掉可能泄漏的 dry-run 标记，
+            // 避免 mole_delete 提前返回 MOLE_OK 造成"假成功"。
+            std::env::remove_var("MOLE_DRY_RUN");
 
-    for path in &paths {
-        // 二次安全校验（防前端传入非法路径）
-        if !is_safe_orphan_candidate(path, &home) {
-            log::warn!("[orphan_delete] rejected unsafe path: {}", path);
-            failed_count += 1;
-            continue;
-        }
+            // 启用 uninstall 模式（设置/恢复沿用 uninstall::batch 的既有模式）
+            let prev_mode = std::env::var("MOLE_UNINSTALL_MODE").ok();
+            std::env::set_var("MOLE_UNINSTALL_MODE", "1");
 
-        // 计算删除前大小
-        let size_before = std::fs::metadata(path).map(|m| m.len()).unwrap_or(0);
+            let home = crate::core::base::home_dir();
+            let mut success_count = 0usize;
+            let mut failed_count = 0usize;
+            let mut total_freed: u64 = 0;
+            // 逐条成功结果：前端据此精确移除列表项（不能按"前 N 个成功"推断）
+            let mut deleted_paths: Vec<String> = Vec::new();
 
-        // 走统一删除管线（trash crate + validate_path_for_deletion）
-        let exit_code = crate::core::file_ops::mole_delete(path, false, None);
-        if exit_code == crate::core::file_ops::MOLE_OK {
-            success_count += 1;
-            total_freed += size_before;
-            log::info!("[orphan_delete] trashed: {}", path);
-        } else {
-            failed_count += 1;
-            log::warn!("[orphan_delete] failed (exit={}): {}", exit_code, path);
-        }
-    }
+            for item in &items {
+                let path = item.path.as_str();
+                // 二次安全校验（防前端传入非法路径）
+                if !is_safe_orphan_candidate(path, &home) {
+                    log::warn!("[orphan_delete] rejected unsafe path: {}", path);
+                    failed_count += 1;
+                    continue;
+                }
+
+                // 复用扫描已测体积（KB 字符串透传给删除日志），跳过 du 全树
+                let size_kb = (item.size_bytes / 1024).to_string();
+
+                // 走统一删除管线（trash crate + validate_path_for_deletion）
+                let exit_code =
+                    crate::core::file_ops::mole_delete_with_size(path, false, None, Some(&size_kb));
+                if exit_code == crate::core::file_ops::MOLE_OK {
+                    success_count += 1;
+                    total_freed += item.size_bytes;
+                    deleted_paths.push(item.path.clone());
+                    log::info!("[orphan_delete] trashed: {}", path);
+                } else {
+                    failed_count += 1;
+                    log::warn!("[orphan_delete] failed (exit={}): {}", exit_code, path);
+                }
+            }
+
+            // 恢复原值（可能被外层流程设置为其他值）
+            match prev_mode {
+                Some(v) => std::env::set_var("MOLE_UNINSTALL_MODE", v),
+                None => std::env::remove_var("MOLE_UNINSTALL_MODE"),
+            }
+
+            (success_count, failed_count, total_freed, deleted_paths)
+        })
+        .await
+        .map_err(|e| format!("孤儿删除任务失败: {}", e))?;
 
     Ok(serde_json::json!({
         "success_count": success_count,
         "failed_count": failed_count,
-        "total_freed_bytes": total_freed
+        "total_freed_bytes": total_freed,
+        "deleted_paths": deleted_paths
     }))
 }
 

@@ -13,7 +13,9 @@
 //! - **高风险 dotpath**：调用 `high_risk_dotpaths::is_high_risk_dotpath` 兜底。
 //! - **Apple 系统前缀**：文件名以 `com.apple.` 开头的一律跳过。
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
+
+use rayon::prelude::*;
 
 use crate::core::high_risk_dotpaths;
 
@@ -396,9 +398,12 @@ pub fn scan_orphans_for(bundle_id: Option<&str>, app_name: &str, home: &str) -> 
 ///
 /// `include` 由调用方提供命中口径（全量扫描 = 排除已安装 app；定向扫描 =
 /// 命中目标 app），安全部分两条链路完全一致。
-fn scan_candidates(home: &str, include: impl Fn(&str) -> bool) -> Vec<OrphanEntry> {
-    let mut orphans: Vec<OrphanEntry> = Vec::new();
-
+///
+/// 两段式 + rayon：Phase 1 串行 read_dir 收集原始候选（轻量）；
+/// Phase 2 并行做命中判定与 3 层体积统计（重 IO，是扫描耗时主体）。
+fn scan_candidates(home: &str, include: impl Fn(&str) -> bool + Sync) -> Vec<OrphanEntry> {
+    // Phase 1: 收集原始候选（read_dir 轻量；跳过已知系统项在此完成）
+    let mut raw: Vec<(PathBuf, String, String)> = Vec::new(); // (路径, 文件名, 归一化名)
     for scan_path in ORPHAN_SCAN_PATHS {
         let expanded = expand_tilde(scan_path, home);
         let dir = Path::new(&expanded);
@@ -413,37 +418,42 @@ fn scan_candidates(home: &str, include: impl Fn(&str) -> bool) -> Vec<OrphanEntr
             let Some(file_name) = item_path.file_name().and_then(|s| s.to_str()) else {
                 continue;
             };
-            let full_path = item_path.to_string_lossy().to_string();
             let normalized = normalize_for_matching(file_name);
-
-            // 1. 跳过已知系统项
             if ORPHAN_SKIP_PREFIXES
                 .iter()
                 .any(|prefix| normalized.starts_with(prefix))
             {
                 continue;
             }
+            // 先复制文件名再 move item_path（file_name 借用自 item_path）
+            let file_name_owned = file_name.to_string();
+            raw.push((item_path, file_name_owned, normalized));
+        }
+    }
 
-            // 2. 目标判定（口径由调用方决定）
-            if !include(&normalized) {
-                continue;
+    // Phase 2: 并行做目标判定 + 安全策略判定 + 分类 + 体积统计
+    let mut orphans: Vec<OrphanEntry> = raw
+        .par_iter()
+        .filter_map(|(item_path, file_name, normalized)| {
+            // 1. 目标判定（口径由调用方决定）
+            if !include(normalized) {
+                return None;
             }
-
-            // 3. 安全策略判定
+            let full_path = item_path.to_string_lossy().to_string();
+            // 2. 安全策略判定
             let deletable = is_safe_orphan_candidate(&full_path, home);
             let category = classify_orphan_path(&full_path);
-            let size_bytes = compute_path_size(&item_path);
-
-            orphans.push(OrphanEntry {
+            let size_bytes = compute_path_size(item_path);
+            Some(OrphanEntry {
                 path: full_path,
-                file_name: file_name.to_string(),
+                file_name: file_name.clone(),
                 size_bytes,
                 size_human: format_size(size_bytes),
                 category,
                 deletable,
-            });
-        }
-    }
+            })
+        })
+        .collect();
 
     // 按文件名排序
     orphans.sort_by(|a, b| a.file_name.cmp(&b.file_name));
@@ -676,10 +686,17 @@ mod tests {
             "com.otherbigapp.cachedir",
         ]);
         let hits = scan_orphans_for(Some("com.testtarget"), "NoSuchName", &home);
-        assert!(hits.iter().any(|o| o.file_name == "com.testtarget.cachedir"));
+        assert!(
+            hits.iter()
+                .any(|o| o.file_name == "com.testtarget.cachedir")
+        );
         assert!(hits.iter().any(|o| o.file_name == "com.testtarget.helper"));
         // 非目标 app 的残留不得混入
-        assert!(!hits.iter().any(|o| o.file_name == "com.otherbigapp.cachedir"));
+        assert!(
+            !hits
+                .iter()
+                .any(|o| o.file_name == "com.otherbigapp.cachedir")
+        );
     }
 
     #[test]
@@ -689,7 +706,10 @@ mod tests {
         assert!(scan_orphans_for(None, "Ab", &home).is_empty());
         // ≥3 字符时可走 appName 匹配（bundleId 缺失的兜底路径）
         let hits = scan_orphans_for(None, "TestTarget", &home);
-        assert!(hits.iter().any(|o| o.file_name == "com.testtarget.cachedir"));
+        assert!(
+            hits.iter()
+                .any(|o| o.file_name == "com.testtarget.cachedir")
+        );
     }
 
     #[test]

@@ -9,6 +9,7 @@ import { AppIcon } from '@/components/business/Apps/AppIcon'
 import { MoleCheckbox, CleaningProgressBar } from '@/components/ui'
 import type { CleaningAppState } from '@/hooks/useUninstallProgress'
 import type { MoleListAppsEntry, MoleUninstallResult } from '@/types/mole'
+import { ResidualEntryPanel } from './components/ResidualEntryPanel'
 
 // ── 配色（对齐 Clean 页面）──
 const ACCENT_GREEN = '#64dfa7' // 强调文字 / 链接
@@ -529,6 +530,7 @@ export function UninstallTab({ apps, loading, searchText, selection, sortField, 
                 </div>
               )
             })}
+            {!searchText.trim() && <ResidualEntryPanel />}
           </div>
           )}
         </div>
