@@ -21,7 +21,19 @@
 
 > 💡 **Molan** is a GUI app for cleaning, uninstalling, optimizing, and understanding your Mac. The scanning and cleanup logic is a **complete Rust rewrite** of the beloved open-source CLI [`tw93/Mole`](https://github.com/tw93/Mole), rebuilt around a native desktop experience: visual categories, checkboxes, previews, confirmations, and one-click reclaim — no terminal required.
 
-<!-- Screenshot placeholder: drop a PNG into docs/img/ and replace this comment -->
+<p align="center">
+  <img src="./docs/home.png" alt="Home — disk overview and one-click scan" width="96%">
+</p>
+
+<p align="center">
+  <img src="./docs/clean.png" alt="Deep Clean — scan categories" width="48%">
+  <img src="./docs/uninstall.png" alt="Smart Uninstall — apps and their leftovers" width="48%">
+</p>
+
+<p align="center">
+  <img src="./docs/optimize.png" alt="Optimize — guided maintenance" width="48%">
+  <img src="./docs/analyze.png" alt="Disk Analyze — visual disk explorer" width="48%">
+</p>
 
 ## Why Molan
 

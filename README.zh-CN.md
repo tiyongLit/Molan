@@ -21,7 +21,19 @@
 
 > 💡 **Molan** 是一款帮助你在 Mac 上完成清理、卸载、优化与磁盘洞察的 GUI 应用。其扫描与清理逻辑是对开源命令行工具 [`tw93/Mole`](https://github.com/tw93/Mole) 的 **Rust 完整重写**，并围绕原生桌面体验重构：可视化分类、勾选框、结果预览、显式确认、一键回收空间 —— 全程无需打开终端。
 
-<!-- 截图占位：将 PNG 放入 docs/img/ 并替换本注释 -->
+<p align="center">
+  <img src="./docs/home.png" alt="首页 —— 磁盘概览与一键扫描" width="96%">
+</p>
+
+<p align="center">
+  <img src="./docs/clean.png" alt="深度清理 —— 扫描分类" width="48%">
+  <img src="./docs/uninstall.png" alt="智能卸载 —— 应用与残留" width="48%">
+</p>
+
+<p align="center">
+  <img src="./docs/optimize.png" alt="系统优化 —— 引导式维护" width="48%">
+  <img src="./docs/analyze.png" alt="磁盘透视 —— 可视化磁盘浏览" width="48%">
+</p>
 
 ## 为什么做 Molan
 
