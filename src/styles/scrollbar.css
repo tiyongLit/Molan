@@ -8,10 +8,21 @@
    （旧方案"根容器 margin + SimpleBar 负 margin 抵消"会被根容器
     overflow-hidden 裁剪掉溢出的轨道，导致滚动条完全不可见。）
 
+   交互几何（修复"滚动条拖不动/一拖像拖窗口"）：
+   - SimpleBar 的拖拽起点由根元素捕获 pointerdown 后按 track.rect
+     做几何判定，轨道矩形 = 可拖拽热区；
+   - 轨道原先 right:0 贴窗口最右缘，落在 macOS 标准窗口边缘的系统
+     resize 感应区内——pointerdown 被系统解释为调整窗口大小，事件
+     进不了 webview，拖拽无从开始；
+   - 修复：轨道内缩 right:6px 离开边缘（给系统感应区与窗口边框留足
+     余量），同时把热区加宽到 12px（视觉条仍 6px 居中），更好抓取、
+     hover 显示也更稳定。
+
    滚动条规格（对齐 macOS 原生 overlay 手感）：
    - 6px 宽、rgba(255,255,255,0.35)、圆角 3px；
-   - 默认隐藏（opacity 0），滚动中或鼠标悬停滚动区时显示
-     （SimpleBar autoHide 默认行为加 .simplebar-visible，零 JS）；
+   - 显隐时机：滚动中全亮（.simplebar-visible 类）；停止滚动约 175ms 后
+     隐藏（SimpleBar autoHide=true 的 stopScrollDelay 源行为）；本契约
+     追加「悬停滚动区内保持半亮预览」便于随时找回并抓取（见下方 :hover 规则）；
    - overlay 悬浮不占内容宽度，不挤压 truncate。
 
    以下规则覆盖 simplebar.min.css 默认值（黑色滑块 / opacity .5 /
@@ -19,20 +30,25 @@
    ============================================================ */
 
 .mole-scroll .simplebar-track.simplebar-vertical {
-  width: 6px;
-  right: 0;
+  width: 12px; /* 抓取热区（SimpleBar 拖拽命中区 = track.rect） */
+  right: 6px; /* 内缩 6px：避开 macOS 窗口边缘 resize 感应区（含边框余量） */
   background: transparent;
 }
 
 .mole-scroll .simplebar-scrollbar::before {
   background: rgba(255, 255, 255, 0.35);
   border-radius: 3px;
-  left: 0;
-  right: 0;
+  left: 3px; /* 视觉条 6px，居中于 12px 热区 */
+  right: 3px;
   top: 2px;
   bottom: 2px;
   opacity: 0;
   transition: opacity 0.2s linear;
+}
+
+/* 悬停滚动区内：滑块保持半亮预览（停滚即隐后仍可被找回抓取；滚动中的全亮优先） */
+.mole-scroll:hover .simplebar-scrollbar::before {
+  opacity: 0.5;
 }
 
 .mole-scroll .simplebar-scrollbar.simplebar-visible::before {
