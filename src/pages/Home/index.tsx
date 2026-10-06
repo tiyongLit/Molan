@@ -56,7 +56,7 @@ export function Home() {
       <div className="flex flex-col gap-6 items-center" style={{ minWidth: 360, maxWidth: 440 }}>
         <div className="flex flex-col gap-2">
           <ShinyText
-            text="Mole Studio"
+            text="Molan"
             speed={2}
             delay={0}
             color="#ffffff"
