@@ -86,6 +86,29 @@ static MOLE_AUTH_REF: OnceLock<Mutex<Option<AuthRef>>> = OnceLock::new();
 static MOLE_SUDO_KEEPALIVE_PID: OnceLock<Mutex<Option<u32>>> = OnceLock::new();
 static MOLE_SUDO_CLEANUP_REGISTERED: AtomicBool = AtomicBool::new(false);
 
+/// AEWP 自动重授权节流窗：sudo_output 的失败路径距上次自动弹原生认证面板
+/// 不足该窗口时长时，不再重弹面板、直接静默失败。
+/// 防御场景：AEWP 通道在目标环境整体不可用（如新系统拒绝 ad-hoc 签名应用）
+/// 时，一次深度清理的几十条 root 命令会逐条触发「弹窗 → 输密码 → 再失败」
+/// 的死循环骚扰；节流后一次清理至多被弹一次，窗口过后再试清理仍可重新授权。
+const AEWP_REAUTH_WINDOW: std::time::Duration = std::time::Duration::from_secs(600);
+static LAST_AEWP_REAUTH: OnceLock<Mutex<Option<std::time::Instant>>> = OnceLock::new();
+
+fn aewp_reauth_allowed() -> bool {
+    let cell = LAST_AEWP_REAUTH.get_or_init(|| Mutex::new(None));
+    let mut slot = match cell.lock() {
+        Ok(s) => s,
+        Err(_) => return true, // 锁异常不设障，保持旧行为
+    };
+    match *slot {
+        Some(t) if t.elapsed() < AEWP_REAUTH_WINDOW => false,
+        _ => {
+            *slot = Some(std::time::Instant::now());
+            true
+        }
+    }
+}
+
 /// 可信 root 二进制白名单。
 /// AEWP 只允许这些硬编码绝对路径被 root 执行；args[0] 命中白名单之外的
 /// 路径（相对名 / 用户可控路径）一律拒绝，防止上游拼接漏洞劫持 root。
@@ -474,8 +497,14 @@ fn exec_root(args: &[&str]) -> Result<std::process::Output, ()> {
             &mut pipe,
         );
         if status != auth::ERR_SUCCESS {
-            // AEWP 启动失败（常见于 auth_ref 过期）→ 交给调用方重授权重试
-            log::warn!("exec_root: AEWP failed with status {status}");
+            // AEWP 启动失败（常见于 auth_ref 过期）→ 交给调用方重授权重试。
+            // status 原值务必随日志保留：定位新系统上「凭证被拒」类问题
+            // （ad-hoc 签名被 securityd 拒绝的典型信号是 -60006 denied），
+            // 与用户主动取消（-60005）必须可区分。
+            log::warn!(
+                "exec_root: AEWP failed with status {status} ({})",
+                aewp_status_name(status)
+            );
             return Err(());
         }
         let mut stdout = Vec::new();
@@ -519,6 +548,18 @@ fn parse_exit_mark(mut stdout: Vec<u8>) -> (Vec<u8>, i32) {
     (stdout, 1)
 }
 
+/// AEWP/securityd 常见 OSStatus 的可读名（Authorization.h）。
+/// 只覆盖排查高频码，未列出的原样透传数字。
+fn aewp_status_name(status: i32) -> &'static str {
+    match status {
+        -60005 => "canceled",
+        -60006 => "denied",
+        -60007 => "interaction-not-allowed",
+        -60008 => "tool-execute-failure",
+        _ => "unknown-osstatus",
+    }
+}
+
 /// 代替 `Command::new("sudo")` 的统一入口。
 ///
 /// - auth_ref 有效时 → 用 AuthorizationExecuteWithPrivileges 原生执行（不依赖 sudo 票据）
@@ -533,22 +574,35 @@ pub fn sudo_output(args: &[&str]) -> std::process::Output {
         match exec_root(args) {
             Ok(out) => return out,
             Err(()) => {
-                // AEWP 启动失败：最常见原因是 system.privilege.admin 默认
-                // 5 分钟超时后凭证过期。自动重弹一次原生认证面板并重试，
-                // 避免「开着 app 一段时间后 root 操作静默失败」的体验断裂。
-                // 先释放失效的 auth_ref，否则 ensure 会误判已授权直接返回；
-                // 只重试一次，防止循环弹窗。
-                log::info!("sudo_output: AEWP failed, re-authorizing once");
+                // AEWP 启动失败：常见原因有二——system.privilege.admin 凭证
+                // 5 分钟超时（重授权可解）；或通道在目标环境整体不可用
+                // （新系统 + ad-hoc 签名被 securityd 拒绝，重授权也救不回）。
+                // 后者曾造成一次清理几十条 root 命令逐条弹窗的死循环，故自动
+                // 重弹按 AEWP_REAUTH_WINDOW 节流：窗口内只弹一次，弹后仍失败
+                // 则后续 root 命令静默跳过，由上层失败计数呈现给用户。
                 revoke_admin_session();
-                if ensure_admin_session() {
-                    if let Ok(out) = exec_root(args) {
-                        return out;
+                if aewp_reauth_allowed() {
+                    log::info!("sudo_output: AEWP failed, re-authorizing (one prompt per window)");
+                    if ensure_admin_session() {
+                        if let Ok(out) = exec_root(args) {
+                            return out;
+                        }
+                        log::error!(
+                            "sudo_output: AEWP still failing after re-authorization, \
+                             suppressing further prompts for {AEWP_REAUTH_WINDOW:?}"
+                        );
                     }
+                } else {
+                    log::warn!(
+                        "sudo_output: AEWP failed, auto re-auth throttled — skipping root command: {}",
+                        args.first().copied().unwrap_or("?")
+                    );
                 }
                 return std::process::Output {
                     status: std::process::ExitStatus::from_raw(1),
                     stdout: Vec::new(),
-                    stderr: b"sudo_output: AEWP failed and re-authorization did not recover"
+                    stderr: b"sudo_output: admin session unavailable (AEWP failed; \
+                              auto re-auth throttled or did not recover)"
                         .to_vec(),
                 };
             }
@@ -832,4 +886,26 @@ pub fn will_need_sudo(operations: &[&str]) -> bool {
                 | "system_fix"
         )
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn aewp_status_name_covers_high_frequency_codes() {
+        assert_eq!(aewp_status_name(-60005), "canceled");
+        assert_eq!(aewp_status_name(-60006), "denied");
+        assert_eq!(aewp_status_name(-60007), "interaction-not-allowed");
+        assert_eq!(aewp_status_name(-60008), "tool-execute-failure");
+        assert_eq!(aewp_status_name(0), "unknown-osstatus");
+    }
+
+    #[test]
+    fn aewp_reauth_throttles_within_window() {
+        // 本测试独占 LAST_AEWP_REAUTH 全局态：首次调用放行并落时间戳，
+        // 紧跟的第二处调用仍在窗口内，必须被节流。
+        assert!(aewp_reauth_allowed());
+        assert!(!aewp_reauth_allowed());
+    }
 }

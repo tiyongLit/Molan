@@ -28,7 +28,8 @@ use block2::RcBlock;
 use objc2::rc::Retained;
 use objc2::{AnyThread, MainThreadMarker};
 use objc2_app_kit::{
-    NSAlert, NSAlertFirstButtonReturn, NSAlertStyle, NSImage, NSModalResponse, NSWindow,
+    NSAlert, NSAlertFirstButtonReturn, NSAlertSecondButtonReturn, NSAlertStyle, NSImage,
+    NSModalResponse, NSWindow,
 };
 use objc2_foundation::{NSData, NSString};
 use tokio::sync::oneshot;
@@ -47,6 +48,14 @@ impl Default for DialogKind {
     }
 }
 
+/// 用户对弹窗的响应：主按钮 / 备选按钮（三按钮模式）/ 取消族（取消、关闭、Esc）。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DialogResponse {
+    Primary,
+    Alt,
+    Cancel,
+}
+
 /// 呈现参数。
 #[derive(Clone, Debug)]
 pub struct DialogRequest {
@@ -58,6 +67,8 @@ pub struct DialogRequest {
     pub ok_label: String,
     /// 取消按钮文案（左侧、Esc 触发）；`None` = 单按钮提示模式。
     pub cancel_label: Option<String>,
+    /// 备选按钮文案（三按钮模式时的中间按钮）；`None` = 双/单按钮模式。
+    pub alt_label: Option<String>,
     pub kind: DialogKind,
 }
 
@@ -91,18 +102,22 @@ impl ParentWindow {
 
 /// 在主线程呈现弹窗并等待用户操作。
 ///
-/// 返回值：`Ok(true)` = 主按钮（确认）；`Ok(false)` = 取消 / 关闭 / Esc。
+/// 返回值：`Primary` = 主按钮（确认）；`Alt` = 备选按钮（仅三按钮模式）；
+/// `Cancel` = 取消 / 关闭 / Esc。
 /// 调用方须为异步上下文（Tauri async 命令天然满足）。
-pub async fn present(request: DialogRequest, parent: Option<ParentWindow>) -> Result<bool, String> {
+pub async fn present(
+    request: DialogRequest,
+    parent: Option<ParentWindow>,
+) -> Result<DialogResponse, String> {
     // 防御：调用方若已在主线程，`exec_sync`（主队列同步等待）会立即死锁，
     // 且 sheet 完成回调也依赖主线程空闲。此时退化为同步 app-modal。
     // 当前架构（async 命令）不会走到这里，仅作兜底。
     if let Some(mtm) = MainThreadMarker::new() {
         let alert = build_alert(mtm, &request);
-        return Ok(alert.runModal() == NSAlertFirstButtonReturn);
+        return Ok(map_response(&request, alert.runModal()));
     }
 
-    let (tx, rx) = oneshot::channel::<bool>();
+    let (tx, rx) = oneshot::channel::<DialogResponse>();
     let tx_slot = Arc::new(Mutex::new(Some(tx)));
     let slot_sheet = Arc::clone(&tx_slot);
     let slot_modal = Arc::clone(&tx_slot);
@@ -122,12 +137,13 @@ pub async fn present(request: DialogRequest, parent: Option<ParentWindow>) -> Re
                 // sheet：alert 须活到回调结束，闭包捕获 Retained 保活；
                 // handler 由 AppKit copy 持有，RcBlock 局部变量 drop 不影响回调。
                 let keep_alive = alert.clone();
+                let has_alt = request.alt_label.is_some();
                 let block = RcBlock::new(move |response: NSModalResponse| {
                     let _keep = &keep_alive;
-                    let confirmed = response == NSAlertFirstButtonReturn;
+                    let mapped = map_response_with_alt(has_alt, response);
                     if let Ok(mut guard) = slot_sheet.lock() {
                         if let Some(tx) = guard.take() {
-                            let _ = tx.send(confirmed);
+                            let _ = tx.send(mapped);
                         }
                     }
                 });
@@ -136,18 +152,35 @@ pub async fn present(request: DialogRequest, parent: Option<ParentWindow>) -> Re
             }
             None => {
                 // 窗口不可见（隐藏/最小化）→ app-modal 兜底（主线程跑 modal loop）。
-                let confirmed = alert.runModal() == NSAlertFirstButtonReturn;
+                let mapped = map_response(&request, alert.runModal());
                 if let Ok(mut guard) = slot_modal.lock() {
                     if let Some(tx) = guard.take() {
-                        let _ = tx.send(confirmed);
+                        let _ = tx.send(mapped);
                     }
                 }
             }
         }
     });
 
-    rx.await
-        .map_err(|_| "dialog: main-thread result channel closed（未收到用户响应）".to_string())
+    rx.await.map_err(|_| {
+        "dialog: main-thread result channel closed（未收到用户响应）".to_string()
+    })
+}
+
+/// 按 request 的按钮布局把 NSModalResponse 映射为三态。
+/// AppKit 按添加顺序回 1000/1001/…：无备选按钮时 1001 即取消按钮。
+fn map_response(request: &DialogRequest, response: NSModalResponse) -> DialogResponse {
+    map_response_with_alt(request.alt_label.is_some(), response)
+}
+
+fn map_response_with_alt(has_alt: bool, response: NSModalResponse) -> DialogResponse {
+    if response == NSAlertFirstButtonReturn {
+        DialogResponse::Primary
+    } else if has_alt && response == NSAlertSecondButtonReturn {
+        DialogResponse::Alt
+    } else {
+        DialogResponse::Cancel
+    }
 }
 
 /// 解析调用方窗口指针；不可见（隐藏/最小化）时返回 `None`，交由 app-modal 兜底。
@@ -184,8 +217,11 @@ fn build_alert(mtm: MainThreadMarker, request: &DialogRequest) -> Retained<NSAle
     }
 
     // 行 3：按钮。AppKit 横向排布为 trailing → leading，添加顺序即「最重要 → 次重要」：
-    // 先 add 主按钮（最右＝默认蓝、回车自动触发），再 add 取消（左侧）。
+    // 先 add 主按钮（最右＝默认蓝、回车自动触发），再 add 备选（中间），最后取消（左侧）。
     alert.addButtonWithTitle(&NSString::from_str(&request.ok_label));
+    if let Some(alt_label) = &request.alt_label {
+        alert.addButtonWithTitle(&NSString::from_str(alt_label));
+    }
     if let Some(cancel_label) = &request.cancel_label {
         let cancel = alert.addButtonWithTitle(&NSString::from_str(cancel_label));
         // 标题非「Cancel」时 AppKit 不会自动绑 Esc，这里显式绑定。

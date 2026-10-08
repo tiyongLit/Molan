@@ -1,17 +1,20 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { load, type Store } from '@tauri-apps/plugin-store'
+import { load as loadStore } from '@tauri-apps/plugin-store'
+import { emit, listen } from '@tauri-apps/api/event'
 import CleanStatusBar, { type CleanStatus } from './components/CleanStatusBar'
 import { ScanningGroupRow } from './components/ScanningSkeletonList'
 import ScanResult from './components/ScanResult'
 import CategoryRow from './components/CategoryRow'
 import CleanFooter from './components/CleanFooter'
 import useTauri from '@/hooks/useTauri'
-import { moleNativeConfirm } from '@/hooks/useMoleConfirm'
+import { moleNativeConfirm, moleNativeConfirmChoice } from '@/hooks/useMoleConfirm'
 import { moleMessage, ScanPageLayout, type ScanPageActionConfig } from '@/components/ui'
+import { EVT_SETTINGS_CHANGED, type SettingsChangedPayload } from '@/constants/tauri-events'
 import './Clean.scss'
 
 import type { MoleCleanResult, MoleCleanItem, CleanStatusInfo } from '@/types/mole'
+import type { DeleteMode } from '@/pages/Settings/useSettings'
 import { useI18n } from '@/i18n'
 import { CATEGORY_GROUPS, PRIMARY_CTA_STYLE, type CleanGroupData } from './clean.constants'
 import { isCountableCleanItem, selKey, computeGroupStatusBySection } from './scan-status'
@@ -66,29 +69,81 @@ export function Clean() {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
   const [doneSummary, setDoneSummary] = useState<{ totalCleaned: number; failedCount: number; permanentDelete: boolean } | null>(null)
 
-  // ---- 删除模式（直接删除 vs 废纸篓）+ store 持久化 ----
-  const [permanentDelete, setPermanentDelete] = useState(true) // 默认直接删除
-  const prefStoreRef = useRef<Store | null>(null)
-  useEffect(() => {
-    let cancelled = false
-    load('clean-preferences.bin').then((store) => {
-      if (cancelled) return
-      prefStoreRef.current = store
-      store.get<boolean>('permanentDelete').then((saved) => {
-        if (!cancelled && saved !== undefined && saved !== null) {
-          setPermanentDelete(saved)
-        }
-      }).catch(() => { /* 首次使用无此 key，保持默认 */ })
-    })
-    return () => { cancelled = true }
-  }, [])
-  const handlePermanentDeleteChange = useCallback((value: boolean) => {
-    setPermanentDelete(value)
-    const store = prefStoreRef.current
-    if (store) {
-      store.set('permanentDelete', value).then(() => store.save()).catch(() => {})
+  // ---- 删除模式（移到废纸篓 vs 直接删除）----
+  // 全局事实源：设置页 settings.json 的 clean.deleteMode（默认 trash，安全档）。
+  // footer 勾选「直接删除」经三按钮原生确认：「每次都直接删除」写回全局设置，
+  // 「仅本次」仅会话级覆盖（不落盘）；取消勾选只做会话级回落，不反写全局
+  // （全局想改回废纸篓须去设置页，安全方向的打扰越少越好）。
+  const [globalDeleteMode, setGlobalDeleteMode] = useState<DeleteMode>('trash')
+  const [sessionDeleteMode, setSessionDeleteMode] = useState<DeleteMode | null>(null)
+  const effectiveDeleteMode = sessionDeleteMode ?? globalDeleteMode
+  const permanentDelete = effectiveDeleteMode === 'direct'
+
+  /** 从设置 store 重读全局删除模式：挂载与每轮扫描开始时各读一次，
+   * 保证用户在设置窗口改动后回到清理页即生效。 */
+  const refreshGlobalDeleteMode = useCallback(async () => {
+    try {
+      const store = await loadStore('settings.json', { autoSave: false })
+      const clean = await store.get<Record<string, unknown>>('clean')
+      const dm = clean?.deleteMode
+      if (dm === 'trash' || dm === 'direct') setGlobalDeleteMode(dm)
+    } catch {
+      /* store 不可用时保持默认 trash（安全档） */
     }
   }, [])
+  useEffect(() => { void refreshGlobalDeleteMode() }, [refreshGlobalDeleteMode])
+
+  // 跨窗口同步主通道：设置窗改了 clean 分组即推送，收到后立即重读——
+  // review 停留期间的全局变更也实时生效（展示与清理执行同用 effectiveDeleteMode）。
+  // 会话覆盖（「仅本次」）优先级不变：全局更新只落 globalDeleteMode，session 不动。
+  useEffect(() => {
+    const unlisten = listen<SettingsChangedPayload>(EVT_SETTINGS_CHANGED, ({ payload }) => {
+      if (payload.section === 'clean') void refreshGlobalDeleteMode()
+    })
+    return () => { void unlisten.then(fn => fn()) }
+  }, [refreshGlobalDeleteMode])
+
+  // 补偿通道：主窗重新聚焦时重读一次（webview 隐藏期间推送可能丢失）
+  useEffect(() => {
+    const onFocus = () => void refreshGlobalDeleteMode()
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [refreshGlobalDeleteMode])
+
+  const handlePermanentDeleteChange = useCallback((value: boolean) => {
+    if (!value) {
+      // 安全方向：直接会话级回落，无需确认
+      setSessionDeleteMode('trash')
+      return
+    }
+    // 危险方向：勾选「直接删除」→ 三按钮原生确认（每次都直接删除 / 仅本次 / 取消）
+    void moleNativeConfirmChoice(t('clean.footer.confirmTitle'), {
+      informativeText: t('clean.footer.confirmBody'),
+      kind: 'warning',
+      okLabel: t('clean.footer.confirmAlways'),
+      altLabel: t('clean.footer.confirmOnce'),
+      cancelLabel: t('common.cancel'),
+    }).then((choice) => {
+      if (choice === 'cancel') return
+      setSessionDeleteMode('direct')
+      if (choice === 'ok') {
+        // 「每次都直接删除」= 修改全局设置；写盘成功后广播（设置窗实时回显）；
+        // 写失败时仅会话级生效
+        void (async () => {
+          try {
+            const store = await loadStore('settings.json', { autoSave: false })
+            const clean = (await store.get<Record<string, unknown>>('clean')) ?? {}
+            await store.set('clean', { ...clean, deleteMode: 'direct' })
+            await store.save()
+            setGlobalDeleteMode('direct')
+            await emit(EVT_SETTINGS_CHANGED, { section: 'clean' } satisfies SettingsChangedPayload)
+          } catch {
+            /* 保持会话级生效，全局维持原值 */
+          }
+        })()
+      }
+    })
+  }, [t])
 
   // ---- Clean 任务状态机投影（后端唯一事实来源）：scanning 由快照派生，前端不做本地猜测 ----
   const {
@@ -106,6 +161,12 @@ export function Clean() {
   const cancelling = jobSnapshot?.state === 'cancelling'
   // phase 为派生值：scanning 由后端快照驱动，其余为本地视图阶段
   const phase: Phase = scanLive ? 'scanning' : stage
+
+  // 每轮扫描开始时重读全局删除模式：用户可能在设置窗口改过「清理删除方式」，
+  // 扫描 → review 是 footer 首次呈现删除模式开关的必经路径，此处重读即兜底生效
+  useEffect(() => {
+    if (phase === 'scanning') void refreshGlobalDeleteMode()
+  }, [phase, refreshGlobalDeleteMode])
 
   // 时序埋点（卡顿分析）：任务快照每次迁移打点（同一 state#seq 去重）
   const lastTracedStateRef = useRef<string>('')
@@ -412,7 +473,7 @@ export function Clean() {
       <ScanResult
         doneSummary={doneSummary}
         scanError={scanError}
-        permanentDelete={doneSummary?.permanentDelete ?? true}
+        permanentDelete={doneSummary?.permanentDelete ?? false}
         onRescan={() => {
           resetForNewScan()
           setScanResult(null)

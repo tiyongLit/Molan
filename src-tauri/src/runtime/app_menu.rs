@@ -105,11 +105,15 @@ pub fn request_quit<R: Runtime>(app: &AppHandle<R>) {
                 informative_text: None,
                 ok_label: "强制退出".to_string(),
                 cancel_label: Some("取消".to_string()),
+                alt_label: None,
                 kind: DialogKind::Warning,
             };
             // parent=None → app-modal 兜底（不依赖任何窗口的可见状态，
             // 气泡/主窗口隐藏时同样可弹）。
-            let ok = macos_dialog::present(request, None).await.unwrap_or(false);
+            let ok = macos_dialog::present(request, None)
+                .await
+                .unwrap_or(macos_dialog::DialogResponse::Cancel)
+                == macos_dialog::DialogResponse::Primary;
             QUIT_CONFIRM_OPEN.store(false, Ordering::SeqCst);
             if ok {
                 log::info!("[app_menu] user confirmed forced quit");

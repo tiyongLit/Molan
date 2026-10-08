@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
-import { CMD_MOLE_DIALOG } from '@/constants/tauri-commands'
+import { CMD_MOLE_DIALOG, CMD_MOLE_DIALOG_CHOICE } from '@/constants/tauri-commands'
 
 // ============================================================
 // moleNativeConfirm — 原生 NSAlert 确认通道（唯一确认/提示机制）
@@ -50,5 +50,31 @@ export async function moleNativeConfirm(
   } catch (err) {
     console.error('[moleNativeConfirm] failed, fallback to false', err)
     return false
+  }
+}
+
+/** 三按钮模式的用户选择：ok = 主按钮，alt = 备选按钮，cancel = 取消/关闭/Esc */
+export type MoleDialogChoice = 'ok' | 'alt' | 'cancel'
+
+/** 原生 NSAlert 三选确认（altLabel 传备选按钮文案即启用三按钮形态）：
+ * 「仅本次 / 每次都这样」类场景；失败与取消统一回落 'cancel' */
+export async function moleNativeConfirmChoice(
+  message: string,
+  options?: MoleNativeDialogOptions & { altLabel?: string }
+): Promise<MoleDialogChoice> {
+  try {
+    return await invoke<MoleDialogChoice>(CMD_MOLE_DIALOG_CHOICE, {
+      args: {
+        message,
+        informativeText: options?.informativeText,
+        kind: mapKind(options?.kind),
+        okLabel: options?.okLabel,
+        altLabel: options?.altLabel,
+        cancelLabel: options?.cancelLabel,
+      },
+    })
+  } catch (err) {
+    console.error('[moleNativeConfirmChoice] failed, fallback to cancel', err)
+    return 'cancel'
   }
 }

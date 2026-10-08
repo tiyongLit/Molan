@@ -71,8 +71,8 @@ export function useCleanEngine(active: boolean) {
     setCleanedItemKeys(new Set())
   }, [])
 
-  /** 执行清理：动画队列与后端调用并行，返回归一化结果 */
-  const applyClean = useCallback(async (queue: CleanQueueEntry[], scanId: string, permanentDelete: boolean = true): Promise<CleanOutcome> => {
+  /** 执行清理：动画队列与后端调用并行，返回归一化结果（permanentDelete 缺省 false=走废纸篓，安全档） */
+  const applyClean = useCallback(async (queue: CleanQueueEntry[], scanId: string, permanentDelete: boolean = false): Promise<CleanOutcome> => {
     cleanQueueRef.current = [...queue]
 
     // 启动动画定时器：每隔 400ms 从队列弹出一个，触发 slide-up 动画

@@ -73,6 +73,9 @@ export const CMD_MOLE_NATIVE_ICONS_RESOLVE = 'mole_native_icons_resolve' as cons
 /** 原生 NSAlert 对话框（垂直三行流：app 图标 / 文案 / 原生按钮）：await 返回是否点击主按钮 */
 export const CMD_MOLE_DIALOG = 'mole_dialog' as const
 
+/** 三按钮形态的原生 NSAlert：返回 "ok"（主）/ "alt"（备选）/ "cancel"（取消/Esc） */
+export const CMD_MOLE_DIALOG_CHOICE = 'mole_dialog_choice' as const
+
 /** 用 Rust trash crate 直接移废纸篓（代替 Go 二进制的 execute 模式） */
 export const CMD_MOLE_CLEAN_PATHS = 'mole_clean_paths' as const
 export const CMD_MOLE_CLEAN_EXECUTE = 'mole_clean_execute' as const
@@ -185,6 +188,7 @@ export const TAURI_COMMANDS = [
   CMD_GET_WINDOW_SIZE,
   CMD_MOLE_NATIVE_ICONS_RESOLVE,
   CMD_MOLE_DIALOG,
+  CMD_MOLE_DIALOG_CHOICE,
   CMD_MOLE_CLEAN_PATHS,
   CMD_MOLE_CLEAN_EXECUTE,
   CMD_CLEAN_STATUS,

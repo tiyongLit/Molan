@@ -5,7 +5,7 @@ import { MoleButton, MoleCheckbox } from '@/components/ui'
 interface CleanFooterProps {
   executionAllowed: boolean
   onResetToDefault: () => void
-  /** 直接永久删除（不经过废纸篓），默认 true */
+  /** 直接永久删除（不经过废纸篓）；默认 false = 移到废纸篓（安全档，全局事实源在设置页） */
   permanentDelete: boolean
   onPermanentDeleteChange: (value: boolean) => void
 }

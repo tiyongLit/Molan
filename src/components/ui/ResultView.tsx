@@ -23,8 +23,19 @@ export interface ResultViewProps {
   children?: ReactNode
 }
 
+// 状态 → 自有徽标资源（public 下，视口 80×80 与圆盘满格重合、无透明边距、无内嵌阴影）。
+// warning 暂无专属资源，复用 error 徽标；将来设计出 warning.svg 只需改此映射。
+// 渲染 72px 与 antd 内置状态圆同尺寸基准（圆盘=视口，所见即所得）。
+// 消费端 img 须用 block + mx-auto：antd icon 槽仅靠 text-align:center 居中
+// （只约束 inline 元素），block 消除 baseline 底隙后需 margin auto 补回水平居中。
+const STATUS_ICON: Record<ResultViewProps['status'], string> = {
+  success: '/success.svg',
+  warning: '/error.svg',
+  error: '/error.svg',
+}
+
 /**
- * 通用结果页：居中 antd Result + 两个操作按钮。
+ * 通用结果页：居中 antd Result（徽标走自有 SVG 资源）+ 两个操作按钮。
  *
  * Clean ScanResult 与 Optimize OptimizeResult 的呈现层（antd Result 样板、
  * 按钮样式、居中容器）完全一致，仅标题/副标题/按钮文案不同，故提取为
@@ -57,13 +68,14 @@ export function ResultView({
     <div className="flex select-none h-full w-full flex-col items-center justify-center" style={style}>
       <Result
         status={status}
+        icon={<img src={STATUS_ICON[status]} alt="" className="mx-auto block h-[72px] w-[72px]" />}
         title={<span className="text-white">{title}</span>}
         subTitle={subtitle ? <span className="text-white">{subtitle}</span> : undefined}
         extra={[
-          <MoleButton key="secondary" size="large" onClick={onSecondary} style={{ width: 160, height: 50, borderRadius: 12 }}>
+          <MoleButton key="secondary" size="large" onClick={onSecondary} style={{ width: 120, height: 40, borderRadius: 10 }}>
             {secondaryLabel}
           </MoleButton>,
-          <MoleButton key="primary" type="primary" size="large" onClick={onPrimary} style={{ width: 160, height: 50, borderRadius: 12 }}>
+          <MoleButton key="primary" type="primary" size="large" onClick={onPrimary} style={{ width: 120, height: 40, borderRadius: 10 }}>
             {primaryLabel}
           </MoleButton>,
         ]}

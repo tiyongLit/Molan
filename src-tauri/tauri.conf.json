@@ -40,7 +40,7 @@
         "label": "settings",
         "title": "设置",
         "width": 680,
-        "height": 600,
+        "height": 700,
         "resizable": false,
         "decorations": true,
         "titleBarStyle": "Overlay",

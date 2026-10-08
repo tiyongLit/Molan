@@ -168,6 +168,7 @@ pub fn run() {
             controllers::platform::mole_quick_look,
             // dialog — 原生 NSAlert 确认/提示（唯一确认通道，垂直三行流；Lemon 形态）
             controllers::dialog::mole_dialog,
+            controllers::dialog::mole_dialog_choice,
             // UI 时序埋点 — 前端日志转发（卡顿分析用，纯信息记录）
             controllers::ui_log::mole_ui_log,
             // Dock 退出拦截 + 忙碌状态查询

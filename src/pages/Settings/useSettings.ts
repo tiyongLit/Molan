@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { invoke } from '@tauri-apps/api/core'
+import { emit, listen } from '@tauri-apps/api/event'
 import {
   CMD_MOLE_AUTO_LAUNCH_STATUS,
   CMD_MOLE_AUTO_LAUNCH_TOGGLE,
   CMD_MOLE_TRASH_REMINDER_GET_STATE,
   CMD_MOLE_TRASH_REMINDER_UPDATE_SETTINGS,
 } from '@/constants/tauri-commands'
+import { EVT_SETTINGS_CHANGED, type SettingsChangedPayload } from '@/constants/tauri-events'
 
 import type { TrashReminderSnapshot } from '@/types/mole'
 import { trashReminderError, getLocale, setLocale, SUPPORTED_LOCALES } from '@/i18n'
@@ -298,6 +300,17 @@ export function useSettings() {
     return () => document.removeEventListener('visibilitychange', onVis)
   }, [reloadGeneralFromStore])
 
+  // 跨窗口设置变更推送（主通道）：任一 webview 写入 settings.json 后广播，
+  // 本窗立即重读——覆盖「清理页写全局、设置窗需回显」的方向；
+  // 下方 visibilitychange 重读保留为隐藏窗口丢事件的补偿通道。
+  useEffect(() => {
+    const unlisten = listen<SettingsChangedPayload>(EVT_SETTINGS_CHANGED, ({ payload }) => {
+      if (payload.section === 'trashReminder') return // 走 Rust revision 机制，不在 store 通用分组内
+      void reloadGeneralFromStore()
+    })
+    return () => { void unlisten.then(fn => fn()) }
+  }, [reloadGeneralFromStore])
+
   /** 写入单个设置项到 store */
   const persistToStore = useCallback(async (key: string, value: unknown) => {
     const store = storeRef.current
@@ -334,8 +347,11 @@ export function useSettings() {
         ? (value as (prev: AppSettings[K]) => AppSettings[K])(prev[key])
         : value
       const next = { ...prev, [key]: newValue }
-      // 异步持久化（不阻塞状态更新）
-      persistToStore(key, newValue)
+      // 异步持久化（不阻塞状态更新）；写盘成功后广播设置变更，
+      // 其余 webview（清理页/设置窗互改）收到后重读对应分组保持实时同步
+      void persistToStore(key, newValue).then(() =>
+        emit(EVT_SETTINGS_CHANGED, { section: key } satisfies SettingsChangedPayload)
+      )
       return next
     })
   }, [persistToStore])

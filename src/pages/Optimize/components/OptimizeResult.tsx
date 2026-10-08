@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CloseCircleFilled, DownOutlined, WarningOutlined } from '@ant-design/icons'
+import { DownOutlined } from '@ant-design/icons'
 import { ResultView } from '@/components/ui'
 import { PAGE_THEME_VARS, SEMANTIC_COLORS } from '@/constants/theme'
 import { useI18n } from '@/i18n'
@@ -47,7 +47,8 @@ function FailedDetailCard({ items }: { items: OptimizeFailedItem[] }) {
         onClick={() => setCollapsed((v) => !v)}
         className="flex w-full cursor-pointer select-none items-center gap-2 border-0 bg-transparent px-4 py-3 text-left"
       >
-        <WarningOutlined style={{ color: SEMANTIC_COLORS.warningYellow, fontSize: 14 }} />
+        {/* 失败明细行图标：统一走自有徽标资源（视口即圆盘，14px 与原 antd 14px icon 等大） */}
+        <img src="/error.svg" alt="" className="h-[14px] w-[14px] shrink-0" />
         <span className="flex-1 text-[13px] font-medium text-white/85">
           {t('optimize.result.detailTitle', { count: items.length })}
         </span>
@@ -61,7 +62,8 @@ function FailedDetailCard({ items }: { items: OptimizeFailedItem[] }) {
           <ul className="m-0 flex list-none flex-col gap-2.5 px-4 pt-1 pb-4">
             {items.map((item) => (
               <li key={item.id} className="flex items-start gap-2">
-                <CloseCircleFilled style={{ color: SEMANTIC_COLORS.dangerRed, fontSize: 12, marginTop: 4 }} />
+                {/* 12px 与原 antd 12px icon 等大；leading-5(20px) 文本首行垂直居中 → mt=(20-12)/2=4 */}
+                <img src="/error.svg" alt="" className="mt-1 h-[12px] w-[12px] shrink-0" />
                 <div className="min-w-0 flex-1">
                   <div className="text-[13px] leading-5 text-white/85">{item.name}</div>
                   <div className="text-[12px] leading-5 text-white/45">

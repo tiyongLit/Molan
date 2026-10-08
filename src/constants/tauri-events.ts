@@ -66,4 +66,15 @@ export const EVT_DASHBOARD_HIDE_REQUESTED = 'dashboard::hide-requested' as const
 /** 托盘右键菜单项点击：Rust 按 id→action 映射后定向投递 dashboard 常驻窗，前端复用 BottomBar 动作（与 Rust `tray::menu-action` 一致） */
 export const EVT_TRAY_MENU_ACTION = 'tray::menu-action' as const
 
+/** 设置域：任一 webview 写入 settings.json 后由写入方前端广播（纯前端事件，无 Rust 端），
+ * payload 为 { section }（settings.json 顶层分组 key）。收到方按需从 store 重读对应分组；
+ * 注意 webview 隐藏期间推送可能丢失，各消费窗保留聚焦时重读作为补偿通道。 */
+export const EVT_SETTINGS_CHANGED = 'settings::changed' as const
+
+/** EVT_SETTINGS_CHANGED 的 payload */
+export interface SettingsChangedPayload {
+  /** settings.json 顶层分组 key（如 'clean' / 'uninstall' / 'dashboard'） */
+  section: string
+}
+
 /** 卸载：单个 app 清理进度（与 Rust `uninstall::progress` 一致） */

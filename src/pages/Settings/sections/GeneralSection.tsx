@@ -1,7 +1,8 @@
 import { Switch, Divider } from 'antd'
 import { invoke } from '@tauri-apps/api/core'
-import type { AppSettings } from '../useSettings'
+import type { AppSettings, DeleteMode } from '../useSettings'
 import { MolePopSelect } from '@/components/ui'
+import { moleNativeConfirm } from '@/hooks/useMoleConfirm'
 import { CMD_MOLE_FDA_RELAUNCH, CMD_MOLE_OPEN_PRIVACY_SETTINGS } from '@/constants/tauri-commands'
 import { useI18n, LOCALE_LABELS, SUPPORTED_LOCALES } from '@/i18n'
 import type { AppLocale } from '@/i18n'
@@ -29,6 +30,24 @@ interface Props {
  */
 export function GeneralSection({ settings, trashSaving, trashError, trashNeedsPermission, onToggleAutoLaunch, onChangeLanguage, onUpdateSetting }: Props) {
   const { t } = useI18n()
+
+  /** 切换清理删除方式：安全方向（移到废纸篓）直接生效；
+   * 危险方向（直接删除）须原生警告确认，取消则受控值不变自动回弹。 */
+  const handleChangeDeleteMode = (mode: DeleteMode) => {
+    if (mode === 'trash') {
+      onUpdateSetting('clean', (prev) => ({ ...prev, deleteMode: 'trash' }))
+      return
+    }
+    void moleNativeConfirm(t('settings.deleteMode.confirmTitle'), {
+      informativeText: t('settings.deleteMode.confirmBody'),
+      kind: 'warning',
+      okLabel: t('settings.deleteMode.confirmOk'),
+      cancelLabel: t('common.cancel'),
+    }).then((ok) => {
+      if (ok) onUpdateSetting('clean', (prev) => ({ ...prev, deleteMode: 'direct' }))
+    })
+  }
+
   return (
     <div className="flex flex-col">
       {/* ── 块 0：语言 ── */}
@@ -149,6 +168,24 @@ export function GeneralSection({ settings, trashSaving, trashError, trashNeedsPe
           }
         />
       )}
+      <Divider style={{ margin: '14px 0' }} />
+
+      {/* ── 块 3.5：清理删除方式（默认移到废纸篓；「直接删除」为危险档，切换须原生确认） ── */}
+      <SettingRow
+        title={t('settings.deleteMode.title')}
+        description={t('settings.deleteMode.description')}
+        control={
+          <MolePopSelect<DeleteMode>
+            value={settings.clean.deleteMode}
+            onChange={handleChangeDeleteMode}
+            minWidth={140}
+            options={[
+              { value: 'trash', label: t('settings.deleteMode.trash') },
+              { value: 'direct', label: t('settings.deleteMode.direct') },
+            ]}
+          />
+        }
+      />
       <Divider style={{ margin: '14px 0' }} />
 
       {/* ── 块 4：内存列表关闭按钮 ── */}

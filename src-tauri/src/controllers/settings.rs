@@ -48,7 +48,7 @@ pub fn mole_open_settings_window(app: tauri::AppHandle) -> Result<(), String> {
 
     let window = WebviewWindowBuilder::new(&app, "settings", WebviewUrl::App("/settings".into()))
         .title("设置")
-        .inner_size(680.0, 600.0)
+        .inner_size(680.0, 700.0)
         .resizable(false)
         .visible(false)
         .transparent(true)
