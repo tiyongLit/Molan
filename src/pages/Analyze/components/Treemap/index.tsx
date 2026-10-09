@@ -22,12 +22,15 @@ interface TreemapProps {
   focusedPath: string | null
   /** 单击方格回调 — 同步左侧列表焦点 */
   onFocusPath: (path: string) => void
+  /** 单击方格右上角勾选热区回调 — 切换勾选（不改变焦点） */
+  onToggleCheck: (path: string) => void
 }
 
 /**
  * Treemap 可视化 — 事件委托架构。
  *
- * **交互委托**：click / dblclick 统一在容器层处理，通过 `data-path` 定位目标条目。
+ * **交互委托**：click / dblclick 统一在容器层处理，通过 `data-path` 定位目标条目；
+ * 右上角勾选热区（`data-check-hit`）分流到 onToggleCheck（只切换勾选），双击热区不触发钻取。
  * RectBlock 只接收纯数据 props（item / isSelected / isChecked），不传任何回调闭包，
  * 确保 memo 真正生效 —— 只有数据变化的方格才重渲染。
  *
@@ -45,7 +48,8 @@ export function Treemap({
   onCancelScan,
   checkedPaths,
   focusedPath,
-  onFocusPath
+  onFocusPath,
+  onToggleCheck
 }: TreemapProps) {
   const { t } = useI18n()
   const { ref: containerRef, width, height } = useContainerSize<HTMLDivElement>()
@@ -58,19 +62,27 @@ export function Treemap({
   // 用 ref 持有 rects，避免事件处理函数依赖频繁变化
   const rectsRef = useMemo(() => rects, [rects])
 
-  /** 点击委托：同步左侧列表焦点 */
+  /** 点击委托：勾选热区 → 切换勾选；其余区域 → 同步左侧列表焦点 */
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
-      const el = (e.target as HTMLElement).closest<HTMLElement>('[data-path]')
+      const target = e.target as HTMLElement
+      const el = target.closest<HTMLElement>('[data-path]')
       const path = el?.dataset.path
-      if (path) onFocusPath(path)
+      if (!path) return
+      // 勾选热区：只切换勾选、不改变焦点（对齐左侧列表「点框只勾选」口径）
+      if (target.closest('[data-check-hit]')) {
+        onToggleCheck(path)
+        return
+      }
+      onFocusPath(path)
     },
-    [onFocusPath]
+    [onFocusPath, onToggleCheck]
   )
 
-  /** 双击委托：钻入目录 / 打开文件 */
+  /** 双击委托：钻入目录 / 打开文件（勾选热区上的双击不触发，防「切换两次 + 误钻入」） */
   const handleDoubleClick = useCallback(
     (e: React.MouseEvent) => {
+      if ((e.target as HTMLElement).closest('[data-check-hit]')) return
       const el = (e.target as HTMLElement).closest<HTMLElement>('[data-path]')
       const path = el?.dataset.path
       if (!path) return

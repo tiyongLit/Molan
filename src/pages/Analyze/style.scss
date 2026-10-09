@@ -38,6 +38,30 @@
   }
 }
 
+// ── Treemap 方格右上角勾选框（视觉对齐 .entry-checkbox-xs：同边框/同底色/同圆角；
+//    「状态常显、示能按需」——大格空框常显，中格空框 hover 方格时淡入） ──
+.analyze-check-box {
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
+  border-radius: 3px;
+  transition:
+    opacity 0.15s ease,
+    border-color 0.15s ease;
+
+  &:hover {
+    border-color: rgba(255, 255, 255, 0.5);
+  }
+}
+
+.analyze-check-box--ghost {
+  opacity: 0;
+}
+
+.analyze-rect-block:hover .analyze-check-box--ghost {
+  opacity: 1;
+}
+
 // ── 主按钮（移到废纸篓 / 开始分析）：青绿渐变 + 深色字（对齐 Uninstall apps-primary-btn） ──
 .analyze-trash-btn {
   border-color: transparent !important;

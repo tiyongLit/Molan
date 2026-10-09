@@ -26,7 +26,7 @@ interface EntryRowProps {
  * **设计原则（对标 lemon-cleaner LMSpaceTableRowView）**：
  *   - 磁盘空间分析是「绝对大小对比」场景，没有「独立上限」语义；
  *     Treemap 矩形面积本身已反映相对占比，行内进度条是冗余的视觉噪声。
- *   - 行内承载 4 列信息：checkbox / 图标 / 名称+副标题 / 大小。
+ *   - 行内承载 4 列信息：勾选槽位（复选框 / 受保护锁）/ 图标 / 名称+副标题 / 大小。
  *   - 副标题（差异化文案，详见 utils/fileType.ts 的回退层级）：
  *     · Top 20（文件）→ 完整路径（现状保留）
  *     · symlink → "符号链接"（后端显式标记）
@@ -65,9 +65,6 @@ export const EntryRow = memo(function EntryRow({
   if (entry.is_bundle_leaf) {
     hints.push('📦')
   }
-  if (isProtected) {
-    hints.push('🔒')
-  }
 
   // Finder 按钮：阻断冒泡，避免触发行的 click（焦点）与 dblclick（钻入）
   const handleReveal = useCallback(
@@ -96,13 +93,18 @@ export const EntryRow = memo(function EntryRow({
         opacity: isProtected ? 0.55 : 1
       }}
     >
-      <input
-        type="checkbox"
-        checked={isChecked}
-        readOnly
-        disabled={isProtected}
-        className="entry-checkbox-xs shrink-0"
-      />
+      {/* 勾选槽位：可勾选 → 复选框；受保护 → 同槽位彩色锁 emoji（替代 disabled 复选框的「阴性示能」，
+          与 Treemap 方格右上角锁同位置语言，视觉整齐） */}
+      {isProtected ? (
+        <span
+          className="w-[13px] h-[13px] shrink-0 flex items-center justify-center"
+          title={t('analyze.protected.tip')}
+        >
+          <span style={{ fontSize: 12, lineHeight: 1 }}>🔒</span>
+        </span>
+      ) : (
+        <input type="checkbox" checked={isChecked} readOnly className="entry-checkbox-xs shrink-0" />
+      )}
 
       {/* 图标（对齐启动项：28px 容器，原生系统图标优先） */}
       <div className="shrink-0 flex items-center justify-center" style={{ width: 28, height: 28 }}>

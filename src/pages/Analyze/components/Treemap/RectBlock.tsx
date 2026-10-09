@@ -1,14 +1,22 @@
 import { memo, useMemo } from 'react'
 import { Popover } from 'antd'
-import { CheckOutlined } from '@ant-design/icons'
 import { formatSize } from '@/utils/format'
 import { MarqueeText } from '@/components/ui/MarqueeText'
+import { useI18n } from '@/i18n'
 import type { TreemapItem } from '../../typings'
 
 // ── 显示阈值 ──
 const RECT_THRESHOLDS = {
   FULL: { width: 80, height: 60 },
   NAME_ONLY: { width: 45, height: 28 }
+} as const
+
+// ── 勾选槽位档位（右上角三态：空框 / 蓝勾 / 锁）──
+// box = 视觉盒尺寸；hit = 点击命中区（Fitts：视觉盒本身过小点不中，命中区放大到 18~20px，
+// 且不得超出格子边界——相邻格 paddingInner 仅 2px）。
+const CHECK_SLOT = {
+  FULL: { box: 12, hit: 20 },
+  COMPACT: { box: 9, hit: 18 }
 } as const
 
 // ── 颜色常量（空间透镜风格：半透明磨砂方块让渐变透出 + 蓝色选中高亮，对齐全 app 蓝=选中语言） ──
@@ -45,6 +53,30 @@ function renderIcon(icon: string, size: number) {
   )
 }
 
+/** 勾形 — SVG 绘制（圆角端点）。viewBox 恰取「多段线 + 描边的包围盒」，
+ * 配合外层 flex 居中保证勾在盒内严格水平垂直居中（旋转边框法存在固有视觉偏移，弃用） */
+function renderTick(boxSize: number) {
+  const w = boxSize * 0.68
+  return (
+    <svg
+      width={w}
+      height={w * 0.821}
+      viewBox="1.4 2 7.8 6.4"
+      fill="none"
+      style={{ display: 'block' }}
+      aria-hidden="true"
+    >
+      <path
+        d="M2.2 5.2 L4.6 7.6 L8.4 2.8"
+        stroke="#fff"
+        strokeWidth={1.6}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
 interface RectBlockProps {
   item: TreemapItem
   isSelected: boolean
@@ -63,22 +95,23 @@ interface RectBlockProps {
  * **hover 视觉**：纯 CSS `:hover` 伪类 + transition 实现，不依赖 JS state。
  * 原先的 isHovered prop 已删除，避免每次悬停都触发重渲染。
  *
- * **data 属性**：写入 data-path / data-name / data-protected，供事件委托层识别目标。
+ * **data 属性**：写入 data-path / data-name / data-protected；可勾选方格的右上角热区额外挂
+ * data-check-hit，供事件委托层区分「勾选」（toggle）与「聚焦」（setFocusedIdx）。
  */
 export const RectBlock = memo(function RectBlock({
   item,
   isSelected,
   isChecked
 }: RectBlockProps) {
+  const { t } = useI18n()
   const { x, y, width, height } = item.rect
 
   const showFull = width >= RECT_THRESHOLDS.FULL.width && height >= RECT_THRESHOLDS.FULL.height
   const showNameOnly =
     width >= RECT_THRESHOLDS.NAME_ONLY.width && height >= RECT_THRESHOLDS.NAME_ONLY.height
 
-  // checked 角标自适应
-  const badgeSize = showFull ? 12 : showNameOnly ? 9 : 5
-  const badgeFontSize = badgeSize <= 5 ? 5 : badgeSize <= 9 ? 6 : 8
+  // 槽位档位：大格 12px / 中格 9px / 小格无槽位（已勾选降级为 5px 圆点）
+  const slot = showFull ? CHECK_SLOT.FULL : showNameOnly ? CHECK_SLOT.COMPACT : null
 
   // 样式计算（useMemo 避免每次渲染重建对象）
   const blockStyle = useMemo(
@@ -125,10 +158,19 @@ export const RectBlock = memo(function RectBlock({
             className="text-sm font-medium text-white leading-tight"
           />
           <span className="text-xs text-white/60 font-mono">{formatSize(item.size)}</span>
+          {item.protected && (
+            <span className="text-[10px] text-white/50 flex items-center gap-1">
+              <span style={{ fontSize: 10, lineHeight: 1 }}>🔒</span>
+              {t('analyze.protected.label')}
+            </span>
+          )}
+          {!item.protected && (
+            <span className="text-[10px] text-white/40">{t('analyze.hint.shortcuts')}</span>
+          )}
         </div>
       </div>
     ),
-    [item.icon, item.name, item.size]
+    [item.icon, item.name, item.size, item.protected, t]
   )
 
   return (
@@ -156,27 +198,84 @@ export const RectBlock = memo(function RectBlock({
             }}
           />
         )}
-        {isChecked && (
+
+        {/* 右上角三态槽位 — 空框（大格常显 / 中格 hover 淡入）· 蓝勾 · 锁 */}
+        {slot && !item.protected && (
+          <div
+            data-check-hit="true"
+            style={{
+              position: 'absolute',
+              top: 0,
+              right: 0,
+              width: slot.hit,
+              height: slot.hit,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 2
+            }}
+          >
+            {isChecked ? (
+              <span
+                style={{
+                  boxSizing: 'border-box',
+                  width: slot.box,
+                  height: slot.box,
+                  borderRadius: 3,
+                  background: C.checkedBadgeBg,
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
+                  flexShrink: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                {renderTick(slot.box)}
+              </span>
+            ) : (
+              <span
+                className={`analyze-check-box${showFull ? '' : ' analyze-check-box--ghost'}`}
+                style={{ width: slot.box, height: slot.box, flexShrink: 0 }}
+              />
+            )}
+          </div>
+        )}
+
+        {/* 受保护方格：同槽位显示锁（不可交互，点击穿透给方格本身 → 仍可聚焦/钻入） */}
+        {slot && item.protected && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              right: 0,
+              width: slot.hit,
+              height: slot.hit,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 2,
+              pointerEvents: 'none'
+            }}
+          >
+            <span style={{ fontSize: Math.max(slot.box, 10), lineHeight: 1 }}>🔒</span>
+          </div>
+        )}
+
+        {/* 小格（无槽位）：已勾选降级为 5px 圆点 */}
+        {!slot && isChecked && (
           <div
             style={{
               position: 'absolute',
               top: 3,
               right: 3,
-              width: badgeSize,
-              height: badgeSize,
-              borderRadius: badgeSize <= 8 ? '50%' : 3,
+              width: 5,
+              height: 5,
+              borderRadius: '50%',
               background: C.checkedBadgeBg,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
               zIndex: 2,
               boxShadow: '0 1px 3px rgba(0,0,0,0.25)'
             }}
-          >
-            {badgeSize >= 12 && (
-              <CheckOutlined style={{ color: '#fff', fontSize: badgeFontSize, lineHeight: 1 }} />
-            )}
-          </div>
+          />
         )}
         {showFull && renderIcon(item.icon, Math.min(width * 0.18, 28))}
         {showNameOnly && (

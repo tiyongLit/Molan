@@ -62,6 +62,7 @@ export function BottomBar() {
                 {showTop20
                   ? `${t('analyze.bottom.top20')}${totalFiles > 0 ? ` · ${t('analyze.bottom.totalFiles', { count: totalFiles.toLocaleString() })}` : ''}`
                   : `${t('analyze.bottom.dirFileCount', { dirs: dirCount, files: fileCount })}${totalFiles > 0 ? ` · ${t('analyze.bottom.totalFiles', { count: totalFiles.toLocaleString() })}` : ''}`}
+                {` · ${t('analyze.bottom.selectHint')}`}
               </span>
             )}
           </MarqueeText>

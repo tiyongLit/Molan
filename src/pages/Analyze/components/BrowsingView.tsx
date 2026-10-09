@@ -77,6 +77,15 @@ function BrowsingInner() {
     [sel.activeData, sel.setFocusedIdx]
   )
 
+  // 单击方格右上角勾选热区 → 直接切换勾选（不改变焦点；受保护条目无勾选热区）
+  const handleRectToggleCheck = useCallback(
+    (path: string) => {
+      const idx = sel.activeData.items.findIndex((e) => e.path === path)
+      if (idx >= 0) sel.toggleCheck(idx)
+    },
+    [sel.activeData, sel.toggleCheck]
+  )
+
   // 取消扫描 → 返回 overview（void 包装：避免浮动 Promise）
   const handleCancelScan = useCallback(() => {
     void cancelScanAndExit()
@@ -133,6 +142,7 @@ function BrowsingInner() {
               checkedPaths={checkedPaths}
               focusedPath={focusedPath}
               onFocusPath={handleRectFocus}
+              onToggleCheck={handleRectToggleCheck}
             />
           )}
         </main>
