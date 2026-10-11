@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
+import type { Ref } from 'react'
 import { ConfigProvider, Switch, theme } from 'antd'
 import type { SwitchProps } from 'antd'
 import {
@@ -15,7 +16,7 @@ import {
 import SimpleBar from 'simplebar-react'
 import 'simplebar-react/dist/simplebar.min.css'
 import useTauri from '@/hooks/useTauri'
-import { moleMessage } from '@/components/ui'
+import { moleMessage, ScanEllipsis } from '@/components/ui'
 import { nativeIconRegistry } from '@/utils/nativeIconRegistry'
 import { useNativeIcon } from '@/hooks/useNativeIcon'
 import { AppIcon } from '@/components/business/Apps/AppIcon'
@@ -109,26 +110,40 @@ function StartupSwitch({
 /** 系统 plist 图标采样路径 */
 const SYSTEM_PLIST_ICON_PATH = '/System/Library/CoreServices/SystemVersion.plist'
 
+/**
+ * 手动重扫扫描态的最短驻留时长：扫描真实耗时数百 ms 起时无感，
+ * 仅在 IPC 异常快（<100ms）时兜底——防止扫描态与最终态挤进同一帧闪过。
+ */
+const MIN_RESCAN_VISIBLE_MS = 500
+
 // ── 主组件 ──
 
-interface StartupTabProps {
-  filter: StartupFilter
-  searchText: string
-  reloadTick: number
+/** 供壳层手动驱动的句柄（工具栏刷新按钮） */
+export interface StartupTabHandle {
+  /** 重扫（已扫过登录项则保持含 BTM），完成即 resolve，供调用方驱动按钮反馈 */
+  reload: () => Promise<void>
 }
 
-export function StartupTab({ filter, searchText, reloadTick }: StartupTabProps) {
+interface StartupTabProps {
+  ref?: Ref<StartupTabHandle>
+  filter: StartupFilter
+  searchText: string
+}
+
+export function StartupTab({ ref, filter, searchText }: StartupTabProps) {
   const tauri = useTauri()
   const { t } = useI18n()
 
   const [inventory, setInventory] = useState<StartupInventory | null>(null)
   const [loading, setLoading] = useState(true)
+  // 手动重扫（工具栏刷新）专用：列表让位给扫描态，「先展示扫描态 → 再更新数据」。
+  // 与开关操作触发的自动重扫区分——那些保持旧列表原地更新（stale-while-revalidate），不打断阅读
+  const [rescanning, setRescanning] = useState(false)
   const [loginItemsIncluded, setLoginItemsIncluded] = useState(false)
   const [scanningLoginItems, setScanningLoginItems] = useState(false)
   const [bannerDismissed, setBannerDismissed] = useState(false)
   const [expandedApps, setExpandedApps] = useState<Set<string>>(new Set())
   const started = useRef(false)
-  const lastTick = useRef(0)
 
   const reload = async (includeLoginItems: boolean) => {
     setLoading(true)
@@ -155,13 +170,28 @@ export function StartupTab({ filter, searchText, reloadTick }: StartupTabProps) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  useEffect(() => {
-    if (reloadTick > 0 && reloadTick !== lastTick.current) {
-      lastTick.current = reloadTick
-      reload(loginItemsIncluded)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reloadTick])
+  // 壳层工具栏刷新按钮直调入口（替代原 reloadTick 隐形信号：调用可观察，
+  // 壳层能拿到完成时机驱动按钮转圈；内部错误已兜底 catch，Promise 恒 resolve）。
+  // 渐进式流程：点击同步置 rescanning → 扫描态随事件批次上屏（先于 IPC 返回）→
+  // 真实重扫 → 数据落库后保底驻留 MIN_RESCAN_VISIBLE_MS 再揭列表，
+  // 确保「扫描态 → 新数据」两个阶段在视觉上先后可感知
+  useImperativeHandle(
+    ref,
+    () => ({
+      reload: async () => {
+        setRescanning(true)
+        const startedAt = Date.now()
+        try {
+          await reload(loginItemsIncluded)
+          const remaining = MIN_RESCAN_VISIBLE_MS - (Date.now() - startedAt)
+          if (remaining > 0) await new Promise((resolve) => setTimeout(resolve, remaining))
+        } finally {
+          setRescanning(false)
+        }
+      },
+    }),
+    [loginItemsIncluded],
+  )
 
   /** 扫描登录项（需管理员授权） */
   const scanLoginItems = async () => {
@@ -337,11 +367,15 @@ export function StartupTab({ filter, searchText, reloadTick }: StartupTabProps) 
         </div>
       )}
 
-      {/* 列表 */}
-      {loading && !inventory ? (
+      {/* 列表：首扫 / 手动重扫 → 扫描态（先展示扫描态，数据到达后再渲染列表）；
+          开关操作触发的自动重扫保持旧列表原地更新，不打断阅读 */}
+      {(loading && !inventory) || rescanning ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-2 text-white/55">
           <Loader2 size={16} className="animate-spin" />
-          <div className="text-xs">{t('uninstall.startup.scanningList')}</div>
+          <div className="text-xs">
+            {t('uninstall.startup.scanningList')}
+            <ScanEllipsis />
+          </div>
         </div>
       ) : (
         <SimpleBar className="mole-scroll flex-1 min-h-0" style={{ maxHeight: '100%' }}>

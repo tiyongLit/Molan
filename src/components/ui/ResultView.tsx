@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { Result } from 'antd'
 import { MoleButton } from './MoleButton'
+import './ResultView.scss'
 
 export interface ResultViewProps {
   /** antd Result 语义状态（决定图标：对勾 / 感叹 / 叉） */
@@ -36,6 +37,7 @@ const STATUS_ICON: Record<ResultViewProps['status'], string> = {
 
 /**
  * 通用结果页：居中 antd Result（徽标走自有 SVG 资源）+ 两个操作按钮。
+ * 按钮配色见 ./ResultView.scss（主=绿渐变 CTA / 次=深色玻璃，对齐全站按钮语言）。
  *
  * Clean ScanResult 与 Optimize OptimizeResult 的呈现层（antd Result 样板、
  * 按钮样式、居中容器）完全一致，仅标题/副标题/按钮文案不同，故提取为
@@ -72,10 +74,10 @@ export function ResultView({
         title={<span className="text-white">{title}</span>}
         subTitle={subtitle ? <span className="text-white">{subtitle}</span> : undefined}
         extra={[
-          <MoleButton key="secondary" size="large" onClick={onSecondary} style={{ width: 120, height: 40, borderRadius: 10 }}>
+          <MoleButton key="secondary" size="large" onClick={onSecondary} className="result-secondary-btn" style={{ width: 120, height: 40, borderRadius: 10 }}>
             {secondaryLabel}
           </MoleButton>,
-          <MoleButton key="primary" type="primary" size="large" onClick={onPrimary} style={{ width: 120, height: 40, borderRadius: 10 }}>
+          <MoleButton key="primary" type="primary" size="large" onClick={onPrimary} className="result-primary-btn" style={{ width: 120, height: 40, borderRadius: 10 }}>
             {primaryLabel}
           </MoleButton>,
         ]}

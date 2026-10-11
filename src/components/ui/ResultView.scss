@@ -1,0 +1,46 @@
+// ============================================
+// ResultView 操作按钮配色（Clean / Optimize 结果页共用）
+//
+// 背景：ResultView 上方无 antd 主题 Provider，不覆盖时按钮渲染的是 antd
+// 浅色出厂默认（次=白底浅边、主=antd 蓝 #1677ff）——全项目仅此一处，
+// 故在此定色。仅换配色不改几何（宽高圆角由 ResultView.tsx 内联保留）。
+//
+// 配色照抄全站既有按钮语言：
+//   - 主按钮：绿渐变 CTA（同 ScanButton / Uninstall .apps-primary-btn）
+//   - 次按钮：深色玻璃（同 .apps-ghost-btn 的深底白字，但无描边——
+//     有背景色即足够区分，不使用边框）
+// ============================================
+
+.result-primary-btn {
+  border-color: transparent !important;
+  color: #0b1f1a !important;
+  background: linear-gradient(135deg, #64dfa7 0%, #00d899 100%) !important;
+  transition: filter 0.15s ease;
+
+  &:not(:disabled):hover {
+    border-color: transparent !important;
+    background: linear-gradient(135deg, #69e8ae 0%, #00e9a5 100%) !important;
+  }
+
+  &:not(:disabled):active {
+    border-color: transparent !important;
+    background: linear-gradient(135deg, #61ce9c 0%, #00d093 100%) !important;
+  }
+
+  &:disabled {
+    border-color: transparent !important;
+    background: #305c54 !important;
+    color: #686971 !important;
+  }
+}
+
+.result-secondary-btn {
+  border-color: transparent !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+  background: rgba(0, 0, 0, 0.28) !important;
+
+  &:not(:disabled):hover {
+    color: #ffffff !important;
+    background: rgba(0, 0, 0, 0.4) !important;
+  }
+}

@@ -12,13 +12,17 @@ import { useI18n } from '@/i18n'
  * 底部操作栏（单行布局）：
  *   左（flex-1，超宽跑马灯滚动）：当前层级统计 | 已选/过滤/文件统计
  *   右（shrink-0，固定不受左侧挤压）：移到废纸篓按钮
+ *       —— 扫描进行中（首扫 / 重扫 / bundle 钻取）不渲染：数据正在重建，选中不可用
  */
 export function BottomBar() {
   const sel = useAnalyzeSelection()
-  const { entries, totalFiles } = useAnalyzeData()
+  const { entries, totalFiles, browseLoading, cancelling } = useAnalyzeData()
   const { trashSelected, trashing, filtering, filterQuery } = useAnalyzeAction()
   const { checkedStats, hasSelection, showTop20, activeData } = sel
   const { t } = useI18n()
+
+  // 扫描进行中判定：口径与 Toolbar「重新扫描」按钮的 disabled 一致（browseLoading || cancelling）
+  const scanActive = browseLoading || cancelling
 
   // 当前层级文件/文件夹计数
   const fileCount = useMemo(() => entries.filter((e) => !e.is_dir).length, [entries])
@@ -68,18 +72,20 @@ export function BottomBar() {
           </MarqueeText>
         </div>
 
-        {/* 右：废纸篓按钮（shrink-0 固定，不受左侧文本长度影响） */}
-        <MoleButton
-          size="small"
-          disabled={!hasSelection || trashing}
-          loading={trashing}
-          icon={<DeleteOutlined />}
-          style={{ fontSize: 12, borderRadius: 3 }}
-          className="analyze-trash-btn shrink-0"
-          onClick={trashSelected}
-        >
-          {t('analyze.trash.action')}{hasSelection ? ` (${checkedStats.count})` : ''}
-        </MoleButton>
+        {/* 右：废纸篓按钮（shrink-0 固定，不受左侧文本长度影响；扫描进行中不渲染） */}
+        {!scanActive && (
+          <MoleButton
+            size="small"
+            disabled={!hasSelection || trashing}
+            loading={trashing}
+            icon={<DeleteOutlined />}
+            style={{ fontSize: 12, borderRadius: 3 }}
+            className="analyze-trash-btn shrink-0"
+            onClick={trashSelected}
+          >
+            {t('analyze.trash.action')}{hasSelection ? ` (${checkedStats.count})` : ''}
+          </MoleButton>
+        )}
       </div>
     </>
   )

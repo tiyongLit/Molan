@@ -1,12 +1,12 @@
-import { useState, useCallback, useEffect, useMemo } from 'react'
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { Segmented } from 'antd'
 import { Type, HardDrive, Clock, ArrowUpDown, ArrowDownUp, ArrowUp, ArrowDown, ArrowLeft, LayoutGrid, Rocket, Cog, AlertTriangle, Trash2, X } from 'lucide-react'
 import { listen } from '@tauri-apps/api/event'
 import { UninstallTab, type UninstallSelection, type SortField } from './UninstallTab'
-import { StartupTab } from './StartupTab'
+import { StartupTab, type StartupTabHandle } from './StartupTab'
 import { OrphansTab } from './OrphansTab'
 import { UninstallToolbar } from './components/UninstallToolbar'
-import { UninstallHistoryList } from './components/UninstallHistoryList'
+import { UninstallHistoryList, type UninstallHistoryListHandle } from './components/UninstallHistoryList'
 import useTauri from '@/hooks/useTauri'
 import { useUninstallProgress } from '@/hooks/useUninstallProgress'
 import { moleMessage } from '@/components/ui'
@@ -74,7 +74,10 @@ export function ShellUninstall() {
   // 启动 tab 工具栏状态（提升到壳层，对齐卸载 tab 的 searchText/sortField 模式）
   const [startupFilter, setStartupFilter] = useState<StartupFilter>('all')
   const [startupSearch, setStartupSearch] = useState('')
-  const [startupReloadTick, setStartupReloadTick] = useState(0)
+  // 启动 tab 手动重扫进行中：驱动工具栏刷新按钮转圈（重扫本身由 StartupTab 经 ref 执行）
+  const [startupRescanning, setStartupRescanning] = useState(false)
+  // 卸载 tab 手动重扫进行中：同款图标转圈反馈（列表扫描态由 loading 驱动，随新数据揭开）
+  const [appsRescanning, setAppsRescanning] = useState(false)
 
   const tauri = useTauri()
   const { settings } = useSettings()
@@ -83,6 +86,11 @@ export function ShellUninstall() {
   const [loading, setLoading] = useState(true)
   const { cleaningApps, startCleaning } = useUninstallProgress()
   const [uninstallView, setUninstallView] = useState<UninstallView>('list')
+
+  // 各视图的手动重载句柄：刷新按钮按「当前视图」分发到对应 reload，
+  // Promise 可观察，供启动 tab 驱动按钮转圈反馈
+  const startupTabRef = useRef<StartupTabHandle | null>(null)
+  const historyListRef = useRef<UninstallHistoryListHandle | null>(null)
 
   // ── 卸载残留自动检测 ──
   // 兜底通道：通知不可用（dev / 未授权 / 发送失败）时后端发事件，页面内提示条承接；
@@ -107,16 +115,18 @@ export function ShellUninstall() {
     }
   }, [residualTarget])
 
-  const loadApps = useCallback(() => {
+  const loadApps = useCallback(async () => {
     setLoading(true)
-    tauri.mole_list_apps()
-      .then(async (list: MoleListAppsEntry[]) => {
-        // 先预加载图标，再设置 apps（AppIcon 订阅注册表，命中即渲染原生图标，无闪烁）
-        await nativeIconRegistry.resolveIdle((list ?? []).map((a) => a.path))
-        setApps(list ?? [])
-      })
-      .catch(() => setApps([]))
-      .finally(() => setLoading(false))
+    try {
+      const list = (await tauri.mole_list_apps()) as MoleListAppsEntry[]
+      // 先预加载图标，再设置 apps（AppIcon 订阅注册表，命中即渲染原生图标，无闪烁）
+      await nativeIconRegistry.resolveIdle((list ?? []).map((a) => a.path))
+      setApps(list ?? [])
+    } catch {
+      setApps([])
+    } finally {
+      setLoading(false)
+    }
   }, [tauri])
 
   useEffect(() => {
@@ -340,15 +350,27 @@ export function ShellUninstall() {
     setSelection(s)
   }, [])
 
+  // 刷新按钮：按「tab + 视图」分发到当前所见内容的 reload
+  //   卸载·列表 → 重扫应用列表（列表让位扫描态 + 图标转圈，对齐启动项）
+  //   卸载·历史 → 重载删除历史（此前误分发到应用列表，历史视图点了毫无反应的根因）
+  //   启动项   → 经 ref 直调 StartupTab.reload（已扫过登录项则保持含 BTM），
+  //               Promise 可观察，驱动工具栏按钮转圈
   const handleRescan = useCallback(() => {
     if (activeTab === 'uninstall') {
+      if (uninstallView === 'history') {
+        void historyListRef.current?.reload()
+        return
+      }
+      if (appsRescanning) return
       setSearchText('')
-      loadApps()
+      setAppsRescanning(true)
+      Promise.resolve(loadApps()).finally(() => setAppsRescanning(false))
     } else if (activeTab === 'startup') {
-      // 信号驱动 StartupTab 重扫（已扫描过登录项则保持含 BTM）
-      setStartupReloadTick((t) => t + 1)
+      if (startupRescanning) return
+      setStartupRescanning(true)
+      Promise.resolve(startupTabRef.current?.reload()).finally(() => setStartupRescanning(false))
     }
-  }, [activeTab, loadApps])
+  }, [activeTab, uninstallView, loadApps, startupRescanning, appsRescanning])
 
   const handleSortSelect = useCallback(
     (key: string) => {
@@ -432,6 +454,7 @@ export function ShellUninstall() {
             selectedKeys={[sortField]}
             onMenuClick={handleSortSelect}
             onRefresh={handleRescan}
+            refreshing={appsRescanning}
             onShowHistory={() => setUninstallView((v) => (v === 'history' ? 'list' : 'history'))}
             showHistory={uninstallView === 'history'}
           />
@@ -451,6 +474,7 @@ export function ShellUninstall() {
             selectedKeys={[startupFilter]}
             onMenuClick={(key) => setStartupFilter(key as StartupFilter)}
             onRefresh={handleRescan}
+            refreshing={startupRescanning}
           />
         )}
         {activeTab === 'uninstall' && uninstallView === 'residual' && (
@@ -524,14 +548,14 @@ export function ShellUninstall() {
                 cleaningApps={cleaningApps}
               />
             )}
-            {uninstallView === 'history' && <UninstallHistoryList />}
+            {uninstallView === 'history' && <UninstallHistoryList ref={historyListRef} />}
           </>
         )}
         {activeTab === 'startup' && (
           <StartupTab
+            ref={startupTabRef}
             filter={startupFilter}
             searchText={startupSearch}
-            reloadTick={startupReloadTick}
           />
         )}
         {/* 残留视图常驻挂载 + hidden 切换：切走不丢扫描结果与勾选，避免重复扫描 */}
@@ -568,7 +592,7 @@ export function ShellUninstall() {
                   <button
                     onClick={handleUninstall}
                     disabled={uninstalling}
-                    className="apps-primary-btn text-xs px-4 py-1.5 rounded-md font-bold disabled:opacity-50"
+                    className={`${isDataOnlyMode ? 'apps-trash-btn' : 'apps-danger-btn'} text-xs px-4 py-1.5 rounded-md font-bold disabled:opacity-50`}
                   >
                     {uninstalling
                       ? (isDataOnlyMode ? t('uninstall.action.cleaningDataNow') : t('uninstall.action.uninstallingNow'))

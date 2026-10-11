@@ -32,6 +32,8 @@ export interface UninstallToolbarProps {
   onMenuClick: (key: string) => void
   /** 刷新按钮回调 */
   onRefresh: () => void
+  /** 刷新进行中：图标转圈并禁用（无反馈的静默刷新会让用户以为按钮失灵） */
+  refreshing?: boolean
   /** 刷新按钮 hover 提示，默认「重新扫描」 */
   refreshTitle?: string
   /** 删除历史按钮回调（可选） */
@@ -55,6 +57,7 @@ export function UninstallToolbar({
   selectedKeys,
   onMenuClick,
   onRefresh,
+  refreshing = false,
   refreshTitle,
   onShowHistory,
   showHistory = false,
@@ -90,10 +93,14 @@ export function UninstallToolbar({
       <div className="w-px self-stretch my-1.5 bg-white/[0.12]" />
       <button
         onClick={onRefresh}
+        disabled={refreshing}
         title={refreshTitle ?? t('uninstall.rescan')}
-        className="group flex items-center justify-center w-7 text-white transition-opacity"
+        className="group flex items-center justify-center w-7 text-white transition-opacity disabled:pointer-events-none"
       >
-        <RefreshCw size={14} className="opacity-70 group-hover:opacity-100 transition-opacity" />
+        <RefreshCw
+          size={14}
+          className={refreshing ? 'animate-spin opacity-70' : 'opacity-70 group-hover:opacity-100 transition-opacity'}
+        />
       </button>
       {onShowHistory && (
         <>

@@ -348,7 +348,7 @@ export const OrphansTab = memo(function OrphansTab({ active = true }: { active?:
             <button
               onClick={handleDelete}
               disabled={deleting || loading || checkedCount === 0}
-              className="apps-primary-btn text-xs px-4 py-1.5 rounded-md font-bold disabled:opacity-50 flex items-center gap-1.5"
+              className="apps-trash-btn text-xs px-4 py-1.5 rounded-md font-bold flex items-center gap-1.5"
             >
               {deleting ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
               {deleting

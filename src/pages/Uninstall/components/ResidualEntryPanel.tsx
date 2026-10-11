@@ -164,10 +164,10 @@ export function ResidualEntryPanel() {
 
         {/* 展开内容：同一卡片内部，浅分隔线分界；仅列表可清理项 */}
         {expanded && (
-          <div className="border-t border-white/[0.06] px-3 pt-2.5 pb-3">
+          <div className="border-t border-white/[0.06] pt-2.5 pb-3">
             {loading && items === null ? (
               /* 首扫加载态 */
-              <div className="flex items-center justify-center gap-2 py-4 text-[11px] text-white/40">
+              <div className="flex items-center justify-center gap-2 px-4 py-4 text-[11px] text-white/40">
                 <Loader2 size={13} className="animate-spin" />
                 {t('uninstall.orphan.scanning')}
               </div>
@@ -175,19 +175,19 @@ export function ResidualEntryPanel() {
               /* 扫描失败态：点击重试 */
               <button
                 onClick={() => void scan()}
-                className="w-full py-3 text-center text-[11px] text-white/40 hover:text-white/70 transition-colors"
+                className="w-full px-4 py-3 text-center text-[11px] text-white/40 hover:text-white/70 transition-colors"
               >
                 {t('uninstall.residualEntry.retry')}
               </button>
             ) : deletableItems.length === 0 ? (
               /* 无可清理项 */
-              <div className="py-3 text-center text-[11px] text-white/35">
+              <div className="px-4 py-3 text-center text-[11px] text-white/35">
                 {t('uninstall.residualEntry.empty')}
               </div>
             ) : (
               <>
                 {/* 头部：已选计数 + 全选/取消全选 */}
-                <div className="flex items-center justify-between px-1 pb-1.5">
+                <div className="flex items-center justify-between px-4 pb-1.5">
                   <span className="text-[10px] text-white/45">
                     {t('uninstall.orphan.detailSelected', {
                       selected: checkedCount,
@@ -204,14 +204,14 @@ export function ResidualEntryPanel() {
                   </button>
                 </div>
 
-                {/* 条目列表（面板内滚动走全站 .mole-scroll 契约） */}
-                <SimpleBar className="mole-scroll" style={{ maxHeight: 220 }}>
-                  <div className="space-y-px pr-2">
+                {/* 条目列表（mole-scroll 契约 + residual-entry-scroll：轨道贴卡片右缘，卡右缘非窗口边缘无 resize 热区） */}
+                <SimpleBar className="mole-scroll residual-entry-scroll" style={{ maxHeight: 220 }}>
+                  <div className="space-y-px px-2">
                     {deletableItems.map((o) => (
                       <div
                         key={o.path}
                         onClick={() => toggleCheck(o.path)}
-                        className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-md cursor-pointer transition-colors select-none hover:bg-white/[0.05] ${
+                        className={`flex items-center gap-2.5 px-2 py-1.5 rounded-md cursor-pointer transition-colors select-none hover:bg-white/[0.05] ${
                           deleting ? 'pointer-events-none' : ''
                         }`}
                       >
@@ -240,11 +240,11 @@ export function ResidualEntryPanel() {
                 </SimpleBar>
 
                 {/* 底部：主操作 */}
-                <div className="flex items-center justify-end px-1 pt-2">
+                <div className="flex items-center justify-end px-4 pt-2">
                   <button
                     onClick={handleDelete}
                     disabled={deleting || loading || checkedCount === 0}
-                    className="apps-primary-btn text-[11px] px-3 py-1 rounded-md font-bold disabled:opacity-50 flex items-center gap-1.5"
+                    className="apps-trash-btn text-[11px] px-3 py-1 rounded-md font-bold flex items-center gap-1.5"
                   >
                     {deleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
                     {deleting

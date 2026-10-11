@@ -61,7 +61,10 @@ function isNavigateMiss(e: unknown): boolean {
 export function useAnalyzeData() {
   const tauri = useTauri()
   const [browseData, setBrowseData] = useState<BrowseData>(EMPTY_BROWSEDATA)
-  const [browseLoading, setBrowseLoading] = useState(false)
+  // 初始即「待取数」态：Provider 挂载必然触发 fetchPath（navigate → miss → scanRoot）。
+  // 若初始为 false，进入浏览阶段的第一帧会闪现废纸篓按钮与 Treemap 空态，第二帧才切走；
+  // 初始 true 让首帧直接呈现"扫描中"。navigate 命中（无扫描在跑）时会立即复位为 false。
+  const [browseLoading, setBrowseLoading] = useState(true)
   const [scanProgress, setScanProgress] = useState<ScanProgress | null>(null)
   const [cancelling, setCancelling] = useState(false)
 
@@ -69,6 +72,10 @@ export function useAnalyzeData() {
   const sessionReady = useRef(false)
   /** 当前正在执行的扫描请求 id（仅用于取消判定） */
   const scanReqRef = useRef(0)
+  /** 初始「待取数」窗口是否已被真实扫描接管（scanRoot 置 true）。
+   *  navigate 命中时据此判断能否复位 browseLoading：未被接管 = 纯导航，立即复位；
+   *  已被接管 = 有在飞扫描，保持 loading，避免进度浮层/按钮显隐被提前误切。 */
+  const scanEngagedRef = useRef(false)
 
   // ── 订阅 scan-progress 事件（仅首次扫描期间）──
   // 后端可能高频推送（每秒几十次），每次都 setState 会让 AnalyzeProvider
@@ -109,6 +116,7 @@ export function useAnalyzeData() {
     async (path: string) => {
       const reqId = ++scanReqRef.current
       sessionReady.current = false
+      scanEngagedRef.current = true
       setBrowseData(EMPTY_BROWSEDATA)
       setBrowseLoading(true)
       setScanProgress(null)
@@ -178,6 +186,10 @@ export function useAnalyzeData() {
           totalFiles: data.total_files ?? 0
         }))
         sessionReady.current = true
+        // 首帧兜底复位：初始 browseLoading=true 的「待取数」窗口内 navigate 直接命中，
+        // 说明本次进入没有扫描在跑（如会话树仍有效），立即复位；已被 scanRoot 接管时
+        // 保持不动，交给扫描自行收尾，避免在飞扫描的进度显示被提前关掉。
+        if (!scanEngagedRef.current) setBrowseLoading(false)
 
         // 后台预加载图标（仅 miss 项发 IPC；写入注册表后由订阅自动刷新）
         const iconPaths = data.entries

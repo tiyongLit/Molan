@@ -1,18 +1,19 @@
 import { useMemo, useState, useCallback } from 'react'
-import { ChevronRight, ChevronDown, AlertTriangle, FolderOpen, Eraser, CheckCircle2, XCircle } from 'lucide-react'
+import { ChevronRight, ChevronDown, AlertTriangle, FolderOpen, Eraser, CheckCircle2, XCircle, Loader2 } from 'lucide-react'
 import SimpleBar from 'simplebar-react'
 import 'simplebar-react/dist/simplebar.min.css'
 import { formatSize } from '@/utils/format'
 import { useI18n } from '@/i18n'
 import useTauri from '@/hooks/useTauri'
 import { AppIcon } from '@/components/business/Apps/AppIcon'
-import { MoleCheckbox, CleaningProgressBar } from '@/components/ui'
+import { MoleCheckbox, CleaningProgressBar, ScanEllipsis } from '@/components/ui'
 import type { CleaningAppState } from '@/hooks/useUninstallProgress'
 import type { MoleListAppsEntry, MoleUninstallResult } from '@/types/mole'
 import { ResidualEntryPanel } from './components/ResidualEntryPanel'
 
 // ── 配色（对齐 Clean 页面）──
 const ACCENT_GREEN = '#64dfa7' // 强调文字 / 链接
+const ACCENT_AMBER = '#fcd34d' // 数据清理（保留应用）按钮强调：琥珀，对齐「移入废纸篓」语言
 
 // ── 残留文件分组 ──
 
@@ -300,12 +301,12 @@ function LeftoverPanel({
             </span>
             <button
               onClick={() => onClearDataOnly(entry)}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold cursor-pointer transition-all duration-150 border ${
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold cursor-pointer transition-[background-color,border-color,box-shadow,transform] duration-150 border ${
                 isDataOnlyMode
-                  ? 'border-emerald-500 bg-emerald-500/25 shadow-[0_0_8px_rgba(16,185,129,0.3)]'
-                  : 'border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 hover:border-emerald-500/50'
-              } active:bg-emerald-500/30 active:scale-[0.97]`}
-              style={{ color: ACCENT_GREEN }}
+                  ? 'border-amber-500 bg-amber-500/25 shadow-[0_0_8px_rgba(245,158,11,0.3)]'
+                  : 'border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 hover:border-amber-500/50'
+              } active:bg-amber-500/30 active:scale-[0.97]`}
+              style={{ color: ACCENT_AMBER }}
             >
               <Eraser size={12} />
               {isDataOnlyMode ? t('uninstall.leftover.dataModeActive') : t('uninstall.leftover.clearDataOnly')}
@@ -442,8 +443,13 @@ export function UninstallTab({ apps, loading, searchText, selection, sortField, 
   return (
     <div className="h-full flex flex-col">
       {loading ? (
-        <div className="flex-1 flex flex-col items-center justify-center text-white/60">
-          <div className="text-sm">{t('uninstall.list.scanning')}</div>
+        // 扫描态：转圈 + 文案 + 动态省略号，与启动项 tab 同款（首扫/手动重扫共用）
+        <div className="flex-1 flex flex-col items-center justify-center gap-2 text-white/55">
+          <Loader2 size={16} className="animate-spin" />
+          <div className="text-xs">
+            {t('uninstall.list.scanning')}
+            <ScanEllipsis />
+          </div>
         </div>
       ) : (
       <SimpleBar className="mole-scroll flex-1 min-h-0" style={{ maxHeight: '100%' }}>

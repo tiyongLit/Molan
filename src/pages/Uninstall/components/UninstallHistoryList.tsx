@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useImperativeHandle } from 'react'
+import type { Ref } from 'react'
 import { CheckCircle, XCircle } from 'lucide-react'
 import SimpleBar from 'simplebar-react'
 import 'simplebar-react/dist/simplebar.min.css'
@@ -10,19 +11,26 @@ import type { UninstallHistoryRecord } from '@/types/uninstall-history'
 
 /**
  * 卸载历史列表组件：以列表形式展示卸载历史记录
- * 
+ *
  * 与卸载列表保持一致的布局和样式，支持：
  * - 列表展示历史记录
  * - 清空历史功能
  */
-export function UninstallHistoryList() {
+
+/** 供壳层手动驱动的句柄（工具栏刷新按钮） */
+export interface UninstallHistoryListHandle {
+  /** 重载历史记录，完成即 resolve */
+  reload: () => Promise<void>
+}
+
+export function UninstallHistoryList({ ref }: { ref?: Ref<UninstallHistoryListHandle> }) {
   const tauri = useTauri()
   const { t, locale } = useI18n()
   const [records, setRecords] = useState<UninstallHistoryRecord[]>([])
   const [loading, setLoading] = useState(false)
 
   // 加载历史记录
-  const loadHistory = async () => {
+  const loadHistory = useCallback(async () => {
     setLoading(true)
     try {
       const result = await tauri.mole_get_uninstall_history() as { records: UninstallHistoryRecord[] }
@@ -33,11 +41,20 @@ export function UninstallHistoryList() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [tauri, t])
+
+  // 壳层刷新按钮直调入口（错误已兜底 catch，Promise 恒 resolve）
+  useImperativeHandle(
+    ref,
+    () => ({
+      reload: loadHistory,
+    }),
+    [loadHistory],
+  )
 
   useEffect(() => {
     loadHistory()
-  }, [])
+  }, [loadHistory])
 
   // 清空历史
   const handleClearHistory = async () => {

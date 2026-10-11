@@ -296,3 +296,16 @@ body,
     @apply font-sans;
   }
 }
+
+/* ── 原生按钮光标：可点击 = 手型（补回 Tailwind v3 预检默认）──
+   Tailwind v4 预检移除了 v3 的 button { cursor: pointer }（对齐浏览器原生箭头），
+   而全站交互语言是「可点击即手型」：antd 按钮自带 pointer、可点击行/卡片均显式挂
+   cursor-pointer——唯独原生 <button> 漏了兜底，导致同一界面手型/箭头混杂。
+   此处统一补回；显式工具类（cursor-default / cursor-not-allowed）位于 utilities
+   层，优先级更高仍可覆盖；禁用态保持箭头。 */
+@layer base {
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+}
