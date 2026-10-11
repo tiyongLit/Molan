@@ -293,32 +293,6 @@ fn prompt_on_main(app: &AppHandle) {
     let _ = app.emit(crate::events::EVT_FDA_GUIDE_SHOWN, ());
 }
 
-/// 隐藏窗口红绿灯中的 Zoom（绿色）按钮（与 lib.rs 主窗口同款处理）：
-/// 窗口不可缩放时该按钮在透明 + overlay 样式中呈"空态"，属多余控件；
-/// 移除后只保留关闭 / 最小化两个按钮（对齐腾讯柠檬引导窗的克制形态）。
-#[cfg(target_os = "macos")]
-fn hide_zoom_button(window: &tauri::WebviewWindow) {
-    use objc2::msg_send;
-    use objc2::runtime::Bool;
-    use objc2_app_kit::NSWindowButton;
-
-    if let Ok(ptr) = window.ns_window() {
-        let ns_win = ptr as *mut objc2_app_kit::NSWindow;
-        unsafe {
-            let zoom_btn: *mut objc2_app_kit::NSButton = msg_send![
-                ns_win,
-                standardWindowButton: NSWindowButton::ZoomButton
-            ];
-            if !zoom_btn.is_null() {
-                let _: () = msg_send![zoom_btn, setHidden: Bool::YES];
-            }
-        }
-    }
-}
-
-#[cfg(not(target_os = "macos"))]
-fn hide_zoom_button(_window: &tauri::WebviewWindow) {}
-
 /// 打开（或聚焦）FDA 引导窗；懒创建，关闭即隐藏复用（对齐设置窗口模式）。
 ///
 /// 线程安全：窗口创建与红绿灯操作均为主线程专属（AppKit 在非主线程调用会抛
@@ -339,6 +313,8 @@ pub fn open_guide_window(app: &AppHandle) -> Result<(), String> {
 /// 引导窗打开主体（仅主线程调用）。
 fn open_guide_window_inner(app: &AppHandle) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("fda-guide") {
+        // 红绿灯统一口径：幂等隐藏 Zoom（绿色）按钮（见 platform::macos_traffic_lights）。
+        crate::platform::macos_traffic_lights::hide_zoom_button(&window);
         window.show().map_err(|e| e.to_string())?;
         window.set_focus().map_err(|e| e.to_string())?;
         return Ok(());
@@ -365,8 +341,8 @@ fn open_guide_window_inner(app: &AppHandle) -> Result<(), String> {
         })
         .build()
         .map_err(|e| e.to_string())?;
-    // 隐藏红绿灯 Zoom 按钮，只保留关闭 / 最小化（对齐主窗口与柠檬形态）。
-    hide_zoom_button(&window);
+    // 红绿灯统一口径：隐藏 Zoom（绿色）按钮，只保留关闭 / 最小化。
+    crate::platform::macos_traffic_lights::hide_zoom_button(&window);
 
     let w = window.clone();
     window.on_window_event(move |event| {

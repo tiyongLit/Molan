@@ -21,6 +21,7 @@ pub mod macos_reveal;
 pub mod macos_running_apps;
 #[cfg(target_os = "macos")]
 pub mod macos_smc;
+pub mod macos_traffic_lights;
 #[cfg(target_os = "macos")]
 pub mod macos_trash_empty;
 #[cfg(target_os = "macos")]

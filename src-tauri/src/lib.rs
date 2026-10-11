@@ -238,25 +238,9 @@ pub fn run() {
                     }
                 });
 
-                #[cfg(target_os = "macos")]
-                {
-                    use objc2::msg_send;
-                    use objc2::runtime::Bool;
-                    use objc2_app_kit::NSWindowButton;
-
-                    if let Ok(ptr) = main_window.ns_window() {
-                        let ns_win = ptr as *mut objc2_app_kit::NSWindow;
-                        unsafe {
-                            let zoom_btn: *mut objc2_app_kit::NSButton = msg_send![
-                                ns_win,
-                                standardWindowButton: NSWindowButton::ZoomButton
-                            ];
-                            if !zoom_btn.is_null() {
-                                let _: () = msg_send![zoom_btn, setHidden: Bool::YES];
-                            }
-                        }
-                    }
-                }
+                // 红绿灯统一口径：隐藏 Zoom（绿色）按钮，只保留关闭 / 最小化
+                //（实现见 platform::macos_traffic_lights，与设置窗 / FDA 引导窗共用）。
+                crate::platform::macos_traffic_lights::hide_zoom_button(&main_window);
             }
 
             // 日志轮转：启动时清理过期日志 + 后台每 24 小时兜底清理

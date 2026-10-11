@@ -38,6 +38,10 @@ pub fn mole_open_settings_window(app: tauri::AppHandle) -> Result<(), String> {
     use tauri::Manager;
 
     if let Some(window) = app.get_webview_window("settings") {
+        // 红绿灯统一口径：隐藏 Zoom（绿色）按钮，只保留关闭 / 最小化。
+        // 设置窗由 tauri.conf.json 声明、启动即创建，这里是唯一显示入口；
+        // 每次打开前幂等重设，防止系统重建按钮后空态占位复现。
+        crate::platform::macos_traffic_lights::hide_zoom_button(&window);
         window.show().map_err(|e| e.to_string())?;
         window.set_focus().map_err(|e| e.to_string())?;
         return Ok(());
@@ -63,6 +67,9 @@ pub fn mole_open_settings_window(app: tauri::AppHandle) -> Result<(), String> {
         })
         .build()
         .map_err(|e| e.to_string())?;
+
+    // 红绿灯统一口径：隐藏 Zoom（绿色）按钮（懒创建路径，与上方复用分支一致）。
+    crate::platform::macos_traffic_lights::hide_zoom_button(&window);
 
     let w = window.clone();
     window.on_window_event(move |event| {
