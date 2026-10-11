@@ -2265,7 +2265,7 @@ dependencies = [
 
 [[package]]
 name = "molan"
-version = "1.0.0-alpha.2"
+version = "1.0.0-alpha.3"
 dependencies = [
  "auto-launch",
  "base64 0.22.1",
