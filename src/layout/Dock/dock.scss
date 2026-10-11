@@ -1,18 +1,34 @@
-/* ── Dock 容器 ── */
+/* ── Dock 容器 ──
+   全透明：图标列直接浮在页面渐变上（对齐 CMM X 侧边栏），不再叠深紫灰毛玻璃罩 */
 .dock-container {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   width: 48px;
-  background: rgba(35, 32, 48, 0.45);
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
   padding: 8px 0 8px 6px;
   gap: 6px;
-  backdrop-filter: blur(24px) saturate(1.5);
-  -webkit-backdrop-filter: blur(24px) saturate(1.5);
   z-index: 3;
+
+  /* 右缘分栏 hairline（对齐钉钉侧栏分割线）：变细起点锚定 icon 图形的视觉端点
+    （icon 18px 居中于 36px 槽位，视觉端点距槽位边 9px），全强度线延伸过槽位端点、
+     到 icon 头/尾齐平处才开始收窄；28px 渐隐带，线端只微微探出容器 12px。
+     标记「导航 | 内容」分界；非包裹框，不破坏轻盈感 */
+  &::after {
+    content: '';
+    position: absolute;
+    top: -12px;
+    bottom: -12px;
+    right: 0;
+    width: 1px;
+    background: linear-gradient(
+      to bottom,
+      transparent 0,
+      rgba(255, 255, 255, 0.16) 28px,
+      rgba(255, 255, 255, 0.16) calc(100% - 28px),
+      transparent 100%
+    );
+  }
 }
 
 /* ── 分隔线（独立兄弟节点，不参与放大计算） ── */
@@ -21,7 +37,7 @@
   height: 1px;
   flex-shrink: 0;
   margin: 2px 0;
-  background: rgba(69, 71, 90, 0.5);
+  background: rgba(255, 255, 255, 0.14);
 }
 
 /* ── DockItem 外层 wrapper（固定尺寸，flex 占位 + 键盘焦点锚点） ── */
@@ -41,18 +57,11 @@
   }
 }
 
-/* ── 激活态指示白底（位于 visual 内层，随父级 scale 一起放大） ── */
-.dock-active-bg {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  border-radius: 10px;
-  background: white;
-  pointer-events: none;
-  will-change: transform, opacity;
-}
-
-/* ── 视觉层（绝对定位，transform: scale GPU 加速放大） ── */
+/* ── 视觉层（绝对定位，transform: scale GPU 加速放大） ──
+   不强制合成层：translate3d/backface-visibility 会让 WebKit 把容器栅格化成
+   低位图缓存，magnification 放大时 icon 从位图拉伸 → 锯齿/发糊（本轮已除）。
+   hover 不做背景块：全透明容器上孤立色块显脏，仅图标提亮（对齐 CMM X）。
+   选中态 = 白图标 + accent 左竖条（::before，色值经 --item-accent 注入）。 */
 .dock-visual {
   position: absolute;
   inset: 0;
@@ -60,41 +69,46 @@
   align-items: center;
   justify-content: center;
   border-radius: 10px;
-  background: transparent;
-  transition: background 0.15s ease;
   will-change: transform;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
   transform-origin: center center;
   z-index: 1;
 
-  &:hover {
-    background: rgba(255, 255, 255, 0.07);
-
-    .dock-icon {
-      color: #ffffff;
-    }
+  &::before {
+    content: '';
+    position: absolute;
+    left: 2px;
+    top: 50%;
+    width: 3px;
+    height: 18px;
+    margin-top: -9px;
+    border-radius: 2px;
+    background: var(--item-accent, #ffffff);
+    opacity: 0;
+    transform: scaleY(0.3);
+    transition:
+      opacity 0.2s ease,
+      transform 0.2s ease;
+    pointer-events: none;
   }
 
-  &[data-active='true'] {
-    background: transparent;
+  &[data-active='true']::before {
+    opacity: 1;
+    transform: scaleY(1);
+  }
 
-    &:hover {
-      background: transparent;
-    }
-
-    .dock-icon {
-      color: #11111b;
-    }
+  &:hover .dock-icon {
+    color: rgba(255, 255, 255, 0.85);
   }
 }
 
 .dock-icon {
   position: relative;
   z-index: 1;
-  color: #6c7086;
+  color: rgba(255, 255, 255, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
   line-height: 1;
+  // 切路由/切换选中时图标颜色平滑过渡（默认灰 → hover 亮 → 选中纯白）
+  transition: color 0.15s ease;
 }

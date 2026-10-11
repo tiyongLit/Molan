@@ -62,33 +62,45 @@
   opacity: 1;
 }
 
-// ── 主按钮（移到废纸篓 / 开始分析）：青绿渐变 + 深色字（对齐 Uninstall apps-primary-btn） ──
+// ── 移到废纸篓：琥珀黄底深棕字（对齐页内 BottomBar #FFBE46 高亮点缀，黄 h45 与
+//    页面青绿 h177 强互补拉开层级；hover 微亮 / active 微暗；未勾选 = macOS 禁用灰） ──
 .analyze-trash-btn {
   border-color: transparent !important;
-  color: #0b1f1a !important;
-  background: linear-gradient(135deg, #64dfa7 0%, #00d899 100%) !important;
+  color: #4a3405 !important;
+  background: linear-gradient(135deg, #ffc861 0%, #f0b13a 100%) !important;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35) !important;
   transition: filter 0.15s ease;
 
   &:not(:disabled):hover {
     border-color: transparent !important;
-    color: #0b1f1a !important;
-    background: linear-gradient(135deg, #69e8ae 0%, #00e9a5 100%) !important;
+    color: #4a3405 !important;
+    background: linear-gradient(135deg, #ffd27a 0%, #f7bc4e 100%) !important;
     filter: brightness(1.03);
   }
 
   &:not(:disabled):active {
-    background: linear-gradient(135deg, #61ce9c 0%, #00d093 100%) !important;
+    background: linear-gradient(135deg, #f2ac33 0%, #e19f2e 100%) !important;
   }
 
   &:disabled {
-    background: #305c54 !important;
-    color: #686971 !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: rgba(255, 255, 255, 0.38) !important;
   }
 }
 
 // 滚动条样式已迁移至全局契约 src/styles/scrollbar.css（.mole-scroll），
 // 由 main.tsx 统一引入；EntryList 的 SimpleBar 直接挂 .mole-scroll 类。
+
+// ── EntryList 滚动条贴左栏右缘（Analyze 专属覆盖）──
+// 全局契约 right:6px 是为避让 macOS「窗口边缘」resize 热区；左栏右缘是分栏线
+//（右侧仍有 Treemap 主区），非窗口边缘，轨道可安全贴边 right:0。配套内容右侧
+// 内缩 8px（EntryList 滚动 wrapper 的 pr-2），行 hover 背景止于轨道左缘，
+// 不再被视觉条压住。显隐时机沿用契约（autoHide + 悬停半亮预览），不变。
+.analyze-entry-scroll {
+  .simplebar-track.simplebar-vertical {
+    right: 0;
+  }
+}
 
 // ── 模式切换按钮组 hover 态 ──
 .analyze-toggle-btn:not(:disabled):hover {

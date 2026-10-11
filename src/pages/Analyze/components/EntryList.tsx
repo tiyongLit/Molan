@@ -120,7 +120,9 @@ export function EntryList() {
         </div>
       </div>
 
-      {/* 条目列表 — mole-scroll 贴 aside 右缘（默认隐藏，滚动/悬停时显示）；
+      {/* 条目列表 — mole-scroll + analyze-entry-scroll：轨道贴 aside 分栏线右缘
+          （栏右缘非窗口边缘，无 resize 热区），wrapper pr-2 让行 hover 背景止于
+          轨道左缘不被压；显隐沿用契约（滚动/悬停显示，离开隐藏）。
           事件委托挂在内层 wrapper；右键菜单由全局 AnalyzeContextMenu 接管。
           bundle 叶子钻取按需扫描期间渲染骨架屏（对齐柠檬无加载态的瞬时感缺失补偿） */}
       {bundleLoading ? (
@@ -131,8 +133,8 @@ export function EntryList() {
           ))}
         </div>
       ) : (
-        <SimpleBar className="mole-scroll flex-1 min-h-0" style={{ maxHeight: '100%' }}>
-          <div className="py-1" onClick={handleClick} onDoubleClick={handleDoubleClick}>
+        <SimpleBar className="mole-scroll analyze-entry-scroll flex-1 min-h-0" style={{ maxHeight: '100%' }}>
+          <div className="py-1 pr-2" onClick={handleClick} onDoubleClick={handleDoubleClick}>
             {activeData.items.map((entry, idx) => {
               const protectedEntry = isProtectedEntrySync(entry)
               return (

@@ -19,14 +19,16 @@ const CHECK_SLOT = {
   COMPACT: { box: 9, hit: 18 }
 } as const
 
-// ── 颜色常量（空间透镜风格：半透明磨砂方块让渐变透出 + 蓝色选中高亮，对齐全 app 蓝=选中语言） ──
+// ── 颜色常量（CMM X 空间透镜同族明度分层：底色与页面青绿渐变同族 h175，
+// 半透明叠底后视觉 ≈ h180 s33 l33-40，对齐其圆盘深色区实测 #4c888f/#5daeb5；
+// 蓝色选中高亮与白色细边框不动，对齐全 app 蓝=选中语言） ──
 const C = {
   border: 'rgba(255,255,255,0.16)',
   borderSelected: 'rgba(59,130,246,0.95)',
-  bg: 'rgba(24,26,38,0.55)',
-  bgLight: 'rgba(38,40,54,0.55)',
-  bgSelected: 'rgba(30,42,72,0.75)',
-  bgHover: 'rgba(20,22,32,0.65)',
+  bg: 'rgba(23,56,59,0.55)',
+  bgLight: 'rgba(31,77,81,0.55)',
+  bgSelected: 'rgba(28,50,88,0.78)',
+  bgHover: 'rgba(17,42,44,0.65)',
   checkedOverlay: 'rgba(59,130,246,0.20)',
   checkedBadgeBg: '#3b82f6'
 } as const
@@ -281,7 +283,7 @@ export const RectBlock = memo(function RectBlock({
         {showNameOnly && (
           <span
             style={{
-              color: isSelected ? '#FFFFFF' : 'rgba(255,255,255,0.85)',
+              color: '#FFFFFF',
               fontSize: Math.max(Math.min(width * 0.065, 13), 10),
               textAlign: 'center',
               whiteSpace: 'nowrap',
@@ -298,7 +300,7 @@ export const RectBlock = memo(function RectBlock({
         {showFull && (
           <span
             style={{
-              color: 'rgba(255,255,255,0.55)',
+              color: '#FFFFFF',
               fontSize: Math.max(Math.min(width * 0.055, 12), 9),
               lineHeight: '1.4',
               fontFamily: 'ui-monospace, SFMono-Regular, monospace'

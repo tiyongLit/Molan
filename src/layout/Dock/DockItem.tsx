@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, type ReactNode } from 'react'
+import { useLayoutEffect, useRef, type CSSProperties, type ReactNode } from 'react'
 import {
   motion,
   useMotionValue,
@@ -46,7 +46,7 @@ export function DockItem({
   magnification,
   sigma
 }: DockItemProps) {
-  const { labelKey, icon } = item
+  const { labelKey, icon, accent } = item
   const { t } = useI18n()
   const label = t(labelKey)
   const wrapperRef = useRef<HTMLDivElement>(null)
@@ -129,14 +129,20 @@ export function DockItem({
           style={{ scale }}
           initial={false}
         >
-          {/* 激活白底：置于 visual 内层，跟随父级 scale 一起放大 */}
-          <motion.div
-            className="dock-active-bg"
-            initial={false}
-            animate={{ scale: active ? 1 : 0.6, opacity: active ? 1 : 0 }}
-            transition={{ type: 'spring', stiffness: 380, damping: 24, mass: 0.6 }}
-          />
-          <span className="dock-icon">{icon}</span>
+          {/* 选中态 = 纯白图标 + accent 左竖条（accent 经 --item-accent 注入 CSS）：
+              accent 直接染图标会压在页面同族渐变上（粉紫 on 玫红等五路全中），
+              白色图标全路由可读，主题色由装饰竖条表达，切路由仍换色 */}
+          <span
+            className="dock-icon"
+            style={
+              {
+                color: active ? '#ffffff' : undefined,
+                '--item-accent': accent
+              } as CSSProperties
+            }
+          >
+            {icon}
+          </span>
         </motion.div>
       </div>
     </Popover>

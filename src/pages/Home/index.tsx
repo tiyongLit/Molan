@@ -69,7 +69,7 @@ export function Home() {
             className="text-3xl font-semibold tracking-tight"
           />
           <p
-            className="text-sm leading-relaxed text-[var(--text-secondary)]"
+            className="text-sm leading-relaxed text-white/75"
           >
             {t('home.tagline')}
           </p>

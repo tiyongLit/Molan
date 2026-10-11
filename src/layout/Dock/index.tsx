@@ -95,7 +95,6 @@ function FloatingDock({ items, activeId, onNavigate, onItemHover, showSettings =
     <div className="relative flex flex-col items-start select-none" ref={containerRef}>
       <div
         className="dock-container"
-        style={{ transform: 'translate3d(0,0,0.01px)' }}
         role="toolbar"
         aria-orientation="vertical"
         aria-label={t('nav.ariaLabel')}

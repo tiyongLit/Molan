@@ -47,8 +47,10 @@ export function DashboardDiskCard({
     )
   }, [])
 
-  const cardBg = 'rgba(0, 0, 0, 0.2)'
-  const cardBorder = 'rgba(118, 203, 244, 0.1)'
+  // 方案二（背景分层，无描边无投影）：描边/投影在彩色渐变上对比随位置漂移，
+  // 且固定描边色对会换色的路由背景是异色隐患；层级完全靠黑透明底与渐变背景的
+  // 稳定明度差表达。背景 0.2→0.24：补偿去掉边框后的层次损失。
+  const cardBg = 'rgba(0, 0, 0, 0.24)'
   const textPrimary = '#ffffff'
   const textSecondary = '#b9c4d3'
   const textHighlight = '#ffffff'
@@ -59,8 +61,6 @@ export function DashboardDiskCard({
       className={`w-full max-w-[500px] rounded-xl p-4 ${className}`}
       style={{
         background: cardBg,
-        border: `1px solid ${cardBorder}`,
-        boxShadow: '0 1px 6px rgba(0,0,0,0.18), inset 0 0.5px 0 rgba(255,255,255,0.08)'
       }}
     >
       <div className="flex items-center gap-4">

@@ -232,9 +232,7 @@ export function LocationSelector({ value, onChange, disk }: LocationSelectorProp
           // antd 6 borderless 在 input:focus-visible 时会套 1px 主题色 outline，这里覆盖掉
           root: '!outline-none',
           popup: {
-            // ── 弹出面板与触发器外壳 / 页面卡片完全同款：bg-black/[0.18] + backdrop-blur ──
-            // 与外层 border-white/[0.14]、bg-black/[0.18] 一致，展开后视觉上“同一个盒子”
-            root: '!bg-black/[0.18] !backdrop-blur-xl !border !border-white/[0.14] !shadow-dropdown !rounded-xl !p-1.5',
+            root: '!bg-black/[0.18] !backdrop-blur-xl !shadow-dropdown !rounded-xl !p-1.5',
             listItem:
               '!rounded-lg !transition-all !duration-150 [&.ant-select-item-option-active]:!bg-white/[0.08] [&.ant-select-item-option-selected]:!bg-[rgba(59,130,246,0.15)]',
           },
