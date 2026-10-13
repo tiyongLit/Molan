@@ -17,9 +17,9 @@ static DASH_GEN: AtomicU64 = AtomicU64::new(0);
 /// 并确保 start/stop_status_watch 引用计数严格一次配对。
 static DASH_HIDE_IN_FLIGHT: AtomicBool = AtomicBool::new(false);
 /// 气泡顶部距菜单栏底部（工作区顶）的偏移（逻辑 px）。
-const DASHBOARD_TOP_OFFSET: f64 = 0.0;
-/// 气泡右缘与屏幕工作区右缘的间距（逻辑 px）；0 = 紧贴屏幕右缘。
-const DASHBOARD_RIGHT_MARGIN: f64 = 0.0;
+const DASHBOARD_TOP_OFFSET: f64 = 10.0;
+/// 气泡右缘与屏幕工作区右缘的间距（逻辑 px）；10 = 距右缘 10pt。
+const DASHBOARD_RIGHT_MARGIN: f64 = 10.0;
 /// 原生窗口滑动动画时长（ms）。入场 ease-out cubic，出场 ease-in cubic。
 const DASHBOARD_ANIM_DURATION_MS: u64 = 280;
 /// 动画帧数（280ms / 16 ≈ 17.5ms/帧 ≈ 57fps）。
@@ -69,7 +69,7 @@ fn compute_dashboard_target<R: Runtime>(
     let scale = monitor.scale_factor();
     let right_margin = (DASHBOARD_RIGHT_MARGIN * scale).round() as i32;
     let top_offset = (DASHBOARD_TOP_OFFSET * scale).round() as i32;
-    // 右缘紧贴工作区右缘（right_margin=0）；顶部距菜单栏底部 top_offset。
+    // 右缘距工作区右缘 right_margin（10pt）；顶部距菜单栏底部 top_offset（10pt）。
     let target_x = area.position.x + area.size.width as i32 - size.width as i32 - right_margin;
     let target_y = area.position.y + top_offset;
     (target_x, target_y)
