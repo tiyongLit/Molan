@@ -1,14 +1,14 @@
 {
-  "version": "1.0.0-alpha.3",
-  "pub_date": "2026-10-11T13:36:55Z",
+  "version": "1.0.0-alpha.4",
+  "pub_date": "2026-10-13T14:00:20Z",
   "platforms": {
     "darwin-aarch64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSU2VOWVo5WVBGeFdjSUF6NlJCOWx4NFkreElNcnprQ3JyTXJBR1l3V0crR0xUNUJTMS9KRGZlR0p1ZUYramU0QUhNZ2syR0RKZmJDbkRwSnBSd2lkRk43TGQvc3RFUndRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkxNzI0ODc3CWZpbGU6TW9sYW4uYXBwLnRhci5negp6SlNPMVY5dlFNMm56ekNwZU9ZWW9ESFl1MXdLcWFEcW1MdTNxTk82bUtwZDA4NndKazcra1ZCMGhyYWZzT1Y2OUFRN3Rmc3hSV3ptL01nb2FTR1hBUT09Cg==",
-      "url": "https://gitee.com/tiyong/Molan/releases/download/1.0.0-alpha.3/Molan_1.0.0-alpha.3_aarch64.app.tar.gz"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSU2VOWVo5WVBGeGZCN05DVlRZRmlNczVHbGZaajV0S25IdkdRSHZKaS9HK1VhVlVNOVdiQmJZWE9oamlhei9razRwZlAyeFRjcGdqUVBJdzJNTzE5VmNqd1dFalhoZWdVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkxODk5NjgyCWZpbGU6TW9sYW4uYXBwLnRhci5negpZVExEZUhlRGpkeGJZa2dJRUdTNGF1OURHaEE0WSszQkh0Z0MrSVdpc2d5OG9YYmNwTUVhUHEwOHcyZEVVWEh0Um5xY1VIRXhlY1JybnE5MFFRdGNDUT09Cg==",
+      "url": "https://gitee.com/tiyong/Molan/releases/download/1.0.0-alpha.4/Molan_1.0.0-alpha.4_aarch64.app.tar.gz"
     },
     "darwin-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSU2VOWVo5WVBGeFdzSlpNaGY3eU1iQ2dGamQzcEpreUpTNlg0cUxsdHZSdjBkeEdDVjNHd09PMVAvSStxWkJac3N2TDFmVlVMdHlVSVdVblJiSUpYQ1ZLbnhydHRKcVFvPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkxNzI1ODE1CWZpbGU6TW9sYW4uYXBwLnRhci5negpTd2k5QkRrZE13TkkxOXVaNlNyZDhaVWtqRUtibzdWaXZQcVo3QmNoZXRWN3pXL0syeHhxMnJSai9Xdm5FWWFoa0FWRzZDcmtCdkRlb1ZLYytuU1dDUT09Cg==",
-      "url": "https://gitee.com/tiyong/Molan/releases/download/1.0.0-alpha.3/Molan_1.0.0-alpha.3_x64.app.tar.gz"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSU2VOWVo5WVBGeFp6Z3c4WkhtSzNVZHdJNEVvU2dCRElpT3hHcGtMei80bkdPYjdWaDU5c2dRUTJoeHNZbW55aHJxaXkzSmxFZG5oOWpranpyamJpUmphSkdVZEVrWmdNPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkxOTAwMDIwCWZpbGU6TW9sYW4uYXBwLnRhci5negpIWWtad3pYU3ZWMS9KV1RNemxOTVdQWm1FdUpQNVRneGNXVkRheDFhMXM5K1JEc09USmRsclVRUllqY3k0dC8weTJEU2ttM3JsZzNvVTNCcXA4UlJDZz09Cg==",
+      "url": "https://gitee.com/tiyong/Molan/releases/download/1.0.0-alpha.4/Molan_1.0.0-alpha.4_x64.app.tar.gz"
     }
   }
 }
