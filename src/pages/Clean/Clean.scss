@@ -8,29 +8,29 @@
 }
 
 // 立即扫描 / 立即清理 主按钮
-// 对齐 lemon-cleaner LMRectangleButton 青色渐变 + 白字
-// normal: #64DFA7 → #00D899 | hover: #69E8AE → #00E9A5 | active: #61CE9C → #00D093
-// disabled: #305C54 底 + #686971 字
+// 橙色渐变实心 + 白字（2026-10 用户裁定：Clean 与 Optimize 两页主 CTA
+// 统一用 Optimize 最初的橙，其余页面保持全站绿 CTA）
 .clean-primary-btn {
   border-color: transparent !important;
   color: #ffffff !important;
-  background: linear-gradient(135deg, #64dfa7 0%, #00d899 100%) !important;
+  background: linear-gradient(135deg, #fb923c 0%, #f97316 100%) !important;
   box-shadow: none !important;
+  transition: background 0.15s ease;
 
   &:not(:disabled):hover {
     border-color: transparent !important;
-    background: linear-gradient(135deg, #69e8ae 0%, #00e9a5 100%) !important;
+    background: linear-gradient(135deg, #fca05a 0%, #fa7d2a 100%) !important;
   }
 
   &:not(:disabled):active {
     border-color: transparent !important;
-    background: linear-gradient(135deg, #61ce9c 0%, #00d093 100%) !important;
+    background: linear-gradient(135deg, #e8812b 0%, #e5640a 100%) !important;
   }
 
   &:disabled {
     border-color: transparent !important;
-    background: #305c54 !important;
-    color: #686971 !important;
+    background: rgba(255, 255, 255, 0.12) !important;
+    color: rgba(255, 255, 255, 0.4) !important;
   }
 }
 

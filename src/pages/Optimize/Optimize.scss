@@ -1,22 +1,25 @@
 /* ============================================================
-   Optimize 页面样式（对齐 Clean.scss 模式，橙色系品牌色）
+   Optimize 页面样式（对齐 Clean.scss 模式）
    ============================================================ */
 
-/* 主按钮：橙色渐变（闪电/性能语义） */
+/* 主按钮：绿渐变实心 + 白字 —— 全站主 CTA 定标色（2026-10 终版），
+   无描边、无阴影，hover/active 仅切渐变明暗（用户裁定：不要边框、
+   不要 hover 阴影）。「分析中」琥珀脉冲点/进度条属过程指示，非按钮语言，保持不动 */
 .optimize-primary-btn {
   border-color: transparent !important;
   color: #ffffff !important;
-  background: linear-gradient(135deg, #fb923c 0%, #f97316 100%) !important;
+  background: linear-gradient(135deg, #64dfa7 0%, #00d899 100%) !important;
   box-shadow: none !important;
+  transition: background 0.15s ease;
 
   &:not(:disabled):hover {
     border-color: transparent !important;
-    background: linear-gradient(135deg, #fca05a 0%, #fa7d2a 100%) !important;
+    background: linear-gradient(135deg, #69e8ae 0%, #00e9a5 100%) !important;
   }
 
   &:not(:disabled):active {
     border-color: transparent !important;
-    background: linear-gradient(135deg, #e8812b 0%, #e5640a 100%) !important;
+    background: linear-gradient(135deg, #61ce9c 0%, #00d093 100%) !important;
   }
 
   &:disabled {

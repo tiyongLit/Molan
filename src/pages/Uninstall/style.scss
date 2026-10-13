@@ -48,10 +48,10 @@
   }
 }
 
-// 主按钮（卸载 / 更新 / 确认等）：青绿渐变 + 深色字（亮渐变上白字不清，改深色字）
+// 主按钮（卸载 / 更新 / 确认等）：青绿渐变 + 白字（对齐全站主 CTA 字色规范）
 .apps-primary-btn {
   border-color: transparent !important;
-  color: #0b1f1a !important;
+  color: #ffffff !important;
   background: linear-gradient(135deg, #64dfa7 0%, #00d899 100%) !important;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35) !important;
   transition: filter 0.15s ease;

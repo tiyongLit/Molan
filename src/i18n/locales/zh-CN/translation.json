@@ -290,7 +290,7 @@
   "optimize.diag.vmCheckHint": "检查 Docker Desktop、UTM 等虚拟化工具是否可回收内存",
   "optimize.diag.runawayTitle": "检测到 {{count}} 个持续高 CPU 进程",
   "optimize.diag.runawayLine": "{{name}}（PID {{pid}}）— 运行 {{runHours}}h，CPU {{cpuHours}}h（~{{pct}}% 持续占用）",
-  "analyze.title": "磁盘空间分析",
+  "analyze.title": "磁盘分析",
   "analyze.subtitle": "选择目录进行视觉大小比较，方便快速清理。",
   "analyze.startScan": "开始分析",
   "analyze.overviewFailed": "概览加载失败：{{error}}",

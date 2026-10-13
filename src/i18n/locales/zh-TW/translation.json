@@ -290,7 +290,7 @@
   "optimize.diag.vmCheckHint": "檢查 Docker Desktop、UTM 等虛擬化工具是否可回收記憶體",
   "optimize.diag.runawayTitle": "偵測到 {{count}} 個持續高 CPU 行程",
   "optimize.diag.runawayLine": "{{name}}（PID {{pid}}）— 執行 {{runHours}}h，CPU {{cpuHours}}h（~{{pct}}% 持續佔用）",
-  "analyze.title": "磁碟空間分析",
+  "analyze.title": "磁碟分析",
   "analyze.subtitle": "選擇目錄進行視覺大小比較，方便快速清理。",
   "analyze.startScan": "開始分析",
   "analyze.overviewFailed": "概覽載入失敗：{{error}}",

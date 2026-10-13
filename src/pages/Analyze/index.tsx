@@ -141,7 +141,7 @@ export function Analyze() {
               block
               disabled={!selectedPath}
               onClick={handleStartScan}
-              style={{ color: 'var(--accent)', borderRadius: 8 }}
+              style={{ borderRadius: 8 }}
             >
               {t('analyze.startScan')}
             </ScanButton>

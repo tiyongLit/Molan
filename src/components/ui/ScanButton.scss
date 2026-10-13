@@ -1,7 +1,11 @@
 // ============================================
 // mole-scan-btn — ScanButton 扫描光晕动画
 // 效果：hover 上浮 + active 下压 + ::after 白色光晕扩散
-// 按钮本体由 MoleButton(antd) 提供，此处叠加动画与项目 CTA 渐变配色
+// 按钮本体由 MoleButton(antd) 提供，此处叠加动画与 CTA 配色
+//
+// 全站主 CTA 定标（2026-10 终版）：无描边、无阴影的绿渐变实心 + 白字，
+// hover/active 仅切换渐变明暗 + 位移动效（用户裁定：不要边框、不要 hover 阴影）。
+// 与 Clean / Optimize / ResultView / Uninstall 五处同规格。
 // ============================================
 
 .ant-btn.mole-scan-btn {
@@ -14,28 +18,26 @@
   font-weight: 600;
   font-size: 15px;
   letter-spacing: 0.5px;
-  // 项目 CTA 渐变（对齐 Clean/Uninstall 废纸篓按钮规范）
   background: linear-gradient(135deg, #64dfa7 0%, #00d899 100%);
-  color: #0b1f1a;
-  box-shadow: 0 4px 14px rgba(0, 216, 153, 0.28);
-  transition: all 0.2s;
+  color: #ffffff;
+  box-shadow: none;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
   overflow: visible;
 
   &:hover:not(:disabled) {
     transform: translateY(-3px);
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
     background: linear-gradient(135deg, #69e8ae 0%, #00e9a5 100%);
-    color: #0b1f1a;
+    color: #ffffff;
   }
 
   &:active:not(:disabled) {
     transform: translateY(-1px);
-    box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
+    background: linear-gradient(135deg, #61ce9c 0%, #00d093 100%);
   }
 
   &:disabled {
-    background: #305c54;
-    color: #686971;
+    background: rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.4);
     box-shadow: none;
   }
 

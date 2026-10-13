@@ -5,17 +5,18 @@
 // 浅色出厂默认（次=白底浅边、主=antd 蓝 #1677ff）——全项目仅此一处，
 // 故在此定色。仅换配色不改几何（宽高圆角由 ResultView.tsx 内联保留）。
 //
-// 配色照抄全站既有按钮语言：
-//   - 主按钮：绿渐变 CTA（同 ScanButton / Uninstall .apps-primary-btn）
-//   - 次按钮：深色玻璃（同 .apps-ghost-btn 的深底白字，但无描边——
+// 全站主 CTA 定标（2026-10 终版）：主按钮与 ScanButton / Clean / Optimize /
+// Uninstall 同规格——无描边、无阴影的绿渐变实心 + 白字；
+// 次按钮：深色玻璃（同 .apps-ghost-btn 的深底白字，但无描边——
 //     有背景色即足够区分，不使用边框）
 // ============================================
 
 .result-primary-btn {
   border-color: transparent !important;
-  color: #0b1f1a !important;
+  color: #ffffff !important;
   background: linear-gradient(135deg, #64dfa7 0%, #00d899 100%) !important;
-  transition: filter 0.15s ease;
+  box-shadow: none !important;
+  transition: background 0.15s ease;
 
   &:not(:disabled):hover {
     border-color: transparent !important;
@@ -29,8 +30,8 @@
 
   &:disabled {
     border-color: transparent !important;
-    background: #305c54 !important;
-    color: #686971 !important;
+    background: rgba(255, 255, 255, 0.12) !important;
+    color: rgba(255, 255, 255, 0.4) !important;
   }
 }
 

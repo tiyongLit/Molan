@@ -290,7 +290,7 @@
   "optimize.diag.vmCheckHint": "Check whether Docker Desktop, UTM or similar tools can free memory",
   "optimize.diag.runawayTitle": "{{count}} processes with sustained high CPU detected",
   "optimize.diag.runawayLine": "{{name}} (PID {{pid}}) — running {{runHours}}h, CPU {{cpuHours}}h (~{{pct}}% sustained)",
-  "analyze.title": "Disk Space Analysis",
+  "analyze.title": "Disk Analysis",
   "analyze.subtitle": "Choose a directory to compare sizes visually and clean up quickly.",
   "analyze.startScan": "Start Analysis",
   "analyze.overviewFailed": "Failed to load overview: {{error}}",
@@ -426,7 +426,7 @@
   "nav.clean": "Clean",
   "nav.uninstall": "Uninstall",
   "nav.optimize": "Optimize",
-  "nav.analyze": "Analyze",
+  "nav.analyze": "Disk Analysis",
   "nav.settings": "Settings",
   "nav.ariaLabel": "Main navigation"
 }

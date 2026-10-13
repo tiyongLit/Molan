@@ -89,7 +89,7 @@ export function Home() {
           scanEffect
           block
           onClick={handleStartScan}
-          style={{ color: accentColor, borderRadius: 8 }}
+          style={{ borderRadius: 8 }}
         >
           {t('home.scanNow')}
         </ScanButton>
